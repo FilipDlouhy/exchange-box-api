@@ -17,6 +17,25 @@
     "strictBindCallApply": false,
     "forceConsistentCasingInFileNames": false,
     "noFallthroughCasesInSwitch": false,
-    "paths": {}
+    "paths": {
+      "@app/tables": [
+        "libs/tables/src"
+      ],
+      "@app/tables/*": [
+        "libs/tables/src/*"
+      ],
+      "@app/tcp": [
+        "libs/tcp/src"
+      ],
+      "@app/tcp/*": [
+        "libs/tcp/src/*"
+      ],
+      "@app/dtos": [
+        "libs/dtos/src"
+      ],
+      "@app/dtos/*": [
+        "libs/dtos/src/*"
+      ]
+    }
   }
 }

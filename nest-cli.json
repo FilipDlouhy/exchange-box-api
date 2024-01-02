@@ -72,6 +72,33 @@
       "compilerOptions": {
         "tsConfigPath": "apps/payment/tsconfig.app.json"
       }
+    },
+    "tables": {
+      "type": "library",
+      "root": "libs/tables",
+      "entryFile": "index",
+      "sourceRoot": "libs/tables/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/tables/tsconfig.lib.json"
+      }
+    },
+    "tcp": {
+      "type": "library",
+      "root": "libs/tcp",
+      "entryFile": "index",
+      "sourceRoot": "libs/tcp/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/tcp/tsconfig.lib.json"
+      }
+    },
+    "dtos": {
+      "type": "library",
+      "root": "libs/dtos",
+      "entryFile": "index",
+      "sourceRoot": "libs/dtos/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/dtos/tsconfig.lib.json"
+      }
     }
   }
 }

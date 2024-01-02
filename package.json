@@ -25,6 +25,8 @@
     "@nestjs/core": "^10.0.0",
     "@nestjs/microservices": "^10.3.0",
     "@nestjs/platform-express": "^10.0.0",
+    "@supabase/supabase-js": "^2.39.2",
+    "bcrypt": "^5.1.1",
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.8.1"
   },
@@ -69,7 +71,13 @@
     "coverageDirectory": "./coverage",
     "testEnvironment": "node",
     "roots": [
-      "<rootDir>/apps/"
-    ]
+      "<rootDir>/apps/",
+      "<rootDir>/libs/"
+    ],
+    "moduleNameMapper": {
+      "^@app/tables(|/.*)$": "<rootDir>/libs/tables/src/$1",
+      "^@app/tcp(|/.*)$": "<rootDir>/libs/tcp/src/$1",
+      "^@app/dtos(|/.*)$": "<rootDir>/libs/dtos/src/$1"
+    }
   }
 }
