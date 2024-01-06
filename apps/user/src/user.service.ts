@@ -134,7 +134,6 @@ export class UserService {
         .from('user')
         .delete()
         .match({ id });
-      console.log();
 
       if (error) {
         throw new Error(`Error deleting user with ID ${id}: ${error.message}`);
