@@ -103,10 +103,14 @@ export class ApiGatewayService {
     }
 
     if (req.method === 'POST' || req.method === 'PUT') {
-      const response = await client
-        .send({ cmd: this.kebabToCamel(requestUrl[1]) }, req.body)
-        .toPromise();
-      return response;
+      if (req.body && Object.keys(req.body).length > 0) {
+        const response = await client
+          .send({ cmd: this.kebabToCamel(requestUrl[1]) }, req.body)
+          .toPromise();
+        return response;
+      } else {
+        throw new Error('Request body is empty or invalid');
+      }
     } else {
       const reqBody = requestUrl[2] ? { id: requestUrl[2] } : {};
       const response = await client
