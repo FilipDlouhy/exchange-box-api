@@ -248,4 +248,45 @@ export class UserService {
       throw new Error('Failed to check friendship status. Please try again.');
     }
   }
+
+  /**
+   * Retrieves two users based on the provided user_id and friend_id.
+   * Returns user details except for the password.
+   *
+   * @param {number} user_id - The unique identifier of the first user.
+   * @param {number} friend_id - The unique identifier of the second user (friend).
+   * @returns {Promise<{ user: UserDto, friend: UserDto }>} - DTOs of the retrieved users.
+   */
+  async getUserWithFriend(
+    user_id: number,
+    friend_id: number,
+  ): Promise<{ user: UserDto; friend: UserDto }> {
+    try {
+      const { data, error } = await supabase
+        .from('user')
+        .select('id, name, email')
+        .in('id', [user_id, friend_id]);
+
+      if (error) throw error;
+
+      const userData = data.find((user) => user.id === user_id);
+      const friendData = data.find((user) => user.id === friend_id);
+
+      if (!userData || !friendData) {
+        throw new Error('One or both users not found');
+      }
+
+      const user = new UserDto(userData.name, userData.email, userData.id);
+      const friend = new UserDto(
+        friendData.name,
+        friendData.email,
+        friendData.id,
+      );
+
+      return { user, friend };
+    } catch (err) {
+      console.error('Error retrieving users:', err);
+      throw new Error('Error retrieving users');
+    }
+  }
 }

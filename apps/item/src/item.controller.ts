@@ -5,6 +5,7 @@ import { MessagePattern } from '@nestjs/microservices';
 import { itemMessagePatterns } from '@app/tcp/item.messages.patterns';
 import { ItemDto } from '@app/dtos/itemDtos/item.dto';
 import { UpdateItemDto } from '@app/dtos/itemDtos/update.item.dto';
+import { ItemWithUsersDto } from '@app/dtos/itemDtos/item.with.users.dto';
 
 @Controller()
 export class ItemController {
@@ -43,12 +44,12 @@ export class ItemController {
   // Update an existing item using the provided DTO
   @MessagePattern(itemMessagePatterns.updateItem)
   async updateItem(updateItemDto: UpdateItemDto): Promise<ItemDto> {
-    return await this.itemService.udpateItem(updateItemDto);
+    return await this.itemService.updateItem(updateItemDto);
   }
 
   // Retrieve an item based on its ID
   @MessagePattern(itemMessagePatterns.getItem)
-  async getItem(item_id: number): Promise<ItemDto> {
+  async getItem(item_id: number): Promise<ItemWithUsersDto> {
     return await this.itemService.getItem(item_id);
   }
 }

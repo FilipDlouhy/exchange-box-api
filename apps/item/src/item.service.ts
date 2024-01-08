@@ -1,6 +1,8 @@
 import { CreateItemDto } from '@app/dtos/itemDtos/create.item.dto';
 import { ItemDto } from '@app/dtos/itemDtos/item.dto';
+import { ItemWithUsersDto } from '@app/dtos/itemDtos/item.with.users.dto';
 import { UpdateItemDto } from '@app/dtos/itemDtos/update.item.dto';
+import { UserDto } from '@app/dtos/userDtos/user.dto';
 import { supabase } from '@app/tables';
 import { userMessagePatterns } from '@app/tcp';
 import { Injectable } from '@nestjs/common';
@@ -188,27 +190,46 @@ export class ItemService {
 
   /**
    * Fetches an item from the 'item' table in the Supabase database based on the provided item ID.
+   * Additionally, retrieves the associated user and friend information.
    *
    * @param item_id - The unique identifier of the item to retrieve.
-   * @returns A promise resolving to an ItemDto object representing the item data.
+   * @returns A promise resolving to an ItemWithUsersDto object, which includes the item data
+   *          along with associated user and friend information.
    */
-  async getItem(item_id: number): Promise<ItemDto> {
+  async getItem(item_id: number): Promise<ItemWithUsersDto> {
     try {
       const { data, error } = await supabase
         .from('item')
         .select()
-        .eq('id', item_id);
+        .eq('id', item_id)
+        .single();
 
       if (error) {
-        throw error;
+        throw new Error(`Error fetching item: ${error.message}`);
       }
 
       const itemDto = new ItemDto(data);
 
-      return itemDto;
+      const response: { user: UserDto; friend: UserDto } =
+        await this.userClient.send(
+          { cmd: userMessagePatterns.getUserWithFriend.cmd },
+          {
+            user_id: itemDto.user_id,
+            friend_id: itemDto.friend_id,
+          },
+        );
+
+      const itemWithUsersDto = new ItemWithUsersDto(
+        itemDto,
+        response.user,
+        response.friend,
+      );
+
+      return itemWithUsersDto;
     } catch (e) {
-      console.error('Error fetching item:', e);
-      throw e;
+      // Log and rethrow the error for further handling.
+      console.error('Error in fetching item or user data:', e);
+      throw new Error('Error processing item retrieval');
     }
   }
 }

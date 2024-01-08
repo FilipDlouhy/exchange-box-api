@@ -54,6 +54,17 @@ export class UserController {
     user_id: number;
     friend_id: number;
   }): Promise<boolean> {
-    return this.userService.checkIfFriends(user_id, friend_id): Promise<Boolean>;
+    return this.userService.checkIfFriends(user_id, friend_id);
+  }
+
+  @MessagePattern(userMessagePatterns.getUserWithFriend)
+  async getUserWithFriend({
+    user_id,
+    friend_id,
+  }: {
+    user_id: number;
+    friend_id: number;
+  }): Promise<{ user: UserDto; friend: UserDto }> {
+    return this.userService.getUserWithFriend(user_id, friend_id);
   }
 }
