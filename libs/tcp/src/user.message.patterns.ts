@@ -6,4 +6,5 @@ export const userMessagePatterns = {
   addFriend: { cmd: 'addFriend' },
   deleteUser: { cmd: 'deleteUser' },
   removeFriend: { cmd: 'removeFriend' },
+  checkIfFriends: { cmd: 'checkIfFriends' },
 };

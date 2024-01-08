@@ -45,4 +45,15 @@ export class UserController {
   async removeFriend({ id }: { id: number }): Promise<boolean> {
     return this.userService.removeFriend(id);
   }
+
+  @MessagePattern(userMessagePatterns.checkIfFriends)
+  async checkIfFriends({
+    user_id,
+    friend_id,
+  }: {
+    user_id: number;
+    friend_id: number;
+  }): Promise<boolean> {
+    return this.userService.checkIfFriends(user_id, friend_id): Promise<Boolean>;
+  }
 }

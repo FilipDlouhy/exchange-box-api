@@ -15,18 +15,16 @@ export class ApiGatewayService {
   private itemServiceClient: ClientProxy;
   private userServiceClient: ClientProxy;
   private exchangeClient: ClientProxy;
-  private boxClient: ClientProxy;
 
   constructor() {
     // Initializing different service clients with corresponding ports
-    this.paymentServiceClient = this.createClient('payment', 3005);
     this.authServiceClient = this.createClient('auth', 3001);
     this.centerServiceClient = this.createClient('center', 3002);
     this.frontServiceClient = this.createClient('front', 3003);
     this.itemServiceClient = this.createClient('item', 3004);
+    this.paymentServiceClient = this.createClient('payment', 3005);
     this.userServiceClient = this.createClient('user', 3006);
     this.exchangeClient = this.createClient('exchange', 3007);
-    this.boxClient = this.createClient('box', 3008);
   }
 
   /**
@@ -104,9 +102,6 @@ export class ApiGatewayService {
         break;
       case 'exchnage':
         client = this.exchangeClient;
-        break;
-      case 'box':
-        client = this.boxClient;
         break;
       default:
         throw new NotFoundException('Service not found');

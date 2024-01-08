@@ -221,4 +221,31 @@ export class UserService {
       throw new Error('Failed to remove friend. Please try again.');
     }
   }
+
+  /**
+   * Asynchronously checks if two users are friends by querying the 'users_friend' table in the Supabase database.
+   *
+   * @param user_id - The ID of the first user.
+   * @param friend_id - The ID of the second user.
+   * @returns A boolean indicating whether the two users are friends.
+   */
+  async checkIfFriends(user_id: number, friend_id: number): Promise<boolean> {
+    try {
+      const { data: existing, error: existingError } = await supabase
+        .from('users_friend')
+        .select('*')
+        .eq('user_id', user_id)
+        .eq('friend_id', friend_id);
+
+      if (existingError) {
+        throw new Error(`Database query error: ${existingError.message}`);
+      }
+
+      return existing && existing.length > 0;
+    } catch (error) {
+      console.error('Error in checking friendship status:', error);
+
+      throw new Error('Failed to check friendship status. Please try again.');
+    }
+  }
 }
