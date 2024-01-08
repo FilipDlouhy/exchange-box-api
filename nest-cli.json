@@ -99,6 +99,24 @@
       "compilerOptions": {
         "tsConfigPath": "libs/dtos/tsconfig.lib.json"
       }
+    },
+    "exchange": {
+      "type": "application",
+      "root": "apps/exchange",
+      "entryFile": "main",
+      "sourceRoot": "apps/exchange/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/exchange/tsconfig.app.json"
+      }
+    },
+    "box": {
+      "type": "application",
+      "root": "apps/box",
+      "entryFile": "main",
+      "sourceRoot": "apps/box/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/box/tsconfig.app.json"
+      }
     }
   }
 }

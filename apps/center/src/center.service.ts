@@ -163,7 +163,7 @@ export class CenterService {
   }
 
   /**
-   * Deletes a center record from the database.
+   * Deletes a center record from the database and deletes paired front from database because of supabase on cascade.
    *
    * @param {number} id - The ID of the center to be deleted.
    * @returns {Promise<boolean>} - Returns a promise that resolves to `true` if the deletion is successful.
