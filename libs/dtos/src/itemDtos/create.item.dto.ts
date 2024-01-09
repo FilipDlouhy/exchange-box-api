@@ -1,10 +1,9 @@
 export class CreateItemDto {
-    lengthInCm:number,
-    widthInCm:number,
-    heightInCm:number,
-    name:string,
-    user_id:number,
-    friend_id:number,
-    weightInGrams:number
-  }
-  
+  lengthInCm: number = 0;
+  widthInCm: number = 0;
+  heightInCm: number = 0;
+  name: string = '';
+  user_id: number = 0;
+  friend_id: number = 0;
+  weightInGrams: number = 0;
+}

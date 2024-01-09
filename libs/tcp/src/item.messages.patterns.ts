@@ -4,6 +4,6 @@ export const itemMessagePatterns = {
   updateItem: { cmd: 'updateItem' },
   getAllItems: { cmd: 'getAllItems' },
   getUserItems: { cmd: 'getUserItems' },
-  getUserForgotenItems: { cmd: 'getUserItems' },
+  getUserForgotenItems: { cmd: 'getUserForgotenItems' },
   deleteItem: { cmd: 'deleteItem' },
 };

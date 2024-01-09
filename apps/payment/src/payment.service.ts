@@ -5,7 +5,4 @@ export class PaymentService {
   getHello(): string {
     return 'Hello World!';
   }
-  kokot() {
-    console.log('kokot');
-  }
 }

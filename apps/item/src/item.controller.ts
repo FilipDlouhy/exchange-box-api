@@ -25,20 +25,20 @@ export class ItemController {
 
   // Retrieve items belonging to a specific user
   @MessagePattern(itemMessagePatterns.getUserItems)
-  async getUserItems(user_id: number): Promise<ItemDto[]> {
-    return await this.itemService.getUserItems(user_id, false);
+  async getUserItems({ id }: { id: number }): Promise<ItemDto[]> {
+    return await this.itemService.getUserItems(id, true);
   }
 
   // Retrieve forgotten items belonging to a specific user
   @MessagePattern(itemMessagePatterns.getUserForgotenItems)
-  async getUserForgotenItems(user_id: number): Promise<ItemDto[]> {
-    return await this.itemService.getUserItems(user_id, true);
+  async getUserForgotenItems({ id }: { id: number }): Promise<ItemDto[]> {
+    return await this.itemService.getUserItems(id, false);
   }
 
   // Delete an item based on its ID
   @MessagePattern(itemMessagePatterns.deleteItem)
-  async deleteItem(item_id: number): Promise<boolean> {
-    return await this.itemService.deleteItem(item_id);
+  async deleteItem({ id }: { id: number }): Promise<boolean> {
+    return await this.itemService.deleteItem(id);
   }
 
   // Update an existing item using the provided DTO
@@ -49,7 +49,7 @@ export class ItemController {
 
   // Retrieve an item based on its ID
   @MessagePattern(itemMessagePatterns.getItem)
-  async getItem(item_id: number): Promise<ItemWithUsersDto> {
-    return await this.itemService.getItem(item_id);
+  async getItem({ id }: { id: number }): Promise<ItemWithUsersDto> {
+    return await this.itemService.getItem(id);
   }
 }

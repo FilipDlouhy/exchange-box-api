@@ -118,6 +118,7 @@ export class ApiGatewayService {
       }
     } else {
       const reqBody = requestUrl[2] ? { id: requestUrl[2] } : {};
+
       const response = await client
         .send({ cmd: this.kebabToCamel(requestUrl[1]) }, reqBody)
         .toPromise();

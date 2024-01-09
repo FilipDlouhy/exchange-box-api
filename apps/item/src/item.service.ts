@@ -17,7 +17,7 @@ export class ItemService {
       transport: Transport.TCP,
       options: {
         host: 'localhost',
-        port: 3003,
+        port: 3006,
       },
     });
   }
@@ -65,7 +65,6 @@ export class ItemService {
       if (error) {
         throw error;
       }
-
       const newItemDto = new ItemDto(data);
 
       return newItemDto;
@@ -109,8 +108,8 @@ export class ItemService {
   async getUserItems(user_id: number, forgoten: boolean): Promise<ItemDto[]> {
     try {
       const { data, error } = forgoten
-        ? await supabase.from('item').select().eq('friend_id', user_id)
-        : await supabase.from('item').select().eq('user_id', user_id);
+        ? await supabase.from('item').select().eq('user_id', user_id)
+        : await supabase.from('item').select().eq('friend_id', user_id);
 
       if (error) {
         throw error;
@@ -210,14 +209,15 @@ export class ItemService {
 
       const itemDto = new ItemDto(data);
 
-      const response: { user: UserDto; friend: UserDto } =
-        await this.userClient.send(
+      const response: { user: UserDto; friend: UserDto } = await this.userClient
+        .send(
           { cmd: userMessagePatterns.getUserWithFriend.cmd },
           {
             user_id: itemDto.user_id,
             friend_id: itemDto.friend_id,
           },
-        );
+        )
+        .toPromise();
 
       const itemWithUsersDto = new ItemWithUsersDto(
         itemDto,

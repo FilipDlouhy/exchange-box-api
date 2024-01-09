@@ -9,35 +9,35 @@ export class ItemDto {
   id: number;
 
   constructor(itemData: {
-    lengthInCm: number;
-    widthInCm: number;
-    heightInCm: number;
+    length: number;
+    width: number;
+    height: number;
     name: string;
     user_id: number;
     friend_id: number;
-    weightInGrams: number;
+    weight: number;
     id: number;
   }) {
     if (
       !itemData.name ||
-      !itemData.weightInGrams ||
+      !itemData.weight ||
       !itemData.id ||
       !itemData.friend_id ||
       !itemData.user_id ||
-      !itemData.heightInCm ||
-      !itemData.widthInCm ||
-      !itemData.lengthInCm
+      !itemData.height ||
+      !itemData.width ||
+      !itemData.length
     ) {
       throw new Error('Missing required item information');
     }
 
     this.name = itemData.name;
-    this.lengthInCm = itemData.lengthInCm;
-    this.widthInCm = itemData.widthInCm;
-    this.heightInCm = itemData.heightInCm;
+    this.lengthInCm = itemData.length;
+    this.widthInCm = itemData.width;
+    this.heightInCm = itemData.height;
     this.user_id = itemData.user_id;
     this.friend_id = itemData.friend_id;
-    this.weightInGrams = itemData.weightInGrams;
+    this.weightInGrams = itemData.weight;
     this.id = itemData.id;
   }
 }
