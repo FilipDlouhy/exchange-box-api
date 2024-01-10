@@ -1,4 +1,4 @@
-import { Controller } from '@nestjs/common';
+import { Controller, UsePipes, ValidationPipe } from '@nestjs/common';
 import { ItemService } from './item.service';
 import { CreateItemDto } from '@app/dtos/itemDtos/create.item.dto';
 import { MessagePattern } from '@nestjs/microservices';
@@ -6,6 +6,9 @@ import { itemMessagePatterns } from '@app/tcp/item.messages.patterns';
 import { ItemDto } from '@app/dtos/itemDtos/item.dto';
 import { UpdateItemDto } from '@app/dtos/itemDtos/update.item.dto';
 import { ItemWithUsersDto } from '@app/dtos/itemDtos/item.with.users.dto';
+import { ItemSizeDto } from '@app/dtos/itemDtos/item.size.dto';
+import { AddExchangeIdToItemDto } from '@app/dtos/itemDtos/add.exchange.id.dto';
+import { ExchangeItemDto } from '@app/dtos/itemDtos/exchange.item.dto';
 
 @Controller()
 export class ItemController {
@@ -13,6 +16,13 @@ export class ItemController {
 
   // Create a new item using the provided DTO
   @MessagePattern(itemMessagePatterns.createItem)
+  @UsePipes(
+    new ValidationPipe({
+      transform: true,
+      whitelist: true,
+      forbidNonWhitelisted: true,
+    }),
+  )
   async createItem(createItemDto: CreateItemDto): Promise<ItemDto> {
     return await this.itemService.createItem(createItemDto);
   }
@@ -43,6 +53,13 @@ export class ItemController {
 
   // Update an existing item using the provided DTO
   @MessagePattern(itemMessagePatterns.updateItem)
+  @UsePipes(
+    new ValidationPipe({
+      transform: true,
+      whitelist: true,
+      forbidNonWhitelisted: true,
+    }),
+  )
   async updateItem(updateItemDto: UpdateItemDto): Promise<ItemDto> {
     return await this.itemService.updateItem(updateItemDto);
   }
@@ -51,5 +68,30 @@ export class ItemController {
   @MessagePattern(itemMessagePatterns.getItem)
   async getItem({ id }: { id: number }): Promise<ItemWithUsersDto> {
     return await this.itemService.getItem(id);
+  }
+
+  // Retrieve an item based on its ID
+  @MessagePattern(itemMessagePatterns.retrieveItemSizesAndCheckExchange)
+  async retrieveItemSizesAndCheckExchange({
+    item_ids,
+  }: {
+    item_ids: number[];
+  }): Promise<ItemSizeDto[]> {
+    return await this.itemService.retrieveItemSizesAndCheckExchange(item_ids);
+  }
+
+  // Retrieve an item based on its ID
+  @MessagePattern(itemMessagePatterns.addExchangeId)
+  @UsePipes(
+    new ValidationPipe({
+      transform: true,
+      whitelist: true,
+      forbidNonWhitelisted: true,
+    }),
+  )
+  async addExchangeIdToItem(
+    addExchangeIdToItemDto: AddExchangeIdToItemDto,
+  ): Promise<ExchangeItemDto[]> {
+    return await this.itemService.addExchangeIdToItem(addExchangeIdToItemDto);
   }
 }

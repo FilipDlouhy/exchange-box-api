@@ -1,11 +1,29 @@
+import { IsInt, IsString, IsNotEmpty } from 'class-validator';
+
 export class ItemDto {
+  @IsInt()
   lengthInCm: number;
+
+  @IsInt()
   widthInCm: number;
+
+  @IsInt()
   heightInCm: number;
+
+  @IsString()
+  @IsNotEmpty()
   name: string;
+
+  @IsInt()
   user_id: number;
+
+  @IsInt()
   friend_id: number;
+
+  @IsInt()
   weightInGrams: number;
+
+  @IsInt()
   id: number;
 
   constructor(itemData: {
@@ -18,26 +36,6 @@ export class ItemDto {
     weight: number;
     id: number;
   }) {
-    if (
-      !itemData.name ||
-      !itemData.weight ||
-      !itemData.id ||
-      !itemData.friend_id ||
-      !itemData.user_id ||
-      !itemData.height ||
-      !itemData.width ||
-      !itemData.length
-    ) {
-      throw new Error('Missing required item information');
-    }
-
-    this.name = itemData.name;
-    this.lengthInCm = itemData.length;
-    this.widthInCm = itemData.width;
-    this.heightInCm = itemData.height;
-    this.user_id = itemData.user_id;
-    this.friend_id = itemData.friend_id;
-    this.weightInGrams = itemData.weight;
-    this.id = itemData.id;
+    Object.assign(this, itemData);
   }
 }

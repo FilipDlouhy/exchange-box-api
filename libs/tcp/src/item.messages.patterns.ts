@@ -6,4 +6,8 @@ export const itemMessagePatterns = {
   getUserItems: { cmd: 'getUserItems' },
   getUserForgotenItems: { cmd: 'getUserForgotenItems' },
   deleteItem: { cmd: 'deleteItem' },
+  retrieveItemSizesAndCheckExchange: {
+    cmd: 'retrieveItemSizesAndCheckExchange',
+  },
+  addExchangeId: { cmd: 'addExchangeId' },
 };

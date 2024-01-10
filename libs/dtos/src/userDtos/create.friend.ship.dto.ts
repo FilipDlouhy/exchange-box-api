@@ -1,6 +1,6 @@
 import { IsInt } from 'class-validator';
 
-export class ToggleFriendDto {
+export class CreateFriendshipDto {
   @IsInt()
   user_id: number;
 

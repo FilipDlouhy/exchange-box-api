@@ -1,11 +1,26 @@
+import { IsInt, IsString } from 'class-validator';
+
 export class UpdateItemDto {
-  lengthInCm: number;
-  widthInCm: number;
-  heightInCm: number;
-  name: string;
-  friend_id: number;
-  weightInGrams: number;
-  id: number;
+  @IsInt()
+  lengthInCm: number = 0;
+
+  @IsInt()
+  widthInCm: number = 0;
+
+  @IsInt()
+  heightInCm: number = 0;
+
+  @IsString()
+  name: string = '';
+
+  @IsInt()
+  friend_id: number = 0;
+
+  @IsInt()
+  weightInGrams: number = 0;
+
+  @IsInt()
+  id: number = 0;
 
   constructor() {
     this.lengthInCm = 0;

@@ -1,4 +1,4 @@
-import { Controller } from '@nestjs/common';
+import { Controller, UsePipes, ValidationPipe } from '@nestjs/common';
 import { CenterService } from './center.service';
 import { MessagePattern } from '@nestjs/microservices';
 import { centerMessagePatterns } from '@app/tcp/center.message.patterns';
@@ -13,6 +13,13 @@ export class CenterController {
 
   // Create a new center and return its information.
   @MessagePattern(centerMessagePatterns.createCenter)
+  @UsePipes(
+    new ValidationPipe({
+      transform: true,
+      whitelist: true,
+      forbidNonWhitelisted: true,
+    }),
+  )
   async createCenterateUser(
     createCenterDto: CreateCenterDto,
   ): Promise<CenterDto> {
@@ -27,6 +34,13 @@ export class CenterController {
 
   // Update an existing center and return its updated information.
   @MessagePattern(centerMessagePatterns.updateCenter)
+  @UsePipes(
+    new ValidationPipe({
+      transform: true,
+      whitelist: true,
+      forbidNonWhitelisted: true,
+    }),
+  )
   async updateCenter(
     updateCenterDto: UpdateCenterDto,
   ): Promise<CenterWithFrontDto> {
