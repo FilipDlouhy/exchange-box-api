@@ -6,6 +6,7 @@ import { FullExchangeDto } from '@app/dtos/exchangeDtos/full.exchange.dto';
 import { UpdateExchangeDto } from '@app/dtos/exchangeDtos/update.exchange.dto';
 import { ItemDto } from '@app/dtos/itemDtos/item.dto';
 import { ItemSizeDto } from '@app/dtos/itemDtos/item.size.dto';
+import { CreateFriendshipDto } from '@app/dtos/userDtos/create.friend.ship.dto';
 import { UserDto } from '@app/dtos/userDtos/user.dto';
 import { supabase } from '@app/tables';
 import { boxSizes } from '@app/tables/box.sizes';
@@ -196,7 +197,7 @@ export class ExchangeService {
         : await supabase
             .from('exchange')
             .select()
-            .eq('pick_up_person_id', userId);
+            .eq('pick_up_user_id', userId);
 
       if (error) {
         throw error;
@@ -206,7 +207,7 @@ export class ExchangeService {
         data.length > 0
           ? await this.getUserWithFriend(
               data[0].creator_id,
-              data[0].pick_up_person_id,
+              data[0].pick_up_user_id,
             )
           : { user: null, friend: null };
 
@@ -252,28 +253,28 @@ export class ExchangeService {
             let creator = existingUsersDtos.find(
               (userDto) => userDto.id === exchange.creator_id,
             );
-            let pick_up_person = existingUsersDtos.find(
-              (userDto) => userDto.id === exchange.pick_up_person_id,
+            let pick_up_user_id = existingUsersDtos.find(
+              (userDto) => userDto.id === exchange.pick_up_user_id,
             );
 
             // Fetch user details if not already in existingUsersDtos
-            if (!creator || !pick_up_person) {
+            if (!creator || !pick_up_user_id) {
               const response = await this.getUserWithFriend(
                 exchange.creator_id,
-                exchange.pick_up_person_id,
+                exchange.pick_up_user_id,
               );
 
               creator = response.user;
-              pick_up_person = response.friend;
+              pick_up_user_id = response.friend;
 
               // Add new users to the existing users array
-              existingUsersDtos.push(creator, pick_up_person);
+              existingUsersDtos.push(creator, pick_up_user_id);
             }
 
             // Construct and return the ExchangeWithUseDto
             return new ExchangeWithUseDto(
               creator,
-              pick_up_person,
+              pick_up_user_id,
               exchange.box_size,
               exchange.id,
             );
@@ -315,7 +316,7 @@ export class ExchangeService {
 
       // Retrieve user details associated with the exchange
       const users: { user: UserDto; friend: UserDto } =
-        await this.getUserWithFriend(data.creator_id, data.pick_up_person_id);
+        await this.getUserWithFriend(data.creator_id, data.pick_up_user_id);
 
       // Retrieve items associated with the exchange
       const items: ItemDto[] = await this.itemClient
@@ -442,11 +443,11 @@ export class ExchangeService {
     user_id: number,
     friend_id: number,
   ): Promise<{ user: UserDto; friend: UserDto }> {
+    const friendShipDto = new CreateFriendshipDto();
+    friendShipDto.friend_id = friend_id;
+    friendShipDto.user_id = user_id;
     const result = await this.userClient
-      .send(
-        { cmd: userMessagePatterns.getUserWithFriend.cmd },
-        { user_id, friend_id },
-      )
+      .send({ cmd: userMessagePatterns.getUserWithFriend.cmd }, friendShipDto)
       .toPromise();
 
     return result;

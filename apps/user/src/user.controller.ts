@@ -86,13 +86,6 @@ export class UserController {
   }
 
   @MessagePattern(userMessagePatterns.getUserWithFriend)
-  @UsePipes(
-    new ValidationPipe({
-      transform: true,
-      whitelist: true,
-      forbidNonWhitelisted: true,
-    }),
-  )
   async getUserWithFriend(
     createFriendshipDto: CreateFriendshipDto,
   ): Promise<{ user: UserDto; friend: UserDto }> {

@@ -7,6 +7,7 @@ import { ExchangeDto } from '@app/dtos/exchangeDtos/exchange.dto';
 import { DeleteExchangeDto } from '@app/dtos/exchangeDtos/delete.exchange.dto';
 import { UpdateExchangeDto } from '@app/dtos/exchangeDtos/update.exchange.dto';
 import { ExchangeWithUseDto } from '@app/dtos/exchangeDtos/exchange.with.users.dto';
+import { FullExchangeDto } from '@app/dtos/exchangeDtos/full.exchange.dto';
 
 @Controller()
 export class ExchangeController {
@@ -70,7 +71,12 @@ export class ExchangeController {
     return await this.exchangeService.getExchangesByUser(id, false);
   }
 
-  @MessagePattern(exchangeessagePatterns.getFriendExchanges)
+  @MessagePattern(exchangeessagePatterns.getFullExchange)
+  async getFullExchangeull({ id }: { id: number }): Promise<FullExchangeDto> {
+    return await this.exchangeService.getFullExchange(id);
+  }
+
+  @MessagePattern(exchangeessagePatterns.getAllExchanges)
   async getAllExchanges(): Promise<ExchangeWithUseDto[]> {
     return await this.exchangeService.getAllExchanges();
   }

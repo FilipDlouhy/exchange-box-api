@@ -4,4 +4,6 @@ export const exchangeessagePatterns = {
   updateExchange: { cmd: 'updateExchange' },
   getUserExchanges: { cmd: 'getUserExchanges' },
   getFriendExchanges: { cmd: 'getFriendExchanges' },
+  getAllExchanges: { cmd: 'getAllExchanges' },
+  getFullExchange: { cmd: 'getFullExchange' },
 };
