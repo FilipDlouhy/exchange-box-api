@@ -7,7 +7,7 @@ import { ItemDto } from '@app/dtos/itemDtos/item.dto';
 import { UpdateItemDto } from '@app/dtos/itemDtos/update.item.dto';
 import { ItemWithUsersDto } from '@app/dtos/itemDtos/item.with.users.dto';
 import { ItemSizeDto } from '@app/dtos/itemDtos/item.size.dto';
-import { AddExchangeIdToItemDto } from '@app/dtos/itemDtos/add.exchange.id.dto';
+import { ToggleExchangeToItemDto } from '@app/dtos/itemDtos/toggle.exchange.id.dto';
 import { ExchangeItemDto } from '@app/dtos/itemDtos/exchange.item.dto';
 
 @Controller()
@@ -74,10 +74,15 @@ export class ItemController {
   @MessagePattern(itemMessagePatterns.retrieveItemSizesAndCheckExchange)
   async retrieveItemSizesAndCheckExchange({
     item_ids,
+    udpate,
   }: {
     item_ids: number[];
+    udpate: boolean;
   }): Promise<ItemSizeDto[]> {
-    return await this.itemService.retrieveItemSizesAndCheckExchange(item_ids);
+    return await this.itemService.retrieveItemSizesAndCheckExchange(
+      item_ids,
+      udpate,
+    );
   }
 
   // Retrieve an item based on its ID
@@ -90,8 +95,29 @@ export class ItemController {
     }),
   )
   async addExchangeIdToItem(
-    addExchangeIdToItemDto: AddExchangeIdToItemDto,
+    addExchangeIdToItemDto: ToggleExchangeToItemDto,
   ): Promise<ExchangeItemDto[]> {
     return await this.itemService.addExchangeIdToItem(addExchangeIdToItemDto);
+  }
+
+  @MessagePattern(itemMessagePatterns.deleteExchangeFromItems)
+  @UsePipes(
+    new ValidationPipe({
+      transform: true,
+      whitelist: true,
+      forbidNonWhitelisted: true,
+    }),
+  )
+  async deleteExchangeFromItems(
+    removeExchangeIdToItemDto: ToggleExchangeToItemDto,
+  ): Promise<boolean> {
+    return await this.itemService.deleteExchangeFromItems(
+      removeExchangeIdToItemDto,
+    );
+  }
+
+  @MessagePattern(itemMessagePatterns.getItemsForExchange)
+  async getItemsForExchange({ id }: { id: number }): Promise<ItemDto[]> {
+    return await this.itemService.getItemsForExchange(id);
   }
 }

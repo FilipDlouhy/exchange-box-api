@@ -1,6 +1,6 @@
 import { ArrayNotEmpty, IsInt, IsNotEmpty } from 'class-validator';
 
-export class AddExchangeIdToItemDto {
+export class ToggleExchangeToItemDto {
   @ArrayNotEmpty()
   @IsInt({ each: true })
   item_ids: number[] = [];

@@ -1,4 +1,4 @@
-import { AddExchangeIdToItemDto } from '@app/dtos/itemDtos/add.exchange.id.dto';
+import { ToggleExchangeToItemDto } from '@app/dtos/itemDtos/toggle.exchange.id.dto';
 import { CreateItemDto } from '@app/dtos/itemDtos/create.item.dto';
 import { ExchangeItemDto } from '@app/dtos/itemDtos/exchange.item.dto';
 import { ItemDto } from '@app/dtos/itemDtos/item.dto';
@@ -196,7 +196,7 @@ export class ItemService {
    *
    * @param item_id - The unique identifier of the item to retrieve.
    * @returns A promise resolving to an ItemWithUsersDto object, which includes the item data
-   *          along with associated user and friend information.
+   * along with associated user and friend information.
    */
   async getItem(item_id: number): Promise<ItemWithUsersDto> {
     try {
@@ -245,6 +245,7 @@ export class ItemService {
    */
   async retrieveItemSizesAndCheckExchange(
     ids: number[],
+    udpate: boolean,
   ): Promise<ItemSizeDto[]> {
     try {
       const { data, error } = await supabase
@@ -256,12 +257,13 @@ export class ItemService {
         throw error;
       }
 
-      // Check if any item is already in an exchange
-      const itemsInExchange = data.some((item) => item.exchange_id != null);
-      if (itemsInExchange) {
-        throw new Error('One or more items are already in an exchange');
+      if (!udpate) {
+        // Check if any item is already in an exchange
+        const itemsInExchange = data.some((item) => item.exchange_id != null);
+        if (itemsInExchange) {
+          throw new Error('One or more items are already in an exchange');
+        }
       }
-
       const itemSizes = data.map((item) => {
         return new ItemSizeDto(item.length, item.width, item.height, item.id);
       });
@@ -276,11 +278,11 @@ export class ItemService {
   /**
    * Update 'exchange_id' for a list of items in the 'item' table.
    *
-   * @param {AddExchangeIdToItemDto} dto - Object containing exchange_id and item_ids.
+   * @param {ToggleExchangeToItemDto} dto - Object containing exchange_id and item_ids.
    * @returns {Promise<ItemDto[]>} - Resolves with an array of ItemDto objects on success.
    */
   async addExchangeIdToItem(
-    addExchangeIdToItem: AddExchangeIdToItemDto,
+    addExchangeIdToItem: ToggleExchangeToItemDto,
   ): Promise<ExchangeItemDto[]> {
     try {
       const { data, error } = await supabase
@@ -303,6 +305,61 @@ export class ItemService {
     } catch (err) {
       console.error('Error updating exchange ID for items:', err);
       throw err;
+    }
+  }
+
+  /**
+   * Deletes exchange references from items.
+   * @param removeExchangeIdToItemDto - DTO containing item IDs to remove exchange references from.
+   * @returns boolean - Returns true if the operation is successful.
+   */
+  async deleteExchangeFromItems(
+    removeExchangeIdToItemDto: ToggleExchangeToItemDto,
+  ): Promise<boolean> {
+    try {
+      const { data, error } = await supabase
+        .from('item')
+        .update({
+          exchange_id: null,
+        })
+        .in('id', removeExchangeIdToItemDto.item_ids);
+
+      if (error) throw error;
+
+      return true;
+    } catch (err) {
+      console.error('Error in deleteExchangeFromItems:', err);
+      throw err;
+    }
+  }
+
+  /**
+   * Retrieves items associated with a specific exchange.
+   *
+   * @param id - The ID of the exchange.
+   * @returns An array of ItemDto objects associated with the exchange.
+   */
+  async getItemsForExchange(id: number): Promise<ItemDto[]> {
+    try {
+      const { data, error } = await supabase
+        .from('item')
+        .select()
+        .eq('exchange_id', id);
+
+      if (error) {
+        throw error;
+      }
+
+      const itemDtoArray: ItemDto[] = data.map((item) => new ItemDto(item));
+
+      return itemDtoArray;
+    } catch (error) {
+      console.error(
+        'Failed to retrieve items for exchange with ID:',
+        id,
+        error,
+      );
+      throw error;
     }
   }
 }
