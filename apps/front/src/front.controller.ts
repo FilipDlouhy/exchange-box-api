@@ -53,7 +53,6 @@ export class FrontController {
   async deleteTaskFromFront(
     deleteExchnageFromFront: DeleteExchangeFromFrontDto,
   ): Promise<boolean> {
-    console.log(deleteExchnageFromFront);
     return await this.frontService.deleteTaskFromFront(deleteExchnageFromFront);
   }
 }

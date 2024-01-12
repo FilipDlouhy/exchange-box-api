@@ -458,8 +458,6 @@ export class ExchangeService {
         throw new Error('Failed to delete the task from the front.');
       }
 
-      console.log('ASFSAF');
-
       const { data, error: updateError } = await supabase
         .from('exchange')
         .update({
