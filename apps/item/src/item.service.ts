@@ -130,25 +130,43 @@ export class ItemService {
   }
 
   /**
-   * Asynchronously deletes an item from the 'item' table in the Supabase database.
+   * Deletes an item from the database.
+   * It first checks if the item is part of an exchange. If it is, the deletion is not allowed.
    *
-   * @param item_id - The unique identifier of the item to delete.
-   * @returns A promise resolving to a boolean value: `true` if deletion is successful, `false` if not.
+   * @param item_id - The ID of the item to delete.
+   * @returns A boolean indicating if the deletion was successful.
+   * @throws Error if the item is part of an exchange.
    */
   async deleteItem(item_id: number): Promise<boolean> {
     try {
-      const { data, error } = await supabase
+      // Check if the item is part of an exchange
+      const { data: itemData, error: fetchError } = await supabase
+        .from('item')
+        .select('exchange_id')
+        .eq('id', item_id)
+        .single();
+
+      if (fetchError) {
+        throw fetchError;
+      }
+
+      if (itemData && itemData.exchange_id) {
+        throw new Error('Item is in exchange and cannot be deleted.');
+      }
+
+      // Proceed with deletion if the item is not part of an exchange
+      const { error: deleteError } = await supabase
         .from('item')
         .delete()
         .match({ id: item_id });
-      if (error) {
-        throw error;
+
+      if (deleteError) {
+        throw deleteError;
       }
 
       return true;
     } catch (e) {
-      console.error('Error deleting item:', e);
-
+      console.error('Error in deleteItem:', e);
       return false;
     }
   }

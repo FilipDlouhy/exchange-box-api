@@ -8,6 +8,7 @@ import { DeleteExchangeDto } from '@app/dtos/exchangeDtos/delete.exchange.dto';
 import { UpdateExchangeDto } from '@app/dtos/exchangeDtos/update.exchange.dto';
 import { ExchangeWithUseDto } from '@app/dtos/exchangeDtos/exchange.with.users.dto';
 import { FullExchangeDto } from '@app/dtos/exchangeDtos/full.exchange.dto';
+import { AddExchangeToFrontDto } from '@app/dtos/exchangeDtos/add.exchange.to.front..dto';
 
 @Controller()
 export class ExchangeController {
@@ -79,5 +80,19 @@ export class ExchangeController {
   @MessagePattern(exchangeessagePatterns.getAllExchanges)
   async getAllExchanges(): Promise<ExchangeWithUseDto[]> {
     return await this.exchangeService.getAllExchanges();
+  }
+
+  @MessagePattern(exchangeessagePatterns.addExchangeToTheFront)
+  @UsePipes(
+    new ValidationPipe({
+      transform: true,
+      whitelist: true,
+      forbidNonWhitelisted: true,
+    }),
+  )
+  async addExchangeToTheFront(addExchangeToTheFront: AddExchangeToFrontDto) {
+    return await this.exchangeService.addExchangeToTheFront(
+      addExchangeToTheFront,
+    );
   }
 }

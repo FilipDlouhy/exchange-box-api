@@ -6,4 +6,5 @@ export const exchangeessagePatterns = {
   getFriendExchanges: { cmd: 'getFriendExchanges' },
   getAllExchanges: { cmd: 'getAllExchanges' },
   getFullExchange: { cmd: 'getFullExchange' },
+  addExchangeToTheFront: { cmd: 'addExchangeToTheFront' },
 };

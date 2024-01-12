@@ -1,3 +1,4 @@
+import { AddExchangeToFrontDto } from '@app/dtos/exchangeDtos/add.exchange.to.front..dto';
 import { CreateExchangeDto } from '@app/dtos/exchangeDtos/create.exchange.dto';
 import { DeleteExchangeDto } from '@app/dtos/exchangeDtos/delete.exchange.dto';
 import { ExchangeDto } from '@app/dtos/exchangeDtos/exchange.dto';
@@ -12,6 +13,7 @@ import { supabase } from '@app/tables';
 import { boxSizes } from '@app/tables/box.sizes';
 import { exchnageStatus } from '@app/tables/exchange.status.dto';
 import { userMessagePatterns } from '@app/tcp';
+import { frontMessagePatterns } from '@app/tcp/front.message.patterns';
 import { itemMessagePatterns } from '@app/tcp/item.messages.patterns';
 import { Injectable } from '@nestjs/common';
 import { ClientProxyFactory, Transport } from '@nestjs/microservices';
@@ -20,6 +22,7 @@ import { ClientProxyFactory, Transport } from '@nestjs/microservices';
 export class ExchangeService {
   private readonly userClient;
   private readonly itemClient;
+  private readonly frontClient;
 
   constructor() {
     this.userClient = ClientProxyFactory.create({
@@ -35,6 +38,14 @@ export class ExchangeService {
       options: {
         host: 'localhost',
         port: 3004,
+      },
+    });
+
+    this.frontClient = ClientProxyFactory.create({
+      transport: Transport.TCP,
+      options: {
+        host: 'localhost',
+        port: 3003,
       },
     });
   }
@@ -106,6 +117,10 @@ export class ExchangeService {
       if (fetchError) throw fetchError;
       if (!exchangeData) {
         throw new Error('Exchange not found');
+      }
+
+      if (exchangeData.front_id != null) {
+        throw new Error('Exchange is in front');
       }
 
       // Attempt to delete the exchange reference from items
@@ -345,6 +360,80 @@ export class ExchangeService {
         id,
         error,
       );
+      throw error;
+    }
+  }
+
+  /**
+   * Adds an exchange to the front. This function first retrieves the front ID based on
+   * the size and center ID. Then it updates the exchange with the new state, pick-up date,
+   * and front ID. Finally, it updates the front with the added task.
+   *
+   * @param addExchangeToTheFront - The data transfer object containing details for adding the exchange.
+   * @throws Error if any of the steps in the process fails.
+   */
+  async addExchangeToTheFront(addExchangeToTheFront: AddExchangeToFrontDto) {
+    try {
+      const { data: exchangeData, error: exchangeError } = await supabase
+        .from('exchange')
+        .select('front_id')
+        .eq('id', addExchangeToTheFront.id)
+        .single();
+      if (exchangeError) {
+        throw exchangeError;
+      }
+
+      if (exchangeData.front_id != null) {
+        throw new Error('Exchange has center.');
+      }
+
+      // Retrieve the front ID for the task
+      const frontId: number = await this.frontClient
+        .send(
+          { cmd: frontMessagePatterns.getFrontForTask.cmd },
+          {
+            size: addExchangeToTheFront.size,
+            center_id: addExchangeToTheFront.center_id,
+          },
+        )
+        .toPromise();
+
+      // Update the exchange with the new front ID and other details
+      const { data, error: updateError } = await supabase
+        .from('exchange')
+        .update({
+          exchange_state: exchnageStatus.scheduled,
+          pick_up_date: addExchangeToTheFront.pick_up_date,
+          front_id: frontId,
+        })
+        .eq('id', addExchangeToTheFront.id)
+        .select('pick_up_date , id,box_size')
+        .single();
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      // Update the front with the added task
+      const wasFrontUpdated: boolean = await this.frontClient
+        .send(
+          { cmd: frontMessagePatterns.addTaskToFront.cmd },
+          { addExchangeToTheFront },
+        )
+        .toPromise();
+
+      if (!wasFrontUpdated) {
+        throw new Error('Failed to update the front with the new task.');
+      }
+      const updatedExchange = new AddExchangeToFrontDto(
+        data.pick_up_date,
+        data.id,
+        data.box_size,
+        addExchangeToTheFront.center_id,
+      );
+      return updatedExchange;
+    } catch (error) {
+      console.error('Error in adding exchange to the front:', error);
       throw error;
     }
   }
