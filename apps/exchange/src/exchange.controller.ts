@@ -9,6 +9,7 @@ import { UpdateExchangeDto } from '@app/dtos/exchangeDtos/update.exchange.dto';
 import { ExchangeWithUseDto } from '@app/dtos/exchangeDtos/exchange.with.users.dto';
 import { FullExchangeDto } from '@app/dtos/exchangeDtos/full.exchange.dto';
 import { AddExchangeToFrontDto } from '@app/dtos/exchangeDtos/add.exchange.to.front..dto';
+import { DeleteExchangeFromFrontDto } from '@app/dtos/exchangeDtos/delete.exchange.from.front.dto';
 
 @Controller()
 export class ExchangeController {
@@ -90,9 +91,25 @@ export class ExchangeController {
       forbidNonWhitelisted: true,
     }),
   )
-  async addExchangeToTheFront(addExchangeToTheFront: AddExchangeToFrontDto) {
+  async addExchangeToTheFront(
+    addExchangeToTheFront: AddExchangeToFrontDto,
+  ): Promise<AddExchangeToFrontDto> {
     return await this.exchangeService.addExchangeToTheFront(
       addExchangeToTheFront,
+    );
+  }
+
+  @MessagePattern(exchangeessagePatterns.deleteExchangeFromFront)
+  @UsePipes(
+    new ValidationPipe({
+      transform: true,
+      whitelist: true,
+      forbidNonWhitelisted: true,
+    }),
+  )
+  async deleteExchangeFromFront(deleteExchangeDto: DeleteExchangeFromFrontDto) {
+    return await this.exchangeService.deleteExchangeFromFront(
+      deleteExchangeDto,
     );
   }
 }

@@ -1,4 +1,5 @@
 import { AddExchangeToFrontDto } from '@app/dtos/exchangeDtos/add.exchange.to.front..dto';
+import { DeleteExchangeFromFrontDto } from '@app/dtos/exchangeDtos/delete.exchange.from.front.dto';
 import { supabase } from '@app/tables';
 import { Injectable } from '@nestjs/common';
 
@@ -20,7 +21,6 @@ export class FrontService {
             total_number_of_tasks: boxTotals.total,
             number_of_tasks_in_front: 0,
             created_at: new Date(),
-            time_to_complete_all_tasks: 0,
             center_id: center_id,
             number_of_large_boxes_total: boxTotals.largeBoxes,
             number_of_medium_boxes_total: boxTotals.mediumBoxes,
@@ -106,17 +106,12 @@ export class FrontService {
       }
 
       // Ensure pick_up_date is a Date object and calculate the updated values
-      const pickUpDate = new Date(addExchangeToTheFront.pick_up_date);
       const updatedValues = {
         [`number_of_${addExchangeToTheFront.size}_boxes`]:
           (currentData[`number_of_${addExchangeToTheFront.size}_boxes`] ?? 0) +
           1,
         number_of_tasks_in_front:
           (currentData.number_of_tasks_in_front ?? 0) + 1,
-        time_to_complete_all_tasks: new Date(
-          (currentData.time_to_complete_all_tasks?.getTime() ?? 0) +
-            pickUpDate.getTime(),
-        ),
       };
 
       // Update the 'front' table with the new values
@@ -135,6 +130,61 @@ export class FrontService {
       console.error('Error adding task to front:', error);
       // Handle the error appropriately
       throw error;
+    }
+  }
+
+  /**
+   * Deletes a task from the front by updating the corresponding front's data.
+   *
+   * @param deleteExchnageFromFront - DTO with details to identify the task and front.
+   * @returns True if the task is successfully deleted from the front, false otherwise.
+   */
+  async deleteTaskFromFront(
+    deleteExchnageFromFront: DeleteExchangeFromFrontDto,
+  ) {
+    const size = deleteExchnageFromFront.box_size;
+    const center_id = deleteExchnageFromFront.center_id;
+
+    try {
+      // Fetch the current data
+      const { data: currentData, error: fetchError } = await supabase
+        .from('front')
+        .select(`number_of_${size}_boxes, number_of_tasks_in_front`)
+        .eq('center_id', center_id)
+        .single();
+
+      if (fetchError) {
+        throw fetchError;
+      }
+
+      const front = currentData as any;
+
+      // Compute updated values
+      const updatedValues = {
+        [`number_of_${size}_boxes`]: Math.max(
+          (currentData[`number_of_${size}_boxes`] ?? 0) - 1,
+          0,
+        ),
+        number_of_tasks_in_front: Math.max(
+          (front.number_of_tasks_in_front ?? 0) - 1,
+          0,
+        ),
+      };
+
+      // Update the 'front' table
+      const { error: updateError } = await supabase
+        .from('front')
+        .update(updatedValues)
+        .eq('center_id', center_id);
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      return true;
+    } catch (err) {
+      console.error(err);
+      return false;
     }
   }
 

@@ -1,6 +1,7 @@
 import { AddExchangeToFrontDto } from '@app/dtos/exchangeDtos/add.exchange.to.front..dto';
 import { CreateExchangeDto } from '@app/dtos/exchangeDtos/create.exchange.dto';
 import { DeleteExchangeDto } from '@app/dtos/exchangeDtos/delete.exchange.dto';
+import { DeleteExchangeFromFrontDto } from '@app/dtos/exchangeDtos/delete.exchange.from.front.dto';
 import { ExchangeDto } from '@app/dtos/exchangeDtos/exchange.dto';
 import { ExchangeWithUseDto } from '@app/dtos/exchangeDtos/exchange.with.users.dto';
 import { FullExchangeDto } from '@app/dtos/exchangeDtos/full.exchange.dto';
@@ -365,14 +366,15 @@ export class ExchangeService {
   }
 
   /**
-   * Adds an exchange to the front. This function first retrieves the front ID based on
-   * the size and center ID. Then it updates the exchange with the new state, pick-up date,
-   * and front ID. Finally, it updates the front with the added task.
+   * Adds an exchange to the front, updating exchange and front data.
    *
-   * @param addExchangeToTheFront - The data transfer object containing details for adding the exchange.
-   * @throws Error if any of the steps in the process fails.
+   * @param addExchangeToTheFront - DTO with exchange details.
+   * @returns Updated exchange DTO.
+   * @throws Error on failure or if the exchange already has a front.
    */
-  async addExchangeToTheFront(addExchangeToTheFront: AddExchangeToFrontDto) {
+  async addExchangeToTheFront(
+    addExchangeToTheFront: AddExchangeToFrontDto,
+  ): Promise<AddExchangeToFrontDto> {
     try {
       const { data: exchangeData, error: exchangeError } = await supabase
         .from('exchange')
@@ -434,6 +436,45 @@ export class ExchangeService {
       return updatedExchange;
     } catch (error) {
       console.error('Error in adding exchange to the front:', error);
+      throw error;
+    }
+  }
+
+  async deleteExchangeFromFront(deleteExchangeDto: DeleteExchangeFromFrontDto) {
+    try {
+      // Retrieve the front ID for the task
+      const wasExchangeDeleted: boolean = await this.frontClient
+        .send(
+          { cmd: frontMessagePatterns.deleteTaskFromFront.cmd },
+          {
+            box_size: deleteExchangeDto.box_size,
+            center_id: deleteExchangeDto.center_id,
+            id: deleteExchangeDto.id,
+          },
+        )
+        .toPromise();
+
+      if (!wasExchangeDeleted) {
+        throw new Error('Failed to delete the task from the front.');
+      }
+
+      console.log('ASFSAF');
+
+      const { data, error: updateError } = await supabase
+        .from('exchange')
+        .update({
+          front_id: null,
+        })
+        .eq('id', deleteExchangeDto.id)
+        .select('pick_up_date, id, box_size');
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      return data;
+    } catch (error) {
+      console.error(error);
       throw error;
     }
   }

@@ -3,6 +3,7 @@ import { FrontService } from './front.service';
 import { frontMessagePatterns } from '@app/tcp/front.message.patterns';
 import { MessagePattern } from '@nestjs/microservices';
 import { AddExchangeToFrontDto } from '@app/dtos/exchangeDtos/add.exchange.to.front..dto';
+import { DeleteExchangeFromFrontDto } from '@app/dtos/exchangeDtos/delete.exchange.from.front.dto';
 
 @Controller()
 export class FrontController {
@@ -39,5 +40,20 @@ export class FrontController {
     addExchangeToTheFront: AddExchangeToFrontDto;
   }): Promise<boolean> {
     return await this.frontService.addTaskToFront(addExchangeToTheFront);
+  }
+
+  @MessagePattern(frontMessagePatterns.deleteTaskFromFront)
+  @UsePipes(
+    new ValidationPipe({
+      transform: true,
+      whitelist: true,
+      forbidNonWhitelisted: true,
+    }),
+  )
+  async deleteTaskFromFront(
+    deleteExchnageFromFront: DeleteExchangeFromFrontDto,
+  ): Promise<boolean> {
+    console.log(deleteExchnageFromFront);
+    return await this.frontService.deleteTaskFromFront(deleteExchnageFromFront);
   }
 }
