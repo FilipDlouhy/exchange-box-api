@@ -1,6 +1,6 @@
 export const exchnageStatus = {
   unscheduled: 'unscheduled',
-  scheduled: 'scheduled',
+  reserved: 'reserved',
   inBox: 'inBox',
   done: 'done',
 };

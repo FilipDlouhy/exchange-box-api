@@ -404,7 +404,7 @@ export class ExchangeService {
       const { data, error: updateError } = await supabase
         .from('exchange')
         .update({
-          exchange_state: exchnageStatus.scheduled,
+          exchange_state: exchnageStatus.reserved,
           pick_up_date: addExchangeToTheFront.pick_up_date,
           front_id: frontId,
         })
