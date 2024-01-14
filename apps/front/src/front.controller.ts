@@ -55,4 +55,10 @@ export class FrontController {
   ): Promise<boolean> {
     return await this.frontService.deleteTaskFromFront(deleteExchnageFromFront);
   }
+
+  // Delete a center by its ID and return a boolean indicating success or failure.
+  @MessagePattern(frontMessagePatterns.getCenterIdByFront)
+  async getCenterIdByFront({ id }: { id: number }): Promise<number> {
+    return this.frontService.getCenterIdByFront(id);
+  }
 }

@@ -1,4 +1,6 @@
+import { AddBoxToExchangeDto } from '@app/dtos/boxDtos/add.box.to.exhange';
 import { AddExchangeToFrontDto } from '@app/dtos/exchangeDtos/add.exchange.to.front..dto';
+import { ChangeExchangeStatusDto } from '@app/dtos/exchangeDtos/change.exchange.status.dto';
 import { CreateExchangeDto } from '@app/dtos/exchangeDtos/create.exchange.dto';
 import { DeleteExchangeDto } from '@app/dtos/exchangeDtos/delete.exchange.dto';
 import { DeleteExchangeFromFrontDto } from '@app/dtos/exchangeDtos/delete.exchange.from.front.dto';
@@ -14,6 +16,7 @@ import { supabase } from '@app/tables';
 import { boxSizes } from '@app/tables/box.sizes';
 import { exchnageStatus } from '@app/tables/exchange.status.dto';
 import { userMessagePatterns } from '@app/tcp';
+import { boxMessagePatterns } from '@app/tcp/box.message.patterns';
 import { frontMessagePatterns } from '@app/tcp/front.message.patterns';
 import { itemMessagePatterns } from '@app/tcp/item.messages.patterns';
 import { Injectable } from '@nestjs/common';
@@ -24,6 +27,7 @@ export class ExchangeService {
   private readonly userClient;
   private readonly itemClient;
   private readonly frontClient;
+  private readonly boxClient;
 
   constructor() {
     this.userClient = ClientProxyFactory.create({
@@ -47,6 +51,14 @@ export class ExchangeService {
       options: {
         host: 'localhost',
         port: 3003,
+      },
+    });
+
+    this.boxClient = ClientProxyFactory.create({
+      transport: Transport.TCP,
+      options: {
+        host: 'localhost',
+        port: 3008,
       },
     });
   }
@@ -427,6 +439,21 @@ export class ExchangeService {
       if (!wasFrontUpdated) {
         throw new Error('Failed to update the front with the new task.');
       }
+
+      const addBoxToExchangeDto = new AddBoxToExchangeDto(
+        addExchangeToTheFront.id,
+        frontId,
+        addExchangeToTheFront.pick_up_date,
+        addExchangeToTheFront.size,
+      );
+
+      await this.boxClient
+        .send(
+          { cmd: boxMessagePatterns.createBox.cmd },
+          { addBoxToExchangeDto },
+        )
+        .toPromise();
+
       const updatedExchange = new AddExchangeToFrontDto(
         data.pick_up_date,
         data.id,
@@ -462,6 +489,7 @@ export class ExchangeService {
         .from('exchange')
         .update({
           front_id: null,
+          pick_up_date: null,
         })
         .eq('id', deleteExchangeDto.id)
         .select('pick_up_date, id, box_size');
@@ -474,6 +502,34 @@ export class ExchangeService {
     } catch (error) {
       console.error(error);
       throw error;
+    }
+  }
+
+  /**
+   * Asynchronously updates the status of an exchange in the 'exchange' table based on the provided DTO.
+   * Handles the update logic, including fetching pick-up date and box size.
+   *
+   * @param {ChangeExchangeStatusDto} changeExchangeStatus - DTO with info to update exchange status.
+   * @param {number} changeExchangeStatus.id - Unique identifier of the exchange to update.
+   * @param {string} changeExchangeStatus.exchange_state - New state to set in the database.
+   */
+  async changeExchangeStatus(changeExchangeStatus: ChangeExchangeStatusDto) {
+    try {
+      const { data, error: updateError } = await supabase
+        .from('exchange')
+        .update({
+          exchange_state: exchnageStatus[changeExchangeStatus.exchange_state],
+        })
+        .eq('id', changeExchangeStatus.id)
+        .select('pick_up_date, id, box_size');
+
+      if (updateError) {
+        throw new Error(
+          `Error updating exchange status: ${updateError.message}`,
+        );
+      }
+    } catch (error) {
+      console.error('Error in changeExchangeStatus function:', error);
     }
   }
 

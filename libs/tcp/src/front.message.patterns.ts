@@ -7,4 +7,5 @@ export const frontMessagePatterns = {
   getFrontForTask: { cmd: 'getFrontForTask' },
   addTaskToFront: { cmd: 'addTaskToFront' },
   deleteTaskFromFront: { cmd: 'deleteTaskFromFront' },
+  getCenterIdByFront: { cmd: 'getCenterIdByFront' },
 };

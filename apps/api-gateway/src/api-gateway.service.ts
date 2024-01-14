@@ -15,6 +15,8 @@ export class ApiGatewayService {
   private itemServiceClient: ClientProxy;
   private userServiceClient: ClientProxy;
   private exchangeClient: ClientProxy;
+  private boxClient: ClientProxy;
+  private chatClient: ClientProxy;
 
   constructor() {
     // Initializing different service clients with corresponding ports
@@ -25,6 +27,8 @@ export class ApiGatewayService {
     this.paymentServiceClient = this.createClient('payment', 3005);
     this.userServiceClient = this.createClient('user', 3006);
     this.exchangeClient = this.createClient('exchange', 3007);
+    this.boxClient = this.createClient('box', 3008);
+    this.chatClient = this.createClient('chat', 3009);
   }
 
   /**
@@ -80,7 +84,6 @@ export class ApiGatewayService {
   async rerouteRequest(req: Request) {
     const requestUrl = this.parseUrl(req.path.toString());
     let client: ClientProxy | null = null;
-
     switch (requestUrl[0]) {
       case 'payment':
         client = this.paymentServiceClient;
@@ -100,8 +103,14 @@ export class ApiGatewayService {
       case 'user':
         client = this.userServiceClient;
         break;
-      case 'exchnage':
+      case 'exchange':
         client = this.exchangeClient;
+        break;
+      case 'box':
+        client = this.boxClient;
+        break;
+      case 'chat':
+        client = this.chatClient;
         break;
       default:
         throw new NotFoundException('Service not found');

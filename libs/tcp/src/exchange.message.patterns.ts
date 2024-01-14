@@ -8,4 +8,5 @@ export const exchangeessagePatterns = {
   getFullExchange: { cmd: 'getFullExchange' },
   addExchangeToTheFront: { cmd: 'addExchangeToTheFront' },
   deleteExchangeFromFront: { cmd: 'deleteExchangeFromFront' },
+  changeExchangeStatus: { cmd: 'changeExchangeStatus' },
 };

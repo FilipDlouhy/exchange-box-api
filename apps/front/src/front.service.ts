@@ -189,6 +189,31 @@ export class FrontService {
   }
 
   /**
+   * Asynchronously retrieves the center ID associated with a given front ID from the database.
+   * Queries the 'center' table and returns the center's ID.
+   *
+   * @param {number} id - Front ID for which the center ID is fetched.
+   * @returns {Promise<number>} Resolves to the center's ID.
+   */
+  async getCenterIdByFront(id: number): Promise<number> {
+    try {
+      const { data, error } = await supabase
+        .from('center')
+        .select('id')
+        .eq('front_id', id)
+        .single();
+
+      if (error) {
+        throw new Error(`Error fetching center ID: ${error.message}`);
+      }
+
+      return parseInt(data.id.toString());
+    } catch (error) {
+      console.error('Error in getCenterIdByFront function:', error);
+    }
+  }
+
+  /**
    * Generates random box numbers for small, medium, and large boxes, calculates their total,
    * and returns the results as an object.
    *

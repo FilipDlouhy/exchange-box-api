@@ -117,7 +117,20 @@ export class ItemController {
   }
 
   @MessagePattern(itemMessagePatterns.getItemsForExchange)
-  async getItemsForExchange({ id }: { id: number }): Promise<ItemDto[]> {
-    return await this.itemService.getItemsForExchange(id);
+  async getItemsForOrIdsExchange({
+    id,
+  }: {
+    id: number;
+  }): Promise<ItemDto[] | number[]> {
+    return await this.itemService.getItemsForOrIdsExchange(id, false);
+  }
+
+  @MessagePattern(itemMessagePatterns.getItemsForIdsExchange)
+  async getItemsForIdsExchange({
+    id,
+  }: {
+    id: number;
+  }): Promise<ItemDto[] | number[]> {
+    return await this.itemService.getItemsForOrIdsExchange(id, true);
   }
 }

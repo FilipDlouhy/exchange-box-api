@@ -12,4 +12,5 @@ export const itemMessagePatterns = {
   addExchangeId: { cmd: 'addExchangeId' },
   deleteExchangeFromItems: { cmd: 'deleteExchangeFromItems' },
   getItemsForExchange: { cmd: 'getItemsForExchange' },
+  getItemsForIdsExchange: { cmd: 'getItemsForIdsExchange' },
 };

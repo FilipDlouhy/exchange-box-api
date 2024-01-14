@@ -10,6 +10,7 @@ import { ExchangeWithUseDto } from '@app/dtos/exchangeDtos/exchange.with.users.d
 import { FullExchangeDto } from '@app/dtos/exchangeDtos/full.exchange.dto';
 import { AddExchangeToFrontDto } from '@app/dtos/exchangeDtos/add.exchange.to.front..dto';
 import { DeleteExchangeFromFrontDto } from '@app/dtos/exchangeDtos/delete.exchange.from.front.dto';
+import { ChangeExchangeStatusDto } from '@app/dtos/exchangeDtos/change.exchange.status.dto';
 
 @Controller()
 export class ExchangeController {
@@ -110,6 +111,20 @@ export class ExchangeController {
   async deleteExchangeFromFront(deleteExchangeDto: DeleteExchangeFromFrontDto) {
     return await this.exchangeService.deleteExchangeFromFront(
       deleteExchangeDto,
+    );
+  }
+
+  @MessagePattern(exchangeessagePatterns.changeExchangeStatus)
+  @UsePipes(
+    new ValidationPipe({
+      transform: true,
+      whitelist: true,
+      forbidNonWhitelisted: true,
+    }),
+  )
+  async changeExchangeStatus(changeExchangeStatus: ChangeExchangeStatusDto) {
+    return await this.exchangeService.changeExchangeStatus(
+      changeExchangeStatus,
     );
   }
 }

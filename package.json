@@ -18,7 +18,7 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./apps/exchange-box-api/test/jest-e2e.json",
-    "start:dev:all": "concurrently \"npm run start:dev center\" \"npm run start:dev front\" \"npm run start:dev item\" \"npm run start:dev user\" \"npm run start:dev api-gateway\" \"npm run start:dev auth\" \"npm run start:dev payment\" \"npm run start:dev exchange\" "
+    "start:dev:all": "concurrently \"npm run start:dev center\" \"npm run start:dev front\" \"npm run start:dev item\" \"npm run start:dev user\" \"npm run start:dev api-gateway\" \"npm run start:dev auth\" \"npm run start:dev payment\" \"npm run start:dev exchange\"  \"npm run start:dev box\""
   },
   "dependencies": {
     "@nestjs/common": "^10.0.0",
@@ -26,6 +26,7 @@
     "@nestjs/core": "^10.0.0",
     "@nestjs/microservices": "^10.3.0",
     "@nestjs/platform-express": "^10.0.0",
+    "@nestjs/schedule": "^4.0.0",
     "@supabase/supabase-js": "^2.39.2",
     "bcrypt": "^5.1.1",
     "class-transformer": "^0.5.1",

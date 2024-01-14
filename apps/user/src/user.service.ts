@@ -130,10 +130,7 @@ export class UserService {
    */
   async deleteUser(id: number): Promise<boolean> {
     try {
-      const { data, error } = await supabase
-        .from('user')
-        .delete()
-        .match({ id });
+      const { error } = await supabase.from('user').delete().match({ id });
 
       if (error) {
         throw new Error(`Error deleting user with ID ${id}: ${error.message}`);
@@ -202,7 +199,7 @@ export class UserService {
    */
   async removeFriend(id: number): Promise<boolean> {
     try {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('users_friend')
         .delete()
         .eq('id', id);

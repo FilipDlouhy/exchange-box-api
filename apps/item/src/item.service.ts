@@ -352,25 +352,35 @@ export class ItemService {
   }
 
   /**
-   * Retrieves items associated with a specific exchange.
+   * Retrieves items or item IDs associated with a specific exchange.
    *
    * @param id - The ID of the exchange.
-   * @returns An array of ItemDto objects associated with the exchange.
+   * @param returnIdsOnly - Boolean flag to determine whether to return only item IDs.
+   * @returns An array of ItemDto objects or item IDs associated with the exchange.
    */
-  async getItemsForExchange(id: number): Promise<ItemDto[]> {
+  async getItemsForOrIdsExchange(
+    id: number,
+    returnIdsOnly: boolean = false,
+  ): Promise<ItemDto[] | number[]> {
     try {
+      const selectQuery = returnIdsOnly ? 'id' : '*';
+
       const { data, error } = await supabase
         .from('item')
-        .select()
+        .select(selectQuery)
         .eq('exchange_id', id);
 
       if (error) {
         throw error;
       }
 
-      const itemDtoArray: ItemDto[] = data.map((item) => new ItemDto(item));
-
-      return itemDtoArray;
+      if (returnIdsOnly) {
+        const itemIds: number[] = data.map((item) => item.id);
+        return itemIds;
+      } else {
+        const itemDtoArray: ItemDto[] = data.map((item) => new ItemDto(item));
+        return itemDtoArray;
+      }
     } catch (error) {
       console.error(
         'Failed to retrieve items for exchange with ID:',
