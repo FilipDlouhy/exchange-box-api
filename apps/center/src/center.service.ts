@@ -3,7 +3,7 @@ import { CenterWithFrontDto } from '@app/dtos/centerDtos/center.with.front.dto';
 import { CreateCenterDto } from '@app/dtos/centerDtos/create.center.dto';
 import { UpdateCenterDto } from '@app/dtos/centerDtos/update.center.dto';
 import { FrontDto } from '@app/dtos/frontDtos/front.dto';
-import { supabase } from '@app/tables';
+import { supabase } from '@app/database';
 import { frontMessagePatterns } from '@app/tcp/front.message.patterns';
 import { Injectable } from '@nestjs/common';
 import { ClientProxyFactory, Transport } from '@nestjs/microservices';

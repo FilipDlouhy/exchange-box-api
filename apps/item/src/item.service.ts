@@ -6,10 +6,17 @@ import { ItemSizeDto } from '@app/dtos/itemDtos/item.size.dto';
 import { ItemWithUsersDto } from '@app/dtos/itemDtos/item.with.users.dto';
 import { UpdateItemDto } from '@app/dtos/itemDtos/update.item.dto';
 import { UserDto } from '@app/dtos/userDtos/user.dto';
-import { supabase } from '@app/tables';
+import {
+  deleteFileFromFirebase,
+  getImageUrlFromFirebase,
+  supabase,
+  updateFileInFirebase,
+  uploadFileToFirebase,
+} from '@app/database';
 import { userMessagePatterns } from '@app/tcp';
 import { Injectable } from '@nestjs/common';
 import { ClientProxyFactory, Transport } from '@nestjs/microservices';
+import { UploadItemImageDto } from '@app/dtos/itemDtos/upload.item.image.dto';
 
 @Injectable()
 export class ItemService {
@@ -68,6 +75,7 @@ export class ItemService {
       if (error) {
         throw error;
       }
+
       const newItemDto = new ItemDto(data);
 
       return newItemDto;
@@ -387,6 +395,76 @@ export class ItemService {
         id,
         error,
       );
+      throw error;
+    }
+  }
+
+  /**
+   * Uploads an item image to Firebase Storage.
+   *
+   * @param uploadItemImageDto - Data transfer object containing the file to upload and the item ID.
+   * @throws - Propagates any errors that occur during file upload.
+   */
+  async uploadItemImage(
+    uploadItemImageDto: UploadItemImageDto,
+    update: boolean,
+  ) {
+    try {
+      const imageUrl = update
+        ? await updateFileInFirebase(
+            uploadItemImageDto.file,
+            uploadItemImageDto.item_id,
+            'Items',
+          )
+        : await uploadFileToFirebase(
+            uploadItemImageDto.file,
+            uploadItemImageDto.item_id,
+            'Items',
+          );
+
+      await supabase
+        .from('item')
+        .update({
+          image_url: imageUrl,
+          updated_at: new Date(),
+        })
+        .eq('id', uploadItemImageDto.item_id);
+    } catch (error) {
+      // Handle or rethrow the error appropriately
+      console.error('Error uploading item image:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Retrieves the URL of an item's image from Firebase Storage.
+   *
+   * @param id - The ID of the item whose image URL is to be retrieved.
+   * @returns - The URL of the item's image.
+   * @throws - Propagates any errors that occur during URL retrieval.
+   */
+  async getItemImage(id: number): Promise<string> {
+    try {
+      return await getImageUrlFromFirebase(id.toString(), 'Items');
+    } catch (error) {
+      // Handle or rethrow the error appropriately
+      console.error('Error getting item image URL:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Deletes an item's image from Firebase Storage.
+   *
+   * @param id - The ID of the item whose image is to be deleted.
+   * @throws - Propagates any errors that occur during image deletion.
+   */
+  async deleteItemImage(id: number) {
+    try {
+      await deleteFileFromFirebase(id.toString(), 'Items');
+    } catch (error) {
+      // Handle or rethrow the error appropriately
+      console.error('Error deleting item image:', error);
       throw error;
     }
   }

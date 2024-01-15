@@ -13,4 +13,8 @@ export const itemMessagePatterns = {
   deleteExchangeFromItems: { cmd: 'deleteExchangeFromItems' },
   getItemsForExchange: { cmd: 'getItemsForExchange' },
   getItemsForIdsExchange: { cmd: 'getItemsForIdsExchange' },
+  uploadItemImage: { cmd: 'uploadItemImage' },
+  getItemImage: { cmd: 'getItemImage' },
+  deleteItemImage: { cmd: 'deleteItemImage' },
+  updateItemImage: { cmd: 'updateItemImage' },
 };

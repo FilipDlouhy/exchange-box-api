@@ -1,6 +1,6 @@
 import { AddExchangeToFrontDto } from '@app/dtos/exchangeDtos/add.exchange.to.front..dto';
 import { DeleteExchangeFromFrontDto } from '@app/dtos/exchangeDtos/delete.exchange.from.front.dto';
-import { supabase } from '@app/tables';
+import { supabase } from '@app/database';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()

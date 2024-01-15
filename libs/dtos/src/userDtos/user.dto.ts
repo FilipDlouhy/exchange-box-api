@@ -1,4 +1,10 @@
-import { IsEmail, IsInt, IsNotEmpty, IsString } from 'class-validator';
+import {
+  IsEmail,
+  IsInt,
+  IsNotEmpty,
+  IsString,
+  IsOptional,
+} from 'class-validator';
 
 export class UserDto {
   @IsString()
@@ -12,9 +18,14 @@ export class UserDto {
   @IsNotEmpty()
   id: number;
 
-  constructor(name: string, email: string, id: number) {
+  @IsString()
+  @IsOptional()
+  imageURL: string | undefined;
+
+  constructor(name: string, email: string, id: number, imageURL?: string) {
     this.name = name;
     this.email = email;
     this.id = id;
+    this.imageURL = imageURL;
   }
 }

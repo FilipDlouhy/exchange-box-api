@@ -9,6 +9,7 @@ import { ItemWithUsersDto } from '@app/dtos/itemDtos/item.with.users.dto';
 import { ItemSizeDto } from '@app/dtos/itemDtos/item.size.dto';
 import { ToggleExchangeToItemDto } from '@app/dtos/itemDtos/toggle.exchange.id.dto';
 import { ExchangeItemDto } from '@app/dtos/itemDtos/exchange.item.dto';
+import { UploadItemImageDto } from '@app/dtos/itemDtos/upload.item.image.dto';
 
 @Controller()
 export class ItemController {
@@ -132,5 +133,25 @@ export class ItemController {
     id: number;
   }): Promise<ItemDto[] | number[]> {
     return await this.itemService.getItemsForOrIdsExchange(id, true);
+  }
+
+  @MessagePattern(itemMessagePatterns.uploadItemImage)
+  async uploadUserImage(uploadUserImageDto: UploadItemImageDto) {
+    return this.itemService.uploadItemImage(uploadUserImageDto, false);
+  }
+
+  @MessagePattern(itemMessagePatterns.updateItemImage)
+  async updateItemImage(uploadUserImageDto: UploadItemImageDto) {
+    return this.itemService.uploadItemImage(uploadUserImageDto, true);
+  }
+
+  @MessagePattern(itemMessagePatterns.getItemImage)
+  async getUserImage({ id }: { id: number }): Promise<string> {
+    return this.itemService.getItemImage(id);
+  }
+
+  @MessagePattern(itemMessagePatterns.deleteItemImage)
+  async deleteUserImage({ id }: { id: number }) {
+    return this.itemService.deleteItemImage(id);
   }
 }

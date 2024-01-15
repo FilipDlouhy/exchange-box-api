@@ -1,4 +1,4 @@
-import { IsInt, IsString, IsNotEmpty } from 'class-validator';
+import { IsInt, IsString, IsNotEmpty, IsOptional } from 'class-validator';
 
 export class ItemDto {
   @IsInt()
@@ -26,6 +26,10 @@ export class ItemDto {
   @IsInt()
   id: number;
 
+  @IsString()
+  @IsOptional()
+  imageURL: string | undefined;
+
   constructor(itemData: {
     length: number;
     width: number;
@@ -35,6 +39,7 @@ export class ItemDto {
     friend_id: number;
     weight: number;
     id: number;
+    imageURL?: string;
   }) {
     Object.assign(this, itemData);
   }

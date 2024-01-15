@@ -1,5 +1,5 @@
 import { AddBoxToExchangeDto } from '@app/dtos/boxDtos/add.box.to.exhange';
-import { supabase } from '@app/tables';
+import { supabase } from '@app/database';
 import { Injectable } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { generateRandomString } from './helpers/string.helper';

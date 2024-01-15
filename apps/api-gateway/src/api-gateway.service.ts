@@ -81,7 +81,7 @@ export class ApiGatewayService {
    * @returns The response from the targeted microservice.
    * @throws NotFoundException if the service is not found.
    */
-  async rerouteRequest(req: Request) {
+  async rerouteRequest(req: Request, file?: Express.Multer.File) {
     const requestUrl = this.parseUrl(req.path.toString());
     let client: ClientProxy | null = null;
     switch (requestUrl[0]) {
@@ -118,9 +118,16 @@ export class ApiGatewayService {
 
     if (req.method === 'POST' || req.method === 'PUT') {
       if (req.body && Object.keys(req.body).length > 0) {
-        const response = await client
-          .send({ cmd: this.kebabToCamel(requestUrl[1]) }, req.body)
-          .toPromise();
+        const response = file
+          ? await client
+              .send(
+                { cmd: this.kebabToCamel(requestUrl[1]) },
+                { ...req.body, file },
+              )
+              .toPromise()
+          : await client
+              .send({ cmd: this.kebabToCamel(requestUrl[1]) }, req.body)
+              .toPromise();
         return response;
       } else {
         throw new Error('Request body is empty or invalid');

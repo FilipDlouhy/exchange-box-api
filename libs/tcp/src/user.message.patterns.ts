@@ -8,4 +8,8 @@ export const userMessagePatterns = {
   removeFriend: { cmd: 'removeFriend' },
   checkIfFriends: { cmd: 'checkIfFriends' },
   getUserWithFriend: { cmd: 'getUserWithFriend' },
+  uploadUserImage: { cmd: 'uploadUserImage' },
+  getUserImage: { cmd: 'getUserImage' },
+  deleteUserImage: { cmd: 'deleteUserImage' },
+  updateUserImage: { cmd: 'updateUserImage' },
 };

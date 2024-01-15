@@ -7,6 +7,7 @@ import { UserDto } from '@app/dtos/userDtos/user.dto';
 import { UpdateUserDto } from '@app/dtos/userDtos/update.user.dto';
 import { ToggleFriendDto } from '@app/dtos/userDtos/toggle.friend.dto';
 import { CreateFriendshipDto } from '@app/dtos/userDtos/create.friend.ship.dto';
+import { UploadUserImageDto } from '@app/dtos/userDtos/upload.user.image.dto';
 
 @Controller()
 export class UserController {
@@ -21,12 +22,12 @@ export class UserController {
     }),
   )
   async createUser(createUserDto: CreateUserDto): Promise<UserDto> {
-    return this.userService.createUser(createUserDto);
+    return await this.userService.createUser(createUserDto);
   }
 
   @MessagePattern(userMessagePatterns.getUser)
   async getUser({ id }: { id: number }): Promise<UserDto> {
-    return this.userService.getUser(id);
+    return await this.userService.getUser(id);
   }
 
   @MessagePattern(userMessagePatterns.updateUser)
@@ -38,12 +39,12 @@ export class UserController {
     }),
   )
   async updateUser(UpdateUserDto: UpdateUserDto): Promise<UserDto> {
-    return this.userService.updateUser(UpdateUserDto);
+    return await this.userService.updateUser(UpdateUserDto);
   }
 
   @MessagePattern(userMessagePatterns.getUsers)
   async getUsers(): Promise<UserDto[]> {
-    return this.userService.getUsers();
+    return await this.userService.getUsers();
   }
 
   @MessagePattern(userMessagePatterns.addFriend)
@@ -55,17 +56,17 @@ export class UserController {
     }),
   )
   async addFriend(toggleFriendDto: ToggleFriendDto) {
-    return this.userService.addFriend(toggleFriendDto);
+    return await this.userService.addFriend(toggleFriendDto);
   }
 
   @MessagePattern(userMessagePatterns.deleteUser)
   async deleteUser({ id }: { id: number }): Promise<boolean> {
-    return this.userService.deleteUser(id);
+    return await this.userService.deleteUser(id);
   }
 
   @MessagePattern(userMessagePatterns.removeFriend)
   async removeFriend({ id }: { id: number }): Promise<boolean> {
-    return this.userService.removeFriend(id);
+    return await this.userService.removeFriend(id);
   }
 
   @MessagePattern(userMessagePatterns.checkIfFriends)
@@ -79,7 +80,7 @@ export class UserController {
   async checkIfFriends(
     createFriendshipDto: CreateFriendshipDto,
   ): Promise<boolean> {
-    return this.userService.checkIfFriends(
+    return await this.userService.checkIfFriends(
       createFriendshipDto.user_id,
       createFriendshipDto.friend_id,
     );
@@ -89,9 +90,29 @@ export class UserController {
   async getUserWithFriend(
     createFriendshipDto: CreateFriendshipDto,
   ): Promise<{ user: UserDto; friend: UserDto }> {
-    return this.userService.getUserWithFriend(
+    return await this.userService.getUserWithFriend(
       createFriendshipDto.user_id,
       createFriendshipDto.friend_id,
     );
+  }
+
+  @MessagePattern(userMessagePatterns.uploadUserImage)
+  async uploadUserImage(uploadUserImageDto: UploadUserImageDto) {
+    return this.userService.uploadUserImage(uploadUserImageDto, false);
+  }
+
+  @MessagePattern(userMessagePatterns.updateUserImage)
+  async updateUserImage(uploadUserImageDto: UploadUserImageDto) {
+    return this.userService.uploadUserImage(uploadUserImageDto, true);
+  }
+
+  @MessagePattern(userMessagePatterns.getUserImage)
+  async getUserImage({ id }: { id: number }): Promise<string> {
+    return this.userService.getUserImage(id);
+  }
+
+  @MessagePattern(userMessagePatterns.deleteUserImage)
+  async deleteUserImage({ id }: { id: number }) {
+    return this.userService.deleteUserImage(id);
   }
 }

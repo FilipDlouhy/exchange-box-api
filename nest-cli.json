@@ -73,13 +73,13 @@
         "tsConfigPath": "apps/payment/tsconfig.app.json"
       }
     },
-    "tables": {
+    "database": {
       "type": "library",
-      "root": "libs/tables",
+      "root": "libs/database",
       "entryFile": "index",
-      "sourceRoot": "libs/tables/src",
+      "sourceRoot": "libs/database/src",
       "compilerOptions": {
-        "tsConfigPath": "libs/tables/tsconfig.lib.json"
+        "tsConfigPath": "libs/database/tsconfig.lib.json"
       }
     },
     "tcp": {

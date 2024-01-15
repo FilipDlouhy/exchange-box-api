@@ -1,8 +1,15 @@
 import { CreateUserDto } from '@app/dtos/userDtos/create.user.dto';
 import { ToggleFriendDto } from '@app/dtos/userDtos/toggle.friend.dto';
 import { UpdateUserDto } from '@app/dtos/userDtos/update.user.dto';
+import { UploadUserImageDto } from '@app/dtos/userDtos/upload.user.image.dto';
 import { UserDto } from '@app/dtos/userDtos/user.dto';
-import { supabase } from '@app/tables';
+import {
+  deleteFileFromFirebase,
+  getImageUrlFromFirebase,
+  supabase,
+  updateFileInFirebase,
+  uploadFileToFirebase,
+} from '@app/database';
 import { Injectable } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 
@@ -109,11 +116,17 @@ export class UserService {
     try {
       const { data, error } = await supabase
         .from('user')
-        .select('id, name, email'); // Exclude the password for security
-
+        .select('id, name, email, image_url');
       if (error) throw error;
 
-      return data;
+      const users: UserDto[] = data.map((user) => ({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        imageURL: user.image_url,
+      }));
+
+      return users;
     } catch (err) {
       console.error('Error fetching users:', err);
       throw new Error('Error retrieving users');
@@ -284,6 +297,79 @@ export class UserService {
     } catch (err) {
       console.error('Error retrieving users:', err);
       throw new Error('Error retrieving users');
+    }
+  }
+
+  /**
+   * Uploads or updates a user image in Firebase Storage based on the 'update' flag.
+   * If 'update' is true, it updates the existing image, otherwise, it uploads a new one.
+   *
+   * @param uploadUserImageDto - Data transfer object containing the file to upload and the user ID.
+   * @param update - A boolean flag that determines whether to update an existing image (true) or upload a new image (false).
+   * @throws - Propagates any errors that occur during file upload or update.
+   *           Errors may occur due to file upload issues, Firebase Storage operations, or database update operations.
+   */
+  async uploadUserImage(
+    uploadUserImageDto: UploadUserImageDto,
+    update: boolean,
+  ) {
+    try {
+      const imageUrl = update
+        ? await updateFileInFirebase(
+            uploadUserImageDto.file,
+            uploadUserImageDto.user_id,
+            'Users',
+          )
+        : await uploadFileToFirebase(
+            uploadUserImageDto.file,
+            uploadUserImageDto.user_id,
+            'Users',
+          );
+
+      await supabase
+        .from('user')
+        .update({
+          image_url: imageUrl,
+          updated_at: new Date(),
+        })
+        .eq('id', uploadUserImageDto.user_id);
+    } catch (error) {
+      // Handle or rethrow the error appropriately
+      console.error('Error uploading user image:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Retrieves the URL of a user's image from Firebase Storage.
+   *
+   * @param id - The ID of the user whose image URL is to be retrieved.
+   * @returns - The URL of the user's image.
+   * @throws - Propagates any errors that occur during URL retrieval.
+   */
+  async getUserImage(id: number): Promise<string> {
+    try {
+      return await getImageUrlFromFirebase(id.toString(), 'Users');
+    } catch (error) {
+      // Handle or rethrow the error appropriately
+      console.error('Error getting user image URL:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Deletes a user's image from Firebase Storage.
+   *
+   * @param id - The ID of the user whose image is to be deleted.
+   * @throws - Propagates any errors that occur during image deletion.
+   */
+  async deleteUserImage(id: number) {
+    try {
+      await deleteFileFromFirebase(id.toString(), 'Users');
+    } catch (error) {
+      // Handle or rethrow the error appropriately
+      console.error('Error deleting user image:', error);
+      throw error;
     }
   }
 }
