@@ -534,6 +534,33 @@ export class ExchangeService {
   }
 
   /**
+   * Retrieves the box size from the "exchange" table based on the provided ID.
+   *
+   * @param id The ID of the exchange record to retrieve the box size for.
+   * @returns A Promise that resolves to the box size as a string.
+   * @throws An error if there's an issue with the Supabase query or if the box size is not found.
+   */
+  async getBoxSize(id: number): Promise<string> {
+    try {
+      const { data: exchangeData, error: exchangeError } = await supabase
+        .from('exchange')
+        .select('box_size')
+        .eq('id', id)
+        .single();
+
+      if (exchangeError) {
+        console.error('Supabase error while fetching box size:', exchangeError);
+        throw new Error('Error fetching box size'); // Throw a custom error.
+      }
+
+      return exchangeData.box_size;
+    } catch (err) {
+      console.error('An error occurred while fetching box size:', err);
+      throw new Error('Error fetching box size'); // Throw a custom error.
+    }
+  }
+
+  /**
    * Checks if the total dimensions of the items fit within the specified box size.
    *
    * @param itemIds Array of item IDs to check.

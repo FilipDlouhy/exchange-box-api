@@ -127,4 +127,9 @@ export class ExchangeController {
       changeExchangeStatus,
     );
   }
+
+  @MessagePattern(exchangeessagePatterns.getBoxSize)
+  async getBoxSize({ id }: { id: number }): Promise<string> {
+    return await this.exchangeService.getBoxSize(id);
+  }
 }

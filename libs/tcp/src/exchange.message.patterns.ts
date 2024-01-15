@@ -9,4 +9,5 @@ export const exchangeessagePatterns = {
   addExchangeToTheFront: { cmd: 'addExchangeToTheFront' },
   deleteExchangeFromFront: { cmd: 'deleteExchangeFromFront' },
   changeExchangeStatus: { cmd: 'changeExchangeStatus' },
+  getBoxSize: { cmd: 'getBoxSize' },
 };

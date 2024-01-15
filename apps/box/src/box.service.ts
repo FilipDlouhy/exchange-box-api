@@ -1,6 +1,6 @@
 import { AddBoxToExchangeDto } from '@app/dtos/boxDtos/add.box.to.exhange';
 import { supabase } from '@app/database';
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { generateRandomString } from './helpers/string.helper';
 import { SchedulerRegistry } from '@nestjs/schedule';
@@ -9,7 +9,7 @@ import { exchangeessagePatterns } from '@app/tcp/exchange.message.patterns';
 import { OpenBoxDto } from '@app/dtos/boxDtos/open.box.dto';
 import { frontMessagePatterns } from '@app/tcp/front.message.patterns';
 @Injectable()
-export class BoxService {
+export class BoxService implements OnModuleInit {
   private readonly frontClient;
   private readonly exchangeClient;
 
@@ -28,6 +28,84 @@ export class BoxService {
         host: 'localhost',
         port: 3007,
       },
+    });
+  }
+
+  /**
+   * Asynchronously initializes the module to handle box creation and scheduling.
+   * It fetches existing boxes from the database and updates their status based on specific criteria.
+   * Additionally, it sets a timeout to handle box deletion or further processing.
+   */
+  async onModuleInit() {
+    const { data, error } = await supabase
+      .from('box')
+      .select()
+      .not('time_to_open_box', 'is', null);
+
+    data.map(async (box) => {
+      const currentDate = new Date();
+
+      const timeToPutItemsIntoTheBox = new Date(
+        currentDate.getTime() + 2 * 60 * 60 * 1000,
+      );
+
+      await supabase
+        .from('box')
+        .update({
+          time_to_put_in_box: timeToPutItemsIntoTheBox,
+        })
+        .eq('id', box.id)
+        .single();
+
+      const deleteExchangeFromFront = setTimeout(async () => {
+        try {
+          if (!box.items_in_box) {
+            const response: number = await this.frontClient
+              .send(
+                { cmd: frontMessagePatterns.getCenterIdByFront.cmd },
+                {
+                  id: box.front_id,
+                },
+              )
+              .toPromise();
+
+            // Fetch the box size and delete the exchange from the front if applicable
+            await this.exchangeClient
+              .send(
+                { cmd: exchangeessagePatterns.getBoxSize.cmd },
+                {
+                  id: box.exchange_id,
+                },
+              )
+              .toPromise();
+
+            await this.exchangeClient
+              .send(
+                { cmd: exchangeessagePatterns.deleteExchangeFromFront.cmd },
+                {
+                  box_size: box.box_size,
+                  center_id: response,
+                  id: box.exchange_id,
+                },
+              )
+              .toPromise();
+
+            // Delete the box from the database
+            await supabase.from('box').delete().eq('id', box.id);
+          }
+
+          console.log('Box deleted successfully');
+        } catch (timeoutError) {
+          // Handle any errors during the timeout processing
+          console.error('Error during timeout processing:', timeoutError);
+        }
+      }, 7200000); // 2 hours in milliseconds
+
+      // Register the timeout in the scheduler
+      this.schedulerRegistry.addTimeout(
+        `timeout set for box ${box.id}`,
+        deleteExchangeFromFront,
+      );
     });
   }
 
