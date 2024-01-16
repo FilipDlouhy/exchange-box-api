@@ -17,6 +17,7 @@ export class ApiGatewayService {
   private exchangeClient: ClientProxy;
   private boxClient: ClientProxy;
   private chatClient: ClientProxy;
+  private chatSupportClient: ClientProxy;
 
   constructor() {
     // Initializing different service clients with corresponding ports
@@ -29,6 +30,7 @@ export class ApiGatewayService {
     this.exchangeClient = this.createClient('exchange', 3007);
     this.boxClient = this.createClient('box', 3008);
     this.chatClient = this.createClient('chat', 3009);
+    this.chatClient = this.createClient('chatSupport', 3010);
   }
 
   /**
@@ -111,6 +113,8 @@ export class ApiGatewayService {
         break;
       case 'chat':
         client = this.chatClient;
+      case 'chatSupport':
+        client = this.chatSupportClient;
         break;
       default:
         throw new NotFoundException('Service not found');
