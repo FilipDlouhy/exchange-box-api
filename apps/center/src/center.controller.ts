@@ -6,6 +6,7 @@ import { CreateCenterDto } from '@app/dtos/centerDtos/create.center.dto';
 import { CenterDto } from '@app/dtos/centerDtos/center.dto';
 import { CenterWithFrontDto } from '@app/dtos/centerDtos/center.with.front.dto';
 import { UpdateCenterDto } from '@app/dtos/centerDtos/update.center.dto';
+import { GetCenterDto } from '@app/dtos/centerDtos/get.center.dto';
 
 @Controller()
 export class CenterController {
@@ -57,5 +58,20 @@ export class CenterController {
   @MessagePattern(centerMessagePatterns.deleteCenter)
   async deleteCenter(id: number): Promise<boolean> {
     return this.centerService.deleteCenter(id);
+  }
+
+  // Retrieve a center's information by its ID.
+  @MessagePattern(centerMessagePatterns.getCenterForExchange)
+  @UsePipes(
+    new ValidationPipe({
+      transform: true,
+      whitelist: true,
+      forbidNonWhitelisted: true,
+    }),
+  )
+  async getCenterForExchnage(
+    getCenterDto: GetCenterDto,
+  ): Promise<CenterWithFrontDto[]> {
+    return await this.centerService.getCenterForExchange(getCenterDto);
   }
 }

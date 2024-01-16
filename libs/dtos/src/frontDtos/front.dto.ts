@@ -1,4 +1,4 @@
-import { IsInt, IsDate, IsString } from 'class-validator';
+import { IsInt, IsDate } from 'class-validator';
 
 export class FrontDto {
   @IsInt()
@@ -16,6 +16,21 @@ export class FrontDto {
   @IsInt()
   number_of_tasks_in_front: number;
 
-  @IsString()
-  time_to_complete_all_tasks: string | null;
+  @IsInt()
+  number_of_medium_boxes: number;
+
+  @IsInt()
+  number_of_large_boxes: number;
+
+  @IsInt()
+  number_of_small_boxes: number;
+
+  @IsInt()
+  number_of_medium_boxes_total: number;
+
+  @IsInt()
+  number_of_large_boxes_total: number;
+
+  @IsInt()
+  number_of_small_boxes_total: number;
 }

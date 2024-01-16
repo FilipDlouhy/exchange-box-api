@@ -8,6 +8,8 @@ import { frontMessagePatterns } from '@app/tcp/front.message.patterns';
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { ClientProxyFactory, Transport } from '@nestjs/microservices';
 import axios from 'axios';
+import { GetCenterDto } from '@app/dtos/centerDtos/get.center.dto';
+import { FrontExchangeDto } from '@app/dtos/frontDtos/front.exchange.dto';
 
 @Injectable()
 export class CenterService implements OnModuleInit {
@@ -256,6 +258,71 @@ export class CenterService implements OnModuleInit {
     } catch (error) {
       console.error('Error in deleteCenter function:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Deletes a center record from the database. Due to the cascading delete setup in Supabase,
+   * this operation also deletes the associated 'front' record linked to the center.
+   *
+   * @param {number} id - The ID of the center to be deleted.
+   * @returns {Promise<boolean>} - Returns a promise that resolves to `true` if the deletion
+   *                               is successful, or `false` if there is an error.
+   */
+  async getCenterForExchange(
+    getCenterDto: GetCenterDto,
+  ): Promise<CenterWithFrontDto[]> {
+    const { latitude, longitude } = getCenterDto;
+    const range = 0.2;
+
+    try {
+      const { data, error } = await supabase
+        .from('center')
+        .select(
+          `
+            *,
+            front!inner(*)
+          `,
+        )
+        .gte('latitude', latitude - range)
+        .lte('latitude', latitude + range)
+        .gte('longitude', longitude - range)
+        .lte('longitude', longitude + range);
+
+      if (error) {
+        console.error('Error fetching data:', error);
+        return;
+      }
+
+      // Filter out centers whose 'front' does not have a matching number of tasks in front and total number of tasks
+      const filteredData = data.filter((item) => {
+        return (
+          item.front[0] &&
+          item.front[0].number_of_tasks_in_front !==
+            item.front[0].total_number_of_tasks_in_front
+        );
+      });
+
+      const centersNearBy = filteredData.map((center) => {
+        const frontObject = new FrontExchangeDto(
+          center.front[0].id,
+          center.front[0].number_of_medium_boxes_total -
+            center.front[0].number_of_medium_boxes,
+          center.front[0].number_of_large_boxes_total -
+            center.front[0].number_of_large_boxes,
+          center.front[0].number_of_small_boxes_total -
+            center.front[0].number_of_small_boxes,
+        );
+        const centerDto: CenterWithFrontDto = {
+          ...center,
+          front: frontObject,
+        };
+        return centerDto;
+      });
+
+      return centersNearBy;
+    } catch (err) {
+      console.error('Error:', err);
     }
   }
 }
