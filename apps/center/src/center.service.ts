@@ -93,53 +93,6 @@ export class CenterService implements OnModuleInit {
   }
 
   /**
-   * Creates a new center in the database and initializes its associated front.
-   *
-   * @param {CreateCenterDto} createCenterDto - The DTO containing information for creating a new center.
-   * @returns {Promise<CenterDto>} - Returns a promise that resolves to the newly created center data transfer object (DTO).
-   */
-  async createCenter(createCenterDto: CreateCenterDto): Promise<CenterDto> {
-    try {
-      const { data, error } = await supabase
-        .from('center')
-        .insert([
-          {
-            longitude: createCenterDto.longitude,
-            latitude: createCenterDto.latitude,
-            created_at: new Date(),
-          },
-        ])
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Error creating center:', error);
-        throw new Error('Failed to create the center');
-      }
-
-      // Send a message to the front client to create a front associated with the new center
-      const response = await this.frontClient
-        .send(
-          { cmd: frontMessagePatterns.createFront.cmd },
-          { center_id: data.id },
-        )
-        .toPromise();
-
-      // Check if the front creation was successful
-      if (response === true) {
-        const newCenter = new CenterDto(data.latitude, data.longitude, data.id);
-        return newCenter;
-      } else {
-        console.error('Error creating associated front');
-        throw new Error('Failed to create associated front');
-      }
-    } catch (err) {
-      console.error('Error in createCenter function:', err);
-      throw err;
-    }
-  }
-
-  /**
    * Retrieves a specific center from the database, including its associated front.
    *
    * @param {number} id - The ID of the center to be retrieved.
@@ -323,6 +276,55 @@ export class CenterService implements OnModuleInit {
       return centersNearBy;
     } catch (err) {
       console.error('Error:', err);
+    }
+  }
+
+  /**
+   * Creates a new center in the database and initializes its associated front.
+   *
+   * @param {CreateCenterDto} createCenterDto - The DTO containing information for creating a new center.
+   * @returns {Promise<CenterDto>} - Returns a promise that resolves to the newly created center data transfer object (DTO).
+   */
+  private async createCenter(
+    createCenterDto: CreateCenterDto,
+  ): Promise<CenterDto> {
+    try {
+      const { data, error } = await supabase
+        .from('center')
+        .insert([
+          {
+            longitude: createCenterDto.longitude,
+            latitude: createCenterDto.latitude,
+            created_at: new Date(),
+          },
+        ])
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error creating center:', error);
+        throw new Error('Failed to create the center');
+      }
+
+      // Send a message to the front client to create a front associated with the new center
+      const response = await this.frontClient
+        .send(
+          { cmd: frontMessagePatterns.createFront.cmd },
+          { center_id: data.id },
+        )
+        .toPromise();
+
+      // Check if the front creation was successful
+      if (response === true) {
+        const newCenter = new CenterDto(data.latitude, data.longitude, data.id);
+        return newCenter;
+      } else {
+        console.error('Error creating associated front');
+        throw new Error('Failed to create associated front');
+      }
+    } catch (err) {
+      console.error('Error in createCenter function:', err);
+      throw err;
     }
   }
 }

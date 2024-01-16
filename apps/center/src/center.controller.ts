@@ -27,12 +27,6 @@ export class CenterController {
     return this.centerService.createCenter(createCenterDto);
   }
 
-  // Retrieve a center's information by its ID.
-  @MessagePattern(centerMessagePatterns.getCenter)
-  async getCenter({ id }: { id: number }): Promise<CenterWithFrontDto> {
-    return this.centerService.getCenter(id);
-  }
-
   // Update an existing center and return its updated information.
   @MessagePattern(centerMessagePatterns.updateCenter)
   @UsePipes(
