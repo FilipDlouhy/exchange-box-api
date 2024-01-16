@@ -1,9 +1,20 @@
+import { IsNotEmpty, IsNumber } from 'class-validator';
+
 export class CenterDto {
-  name: string;
+  @IsNotEmpty()
+  @IsNumber()
+  latitude: number;
+
+  @IsNotEmpty()
+  @IsNumber()
+  longitude: number;
+
+  @IsNotEmpty()
   id: string;
 
-  constructor(name: string, id: string) {
-    this.name = name;
+  constructor(latitude: number, longitude: number, id: string) {
+    this.latitude = latitude;
+    this.longitude = longitude;
     this.id = id;
   }
 }

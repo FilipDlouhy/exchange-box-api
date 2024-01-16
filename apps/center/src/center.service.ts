@@ -5,12 +5,15 @@ import { UpdateCenterDto } from '@app/dtos/centerDtos/update.center.dto';
 import { FrontDto } from '@app/dtos/frontDtos/front.dto';
 import { supabase } from '@app/database';
 import { frontMessagePatterns } from '@app/tcp/front.message.patterns';
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 import { ClientProxyFactory, Transport } from '@nestjs/microservices';
+import axios from 'axios';
 
 @Injectable()
-export class CenterService {
+export class CenterService implements OnModuleInit {
   private readonly frontClient;
+  private readonly overpassUrl = 'http://overpass-api.de/api/interpreter';
+
   constructor() {
     this.frontClient = ClientProxyFactory.create({
       transport: Transport.TCP,
@@ -19,6 +22,72 @@ export class CenterService {
         port: 3003,
       },
     });
+  }
+
+  /**
+   * Initializes the module and performs data retrieval. It imitates creation of centers based on locations of macdonlads in Czech Republic.
+   * This function is automatically executed when the module is initialized.
+   */
+  async onModuleInit() {
+    try {
+      // Define a bounding box for geographical coordinates for CZ
+      const bbox = '48.378550,12.991661,50.835862,18.996826';
+
+      const { data, error } = await supabase
+        .from('center')
+        .select('id, latitude, longitude');
+
+      if (error) {
+        throw new Error(`Error fetching data from Supabase: ${error.message}`);
+      }
+
+      // If data already exists, no further action is required
+      if (data.length > 0) {
+        return;
+      }
+
+      // Define a query to retrieve data from Overpass API
+      const query = `
+        [out:json];
+        (
+          node["amenity"="fast_food"]["name"="McDonald's"](${bbox});
+          way["amenity"="fast_food"]["name"="McDonald's"](${bbox});
+          relation["amenity"="fast_food"]["name"="McDonald's"](${bbox});
+        );
+        out center;
+      `;
+
+      const response = await axios.post(this.overpassUrl, query, {
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      });
+
+      if (response.status !== 200) {
+        throw new Error(
+          `Error fetching data from Overpass API. Status: ${response.status}`,
+        );
+      }
+
+      response.data.elements.map(async (center) => {
+        try {
+          let newCenterDto;
+
+          if (center.center) {
+            newCenterDto = new CreateCenterDto(
+              center.center.lat,
+              center.center.lon,
+            );
+          } else {
+            newCenterDto = new CreateCenterDto(center.lat, center.lon);
+          }
+
+          await this.createCenter(newCenterDto);
+        } catch (error) {
+          console.error('Error creating center DTO:', error);
+        }
+      });
+    } catch (error) {
+      console.error('Error in onModuleInit:', error);
+    }
   }
 
   /**
@@ -33,7 +102,8 @@ export class CenterService {
         .from('center')
         .insert([
           {
-            name: createCenterDto.name,
+            longitude: createCenterDto.longitude,
+            latitude: createCenterDto.latitude,
             created_at: new Date(),
           },
         ])
@@ -55,7 +125,7 @@ export class CenterService {
 
       // Check if the front creation was successful
       if (response === true) {
-        const newCenter = new CenterDto(data.name, data.id);
+        const newCenter = new CenterDto(data.latitude, data.longitude, data.id);
         return newCenter;
       } else {
         console.error('Error creating associated front');
@@ -148,7 +218,9 @@ export class CenterService {
    */
   async getCenters(): Promise<CenterDto[]> {
     try {
-      const { data, error } = await supabase.from('center').select('id, name');
+      const { data, error } = await supabase
+        .from('center')
+        .select('id, latitude, longitude');
 
       if (error) {
         console.error('Error fetching centers:', error);
