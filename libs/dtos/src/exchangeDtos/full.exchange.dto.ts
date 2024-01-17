@@ -16,10 +16,11 @@ export class FullExchangeDto {
 
   @IsNotEmpty()
   @IsInt()
-  public pick_up_person: UserDto;
+  public pickUpPerson: UserDto;
+
   @IsNotEmpty()
   @IsString()
-  public box_size: string;
+  public boxSize: string;
 
   @IsNotEmpty()
   @IsArray()
@@ -33,14 +34,14 @@ export class FullExchangeDto {
 
   constructor(
     creator: UserDto,
-    pick_up_person: UserDto,
-    box_size: string,
+    pickUpPerson: UserDto,
+    boxSize: string,
     id: number,
     items: ExchangeItemDto[],
   ) {
-    this.creator = pick_up_person;
-    this.pick_up_person = creator;
-    this.box_size = box_size;
+    this.creator = creator;
+    this.pickUpPerson = pickUpPerson;
+    this.boxSize = boxSize;
     this.id = id;
     this.items = items;
   }

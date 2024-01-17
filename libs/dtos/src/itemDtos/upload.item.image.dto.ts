@@ -1,5 +1,4 @@
 export class UploadItemImageDto {
-  item_id: string;
-
+  itemId: string;
   file: any;
 }

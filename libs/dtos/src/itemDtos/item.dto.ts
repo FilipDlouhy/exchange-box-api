@@ -15,10 +15,10 @@ export class ItemDto {
   name: string;
 
   @IsInt()
-  user_id: number;
+  userId: number;
 
   @IsInt()
-  friend_id: number;
+  friendId: number;
 
   @IsInt()
   weightInGrams: number;
@@ -30,16 +30,19 @@ export class ItemDto {
   @IsOptional()
   imageURL: string | undefined;
 
+  updatedAt: Date;
+
   constructor(itemData: {
     length: number;
     width: number;
     height: number;
     name: string;
-    user_id: number;
-    friend_id: number;
+    userId: number;
+    friendId: number;
     weight: number;
     id: number;
     imageURL?: string;
+    updatedAt: Date;
   }) {
     Object.assign(this, itemData);
   }

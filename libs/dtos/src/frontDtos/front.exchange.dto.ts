@@ -5,26 +5,26 @@ export class FrontExchangeDto {
   id: number;
 
   @IsInt()
-  number_of_tasks_in_front: number;
+  numberOfTasksInFront: number;
 
   @IsInt()
-  number_of_medium_boxes: number;
+  numberOfMediumBoxes: number;
 
   @IsInt()
-  number_of_large_boxes: number;
+  numberOfLargeBoxes: number;
 
   @IsInt()
-  number_of_small_boxes: number;
+  numberOfSmallBoxes: number;
 
   constructor(
     id: number,
-    number_of_medium_boxes: number,
-    number_of_large_boxes: number,
-    number_of_small_boxes: number,
+    numberOfMediumBoxes: number,
+    numberOfLargeBoxes: number,
+    numberOfSmallBoxes: number,
   ) {
     this.id = id;
-    this.number_of_medium_boxes = number_of_medium_boxes;
-    this.number_of_large_boxes = number_of_large_boxes;
-    this.number_of_small_boxes = number_of_small_boxes;
+    this.numberOfMediumBoxes = numberOfMediumBoxes;
+    this.numberOfLargeBoxes = numberOfLargeBoxes;
+    this.numberOfSmallBoxes = numberOfSmallBoxes;
   }
 }

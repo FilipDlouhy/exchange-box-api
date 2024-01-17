@@ -2,8 +2,8 @@ import { IsInt } from 'class-validator';
 
 export class ToggleFriendDto {
   @IsInt()
-  user_id: number;
+  userId: number;
 
   @IsInt()
-  friend_id: number;
+  friendId: number;
 }

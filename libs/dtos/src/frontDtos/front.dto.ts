@@ -5,32 +5,32 @@ export class FrontDto {
   id: number;
 
   @IsInt()
-  center_id: number;
+  centerId: number;
 
   @IsDate()
-  created_at: Date;
+  createdAt: Date;
 
   @IsInt()
-  total_number_of_tasks: number;
+  totalNumberOfTasks: number;
 
   @IsInt()
-  number_of_tasks_in_front: number;
+  numberOfTasksInFront: number;
 
   @IsInt()
-  number_of_medium_boxes: number;
+  numberOfMediumBoxes: number;
 
   @IsInt()
-  number_of_large_boxes: number;
+  numberOfLargeBoxes: number;
 
   @IsInt()
-  number_of_small_boxes: number;
+  numberOfSmallBoxes: number;
 
   @IsInt()
-  number_of_medium_boxes_total: number;
+  numberOfMediumBoxesTotal: number;
 
   @IsInt()
-  number_of_large_boxes_total: number;
+  numberOfLargeBoxesTotal: number;
 
   @IsInt()
-  number_of_small_boxes_total: number;
+  numberOfSmallBoxesTotal: number;
 }

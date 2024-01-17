@@ -15,7 +15,7 @@ export class CenterWithFrontDto {
   id: string;
 
   @IsNotEmpty()
-  front_id: string;
+  frontId: string;
 
   front: FrontDto | FrontExchangeDto;
 
@@ -23,13 +23,13 @@ export class CenterWithFrontDto {
     latitude: number,
     longitude: number,
     id: string,
-    front_id: string,
+    frontId: string,
     front: FrontDto | FrontExchangeDto,
   ) {
     this.latitude = latitude;
     this.longitude = longitude;
     this.id = id;
-    this.front_id = front_id;
+    this.frontId = frontId;
     this.front = front;
   }
 }

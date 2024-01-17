@@ -19,11 +19,11 @@ export class CreateItemDto {
 
   @IsInt()
   @IsNotEmpty()
-  user_id: number = 0;
+  userId: number = 0;
 
   @IsInt()
   @IsNotEmpty()
-  friend_id: number = 0;
+  friendId: number = 0;
 
   @IsInt()
   @IsNotEmpty()

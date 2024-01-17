@@ -11,12 +11,12 @@ export class ItemSizeDto {
   height: number;
 
   @IsInt()
-  item_id: number;
+  itemId: number;
 
-  constructor(length: number, width: number, height: number, item_id: number) {
+  constructor(length: number, width: number, height: number, itemId: number) {
     this.length = length;
     this.width = width;
     this.height = height;
-    this.item_id = item_id;
+    this.itemId = itemId;
   }
 }

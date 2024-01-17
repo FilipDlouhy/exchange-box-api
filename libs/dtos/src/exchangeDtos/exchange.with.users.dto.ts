@@ -9,17 +9,18 @@ import { Type } from 'class-transformer';
 import { ExchangeItemDto } from '../itemDtos/exchange.item.dto';
 import { UserDto } from '../userDtos/user.dto';
 
-export class ExchangeWithUseDto {
+export class ExchangeWithUserDto {
   @IsNotEmpty()
   @IsInt()
   public creator: UserDto;
 
   @IsNotEmpty()
   @IsInt()
-  public pick_up_person: UserDto;
+  public pickUpPerson: UserDto;
+
   @IsNotEmpty()
   @IsString()
-  public box_size: string;
+  public boxSize: string;
 
   @IsNotEmpty()
   @IsArray()
@@ -33,13 +34,13 @@ export class ExchangeWithUseDto {
 
   constructor(
     creator: UserDto,
-    pick_up_person: UserDto,
-    box_size: string,
+    pickUpPerson: UserDto,
+    boxSize: string,
     id: number,
   ) {
-    this.creator = pick_up_person;
-    this.pick_up_person = creator;
-    this.box_size = box_size;
+    this.creator = creator;
+    this.pickUpPerson = pickUpPerson;
+    this.boxSize = boxSize;
     this.id = id;
   }
 }

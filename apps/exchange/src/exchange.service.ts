@@ -14,7 +14,7 @@ import { CreateFriendshipDto } from '@app/dtos/userDtos/create.friend.ship.dto';
 import { UserDto } from '@app/dtos/userDtos/user.dto';
 import { supabase } from '@app/database';
 import { boxSizes } from '@app/database/box.sizes';
-import { exchnageStatus } from '@app/database/exchange.status.dto';
+import { exchnageStatus } from '@app/dtos/exchange.status.dto';
 import { userMessagePatterns } from '@app/tcp';
 import { boxMessagePatterns } from '@app/tcp/box.message.patterns';
 import { frontMessagePatterns } from '@app/tcp/front.message.patterns';

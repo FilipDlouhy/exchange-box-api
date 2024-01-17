@@ -14,7 +14,7 @@ export class UpdateItemDto {
   name: string = '';
 
   @IsInt()
-  friend_id: number = 0;
+  friendId: number = 0;
 
   @IsInt()
   weightInGrams: number = 0;
@@ -27,7 +27,7 @@ export class UpdateItemDto {
     this.widthInCm = 0;
     this.heightInCm = 0;
     this.name = '';
-    this.friend_id = 0;
+    this.friendId = 0;
     this.weightInGrams = 0;
     this.id = 0;
   }

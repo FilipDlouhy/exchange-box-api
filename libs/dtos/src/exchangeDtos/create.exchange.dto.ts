@@ -7,27 +7,24 @@ import {
 } from 'class-validator';
 
 export class CreateExchangeDto {
+  @IsNotEmpty()
   @IsInt()
-  @Min(1)
-  @IsNotEmpty()
-  creator_id: number;
+  public creatorId: number;
 
+  @IsNotEmpty()
   @IsInt()
-  @Min(1)
-  @IsNotEmpty()
-  pick_up_person_id: number;
+  public pickUpPersonId: number;
 
   @IsNotEmpty()
-  box_size: string;
+  public boxSize: string;
 
-  @IsArray()
   @ArrayNotEmpty()
-  item_ids: number[];
+  public itemIds: number[];
 
   constructor() {
-    this.creator_id = 0;
-    this.pick_up_person_id = 0;
-    this.box_size = '';
-    this.item_ids = [];
+    this.creatorId = 0;
+    this.pickUpPersonId = 0;
+    this.boxSize = '';
+    this.itemIds = [];
   }
 }

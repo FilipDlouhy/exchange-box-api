@@ -11,15 +11,15 @@ import { ExchangeItemDto } from '../itemDtos/exchange.item.dto';
 export class ExchangeDto {
   @IsNotEmpty()
   @IsInt()
-  public creator_id: number;
+  public creatorId: number;
 
   @IsNotEmpty()
   @IsInt()
-  public pick_up_person_id: number;
+  public pickUpPersonId: number;
 
   @IsNotEmpty()
   @IsString()
-  public box_size: string;
+  public boxSize: string;
 
   @IsNotEmpty()
   @IsArray()
@@ -32,15 +32,15 @@ export class ExchangeDto {
   public id: number;
 
   constructor(
-    creator_id: number,
-    pick_up_person_id: number,
-    box_size: string,
+    creatorId: number,
+    pickUpPersonId: number,
+    boxSize: string,
     items: ExchangeItemDto[],
     id: number,
   ) {
-    this.creator_id = creator_id;
-    this.pick_up_person_id = pick_up_person_id;
-    this.box_size = box_size;
+    this.creatorId = creatorId;
+    this.pickUpPersonId = pickUpPersonId;
+    this.boxSize = boxSize;
     this.items = items;
     this.id = id;
   }

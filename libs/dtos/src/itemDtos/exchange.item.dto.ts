@@ -33,10 +33,10 @@ export class ExchangeItemDto {
     weight: number;
     id: number;
   }) {
-    this.name = itemData.name;
     this.lengthInCm = itemData.length;
     this.widthInCm = itemData.width;
     this.heightInCm = itemData.height;
+    this.name = itemData.name;
     this.weightInGrams = itemData.weight;
     this.id = itemData.id;
   }

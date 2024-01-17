@@ -1,5 +1,4 @@
 export class UploadUserImageDto {
-  user_id: string;
-
+  userId: string;
   file: any;
 }

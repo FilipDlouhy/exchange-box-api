@@ -4,28 +4,28 @@ export class AddBoxToExchangeDto {
   @IsInt()
   @Min(1)
   @IsNotEmpty()
-  exchange_id: number;
+  exchangeId: number;
 
   @IsInt()
   @Min(1)
   @IsNotEmpty()
-  front_id: number;
+  frontId: number;
 
   @IsNotEmpty()
-  box_size: string;
+  boxSize: string;
 
   @IsNotEmpty()
-  pick_up_date: Date;
+  pickUpDate: Date;
 
   constructor(
-    exchange_id: number,
-    front_id: number,
-    pick_up_date: Date,
-    box_size: string,
+    exchangeId: number,
+    frontId: number,
+    pickUpDate: Date,
+    boxSize: string,
   ) {
-    this.exchange_id = exchange_id;
-    this.front_id = front_id;
-    this.pick_up_date = pick_up_date;
-    this.box_size = box_size;
+    this.exchangeId = exchangeId;
+    this.frontId = frontId;
+    this.pickUpDate = pickUpDate;
+    this.boxSize = boxSize;
   }
 }

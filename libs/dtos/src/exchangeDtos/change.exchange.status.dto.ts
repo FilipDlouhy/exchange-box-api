@@ -3,14 +3,14 @@ import { IsInt, IsString, IsNotEmpty } from 'class-validator';
 export class ChangeExchangeStatusDto {
   @IsNotEmpty()
   @IsString()
-  public exchange_state: string;
+  public exchangeState: string;
 
   @IsNotEmpty()
   @IsInt()
   public id: number;
 
-  constructor(exchange_state: string, id: number) {
-    this.exchange_state = exchange_state;
+  constructor(exchangeState: string, id: number) {
+    this.exchangeState = exchangeState;
     this.id = id;
   }
 }

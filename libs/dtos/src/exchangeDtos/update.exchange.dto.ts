@@ -10,7 +10,7 @@ export class UpdateExchangeDto {
   @IsInt()
   @Min(1)
   @IsNotEmpty()
-  pick_up_person_id: number;
+  pickUpPersonId: number;
 
   @IsInt()
   @Min(1)
@@ -18,16 +18,16 @@ export class UpdateExchangeDto {
   id: number;
 
   @IsNotEmpty()
-  box_size: string;
+  boxSize: string;
 
   @IsArray()
   @ArrayNotEmpty()
-  item_ids: number[];
+  itemIds: number[];
 
   constructor() {
-    this.pick_up_person_id = 0;
+    this.pickUpPersonId = 0;
     this.id = 0;
-    this.box_size = '';
-    this.item_ids = [];
+    this.boxSize = '';
+    this.itemIds = [];
   }
 }
