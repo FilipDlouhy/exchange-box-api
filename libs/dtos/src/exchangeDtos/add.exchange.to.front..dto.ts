@@ -13,12 +13,5 @@ export class AddExchangeToFrontDto {
 
   @IsInt()
   @Min(1)
-  centerId: number;
-
-  constructor(pickUpDate: Date, id: number, size: string, centerId: number) {
-    this.pickUpDate = pickUpDate;
-    this.id = id;
-    this.size = size;
-    this.centerId = centerId;
-  }
+  frontId: number;
 }

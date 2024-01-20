@@ -1,26 +1,26 @@
-import { AddBoxToExchangeDto } from '@app/dtos/boxDtos/add.box.to.exhange';
 import { AddExchangeToFrontDto } from '@app/dtos/exchangeDtos/add.exchange.to.front..dto';
 import { ChangeExchangeStatusDto } from '@app/dtos/exchangeDtos/change.exchange.status.dto';
 import { CreateExchangeDto } from '@app/dtos/exchangeDtos/create.exchange.dto';
 import { DeleteExchangeDto } from '@app/dtos/exchangeDtos/delete.exchange.dto';
-import { DeleteExchangeFromFrontDto } from '@app/dtos/exchangeDtos/delete.exchange.from.front.dto';
 import { ExchangeDto } from '@app/dtos/exchangeDtos/exchange.dto';
-import { ExchangeWithUseDto } from '@app/dtos/exchangeDtos/exchange.with.users.dto';
-import { FullExchangeDto } from '@app/dtos/exchangeDtos/full.exchange.dto';
+import { ExchangeWithUserDto } from '@app/dtos/exchangeDtos/exchange.with.users.dto';
 import { UpdateExchangeDto } from '@app/dtos/exchangeDtos/update.exchange.dto';
 import { ItemDto } from '@app/dtos/itemDtos/item.dto';
 import { ItemSizeDto } from '@app/dtos/itemDtos/item.size.dto';
-import { CreateFriendshipDto } from '@app/dtos/userDtos/create.friend.ship.dto';
-import { UserDto } from '@app/dtos/userDtos/user.dto';
-import { supabase } from '@app/database';
 import { boxSizes } from '@app/database/box.sizes';
 import { exchnageStatus } from '@app/dtos/exchange.status.dto';
 import { userMessagePatterns } from '@app/tcp';
 import { boxMessagePatterns } from '@app/tcp/box.message.patterns';
 import { frontMessagePatterns } from '@app/tcp/front.message.patterns';
 import { itemMessagePatterns } from '@app/tcp/item.messages.patterns';
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { ClientProxyFactory, Transport } from '@nestjs/microservices';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Exchange } from '@app/database/entities/exchange.entity';
+import { EntityManager, QueryFailedError, Repository } from 'typeorm';
+import { Front } from '@app/database/entities/front.entity';
+import { User } from '@app/database/entities/user.entity';
+import { Item } from '@app/database/entities/item.entity';
 
 @Injectable()
 export class ExchangeService {
@@ -29,7 +29,11 @@ export class ExchangeService {
   private readonly frontClient;
   private readonly boxClient;
 
-  constructor() {
+  constructor(
+    @InjectRepository(Exchange)
+    private readonly exchangeRepository: Repository<Exchange>,
+    private readonly entityManager: EntityManager,
+  ) {
     this.userClient = ClientProxyFactory.create({
       transport: Transport.TCP,
       options: {
@@ -70,43 +74,51 @@ export class ExchangeService {
    * @param createExchangeDto DTO containing information needed for creating the exchange.
    * @returns ExchangeDto Returns a data transfer object representing the newly created exchange.
    */
-  async createExchange(
-    createExchangeDto: CreateExchangeDto,
-  ): Promise<ExchangeDto> {
+  async createExchange(createExchangeDto: CreateExchangeDto) {
     try {
-      if (
-        createExchangeDto.creator_id === createExchangeDto.pick_up_person_id
-      ) {
+      if (createExchangeDto.creatorId === createExchangeDto.pickUpPersonId) {
         throw new Error('Creator and pick-up person cannot be the same.');
       }
 
       if (
         !this.checkItemsFitInBox(
-          createExchangeDto.item_ids,
-          createExchangeDto.box_size,
+          createExchangeDto.itemIds,
+          createExchangeDto.boxSize,
           false,
         )
       ) {
         throw new Error('Items do not fit in the specified box size.');
       }
-      const { data, error: insertError } = await supabase
-        .from('exchange')
-        .insert([
-          {
-            creator_id: createExchangeDto.creator_id,
-            pick_up_user_id: createExchangeDto.pick_up_person_id,
-            exchange_state: exchnageStatus.unscheduled,
-            box_size: createExchangeDto.box_size,
-          },
-        ])
-        .select()
-        .single();
 
-      if (insertError) {
-        throw insertError;
-      }
+      // Create a new Exchange entity
+      const exchange = new Exchange();
+      exchange.exchangeState = exchnageStatus.unscheduled;
 
-      return await this.createExchangeDto(data, createExchangeDto.item_ids);
+      const { friend, items, user } = await this.getItemsAndUsers(
+        exchange,
+        createExchangeDto.pickUpPersonId,
+        createExchangeDto.creatorId,
+        createExchangeDto.itemIds,
+      );
+
+      exchange.boxSize = createExchangeDto.boxSize;
+      exchange.items = items;
+
+      exchange.user = user;
+      exchange.friend = friend;
+
+      // Save the new Exchange entity to the database
+
+      const savedExchange = await this.exchangeRepository.save(exchange);
+      return new ExchangeDto(
+        savedExchange.user.id,
+        savedExchange.friend.id,
+        savedExchange.boxSize,
+        savedExchange.items,
+        savedExchange.id,
+      );
+
+      // Create the ExchangeDto and associate it with items
     } catch (err) {
       console.error('Error creating exchange:', err);
       throw err;
@@ -118,46 +130,24 @@ export class ExchangeService {
    * @param deleteExchangeDto - DTO containing the ID of the exchange to be deleted and associated item IDs.
    * @returns boolean - Returns true if the operation is successful.
    */
-  async deleteExchange(deleteExchangeDto: DeleteExchangeDto): Promise<boolean> {
+  async deleteExchange(id: number): Promise<boolean> {
     try {
-      // Check if the exchange exists
-      const { data: exchangeData, error: fetchError } = await supabase
-        .from('exchange')
-        .select('*')
-        .match({ id: deleteExchangeDto.id })
-        .single();
+      // Find the exchange by its ID
 
-      if (fetchError) throw fetchError;
-      if (!exchangeData) {
+      const exchange = await this.exchangeRepository.findOne({
+        where: { id: id },
+        relations: ['front'],
+      });
+      if (!exchange) {
         throw new Error('Exchange not found');
       }
 
-      if (exchangeData.front_id != null) {
+      if (exchange.front != null) {
         throw new Error('Exchange is in front');
       }
 
-      // Attempt to delete the exchange reference from items
-      const deletedExchangeFromItems: boolean = await this.itemClient
-        .send(
-          { cmd: itemMessagePatterns.deleteExchangeFromItems.cmd },
-          {
-            item_ids: deleteExchangeDto.item_ids,
-            exchange_id: deleteExchangeDto.id,
-          },
-        )
-        .toPromise();
-
-      if (!deletedExchangeFromItems) {
-        throw new Error('Failed to delete exchange from items');
-      }
-
-      // Attempt to delete the exchange from the 'exchange' table in Supabase
-      const { error } = await supabase
-        .from('exchange')
-        .delete()
-        .match({ id: deleteExchangeDto.id });
-
-      if (error) throw error;
+      // Delete the exchange from the database
+      await this.exchangeRepository.remove(exchange);
 
       return true;
     } catch (err) {
@@ -177,8 +167,8 @@ export class ExchangeService {
     try {
       // Check if the items fit in the specified box size
       const itemsFitInBox = await this.checkItemsFitInBox(
-        updateExchangeDto.item_ids,
-        updateExchangeDto.box_size,
+        updateExchangeDto.itemIds,
+        updateExchangeDto.boxSize,
         true,
       );
 
@@ -186,25 +176,49 @@ export class ExchangeService {
         throw new Error('Items do not fit in the specified box size.');
       }
 
-      const { data, error: updateError } = await supabase
-        .from('exchange')
-        .update({
-          pick_up_user_id: updateExchangeDto.pick_up_person_id,
-          exchange_state: exchnageStatus.unscheduled,
-          box_size: updateExchangeDto.box_size,
-        })
-        .eq('id', updateExchangeDto.id)
-        .select()
-        .single();
+      // Find the exchange to update
+      const exchange = await this.exchangeRepository.findOne({
+        where: { id: updateExchangeDto.id },
+        relations: ['user'],
+      });
 
-      if (updateError) {
-        throw updateError;
+      if (!exchange) {
+        throw new Error('Exchange not found.');
       }
 
-      return await this.createExchangeDto(data, updateExchangeDto.item_ids);
-    } catch (err) {
-      console.error('Error updating exchange:', err);
-      throw err;
+      const { friend, items, user } = await this.getItemsAndUsers(
+        exchange,
+        updateExchangeDto.pickUpPersonId,
+        exchange.user.id,
+        updateExchangeDto.itemIds,
+      );
+
+      exchange.boxSize = updateExchangeDto.boxSize;
+      exchange.friend = friend;
+      exchange.items = items;
+
+      const updaetExchnage = await this.exchangeRepository.save(exchange);
+
+      return new ExchangeDto(
+        updaetExchnage.user.id,
+        updaetExchnage.friend.id,
+        updaetExchnage.boxSize,
+        updaetExchnage.items,
+        updaetExchnage.id,
+      );
+    } catch (error) {
+      // Log the error
+      console.error('Error updating exchange:', error);
+
+      // Handle specific errors
+      if (error instanceof QueryFailedError) {
+        // Handle TypeORM database query errors
+        // Return an appropriate response to the client
+        throw new Error('Database query failed.');
+      }
+
+      // Rethrow other errors
+      throw error;
     }
   }
 
@@ -213,41 +227,47 @@ export class ExchangeService {
    *
    * @param userId - The ID of the user.
    * @param isNotFriend - A boolean flag to determine the role of the user in the exchange (creator or pick-up person).
-   * @returns An array of ExchangeWithUseDto objects associated with the user.
+   * @returns An array of ExchangeWithUserDto objects associated with the user.
    */
   async getExchangesByUser(
     userId: number,
     isNotFriend: boolean,
-  ): Promise<ExchangeWithUseDto[]> {
+  ): Promise<ExchangeWithUserDto[]> {
     try {
-      const { data, error } = isNotFriend
-        ? await supabase.from('exchange').select().eq('creator_id', userId)
-        : await supabase
-            .from('exchange')
-            .select()
-            .eq('pick_up_user_id', userId);
+      let exchanges: Exchange[] = [];
 
-      if (error) {
-        throw error;
+      if (isNotFriend) {
+        // Find exchanges where the user is the creator and include relations
+        exchanges = await this.exchangeRepository.find({
+          where: {
+            user: { id: userId },
+          },
+          relations: ['user', 'friend', 'items'],
+        });
+      } else {
+        // Find exchanges where the user is the pick-up person and include relations
+        exchanges = await this.exchangeRepository.find({
+          where: {
+            friend: { id: userId },
+          },
+          relations: ['user', 'friend', 'items'],
+        });
       }
 
-      const response: { user: UserDto; friend: UserDto } =
-        data.length > 0
-          ? await this.getUserWithFriend(
-              data[0].creator_id,
-              data[0].pick_up_user_id,
-            )
-          : { user: null, friend: null };
+      // Initialize the array to store the results
+      const usersExchanges: ExchangeWithUserDto[] = [];
 
-      const usersExchanges: ExchangeWithUseDto[] = data.map((exchange) => {
-        const userExchange = new ExchangeWithUseDto(
-          response.user,
-          response.friend,
-          exchange.box_size,
+      // Loop through each exchange and load related user data
+      for (const exchange of exchanges) {
+        const userExchange = new ExchangeWithUserDto(
+          exchange.user,
+          exchange.friend,
+          exchange.boxSize,
           exchange.id,
+          exchange.items,
         );
-        return userExchange;
-      });
+        usersExchanges.push(userExchange);
+      }
 
       return usersExchanges;
     } catch (error) {
@@ -264,59 +284,31 @@ export class ExchangeService {
    * Retrieves all exchanges from the database.
    * Each exchange includes details about the creator and the person picking up the exchange.
    *
-   * @returns Promise<ExchangeWithUseDto[]>
+   * @returns Promise<ExchangeWithUserDto[]>
    */
-  async getAllExchanges(): Promise<ExchangeWithUseDto[]> {
+  async getAllExchanges(): Promise<ExchangeWithUserDto[]> {
     try {
-      // Retrieve exchanges from the database
-      const { data, error } = await supabase.from('exchange').select();
-      if (error) throw error;
+      const exchanges = await this.exchangeRepository.find({
+        relations: ['user', 'friend', 'items'],
+      });
 
-      const existingUsersDtos: UserDto[] = [];
+      const usersExchanges: ExchangeWithUserDto[] = [];
 
-      const usersExchanges: Promise<ExchangeWithUseDto[]> = Promise.all(
-        data.map(async (exchange) => {
-          try {
-            // Find creator and pick_up_person in the existing DTOs array
-            let creator = existingUsersDtos.find(
-              (userDto) => userDto.id === exchange.creator_id,
-            );
-            let pick_up_user_id = existingUsersDtos.find(
-              (userDto) => userDto.id === exchange.pick_up_user_id,
-            );
-
-            // Fetch user details if not already in existingUsersDtos
-            if (!creator || !pick_up_user_id) {
-              const response = await this.getUserWithFriend(
-                exchange.creator_id,
-                exchange.pick_up_user_id,
-              );
-
-              creator = response.user;
-              pick_up_user_id = response.friend;
-
-              // Add new users to the existing users array
-              existingUsersDtos.push(creator, pick_up_user_id);
-            }
-
-            // Construct and return the ExchangeWithUseDto
-            return new ExchangeWithUseDto(
-              creator,
-              pick_up_user_id,
-              exchange.box_size,
-              exchange.id,
-            );
-          } catch (innerError) {
-            // Log and handle any errors that occur within the map operation
-            console.error('Error processing exchange:', innerError);
-            throw innerError;
-          }
-        }),
-      );
+      // Loop through each exchange and load related user data
+      for (const exchange of exchanges) {
+        const userExchange = new ExchangeWithUserDto(
+          exchange.user,
+          exchange.friend,
+          exchange.boxSize,
+          exchange.id,
+          exchange.items,
+        );
+        usersExchanges.push(userExchange);
+      }
 
       return usersExchanges;
     } catch (error) {
-      // Log and handle errors that occur during the exchange retrieval
+      // Log and handle errors that occur during the retrieval
       console.error('Failed to retrieve exchanges:', error);
       throw error;
     }
@@ -329,45 +321,21 @@ export class ExchangeService {
    * @param id - The ID of the exchange.
    * @returns A FullExchangeDto object containing detailed information about the exchange.
    */
-  async getFullExchange(id: number): Promise<FullExchangeDto> {
+  async getFullExchange(id: number): Promise<Exchange> {
     try {
-      // Retrieve the exchange details from the database
-      const { data, error } = await supabase
-        .from('exchange')
-        .select()
-        .eq('id', id)
-        .single();
+      // Find the exchange by ID with relations
+      const exchange = await this.exchangeRepository.findOne({
+        where: { id },
+        relations: ['user', 'friend', 'items', 'box'],
+      });
 
-      if (error) {
-        throw error;
+      if (!exchange) {
+        throw new Error(`Exchange with ID ${id} not found`);
       }
 
-      // Retrieve user details associated with the exchange
-      const users: { user: UserDto; friend: UserDto } =
-        await this.getUserWithFriend(data.creator_id, data.pick_up_user_id);
-
-      // Retrieve items associated with the exchange
-      const items: ItemDto[] = await this.itemClient
-        .send(
-          { cmd: itemMessagePatterns.getItemsForExchange.cmd },
-          {
-            id: data.id,
-          },
-        )
-        .toPromise();
-
-      // Construct the FullExchangeDto with all the gathered information
-      const fullExchangeDto = new FullExchangeDto(
-        users.user,
-        users.friend,
-        data.box_size,
-        data.id,
-        items,
-      );
-
-      return fullExchangeDto;
+      return exchange;
     } catch (error) {
-      // Log the error and rethrow it for higher-level error handling
+      // Log and handle errors that occur during the retrieval
       console.error(
         'Failed to retrieve full exchange details for ID:',
         id,
@@ -386,80 +354,36 @@ export class ExchangeService {
    */
   async addExchangeToTheFront(
     addExchangeToTheFront: AddExchangeToFrontDto,
-  ): Promise<AddExchangeToFrontDto> {
+  ): Promise<Exchange> {
     try {
-      const { data: exchangeData, error: exchangeError } = await supabase
-        .from('exchange')
-        .select('front_id')
-        .eq('id', addExchangeToTheFront.id)
-        .single();
-      if (exchangeError) {
-        throw exchangeError;
-      }
-
-      if (exchangeData.front_id != null) {
-        throw new Error('Exchange has center.');
-      }
+      const exchange = await this.exchangeRepository.findOneBy({
+        id: addExchangeToTheFront.id,
+      });
 
       // Retrieve the front ID for the task
-      const frontId: number = await this.frontClient
+      const front: Front = await this.frontClient
         .send(
           { cmd: frontMessagePatterns.getFrontForTask.cmd },
           {
             size: addExchangeToTheFront.size,
-            center_id: addExchangeToTheFront.center_id,
+            frontId: addExchangeToTheFront.frontId,
           },
         )
         .toPromise();
 
+      const box = await this.boxClient
+        .send({ cmd: boxMessagePatterns.createBox.cmd }, { exchange })
+        .toPromise();
+
       // Update the exchange with the new front ID and other details
-      const { data, error: updateError } = await supabase
-        .from('exchange')
-        .update({
-          exchange_state: exchnageStatus.reserved,
-          pick_up_date: addExchangeToTheFront.pick_up_date,
-          front_id: frontId,
-        })
-        .eq('id', addExchangeToTheFront.id)
-        .select('pick_up_date , id,box_size')
-        .single();
 
-      if (updateError) {
-        throw updateError;
-      }
+      exchange.exchangeState = exchnageStatus.reserved;
+      exchange.pickUpDate = new Date(addExchangeToTheFront.pickUpDate);
+      exchange.front = front;
+      exchange.box = box;
 
-      // Update the front with the added task
-      const wasFrontUpdated: boolean = await this.frontClient
-        .send(
-          { cmd: frontMessagePatterns.addTaskToFront.cmd },
-          { addExchangeToTheFront },
-        )
-        .toPromise();
+      const updatedExchange = await this.exchangeRepository.save(exchange);
 
-      if (!wasFrontUpdated) {
-        throw new Error('Failed to update the front with the new task.');
-      }
-
-      const addBoxToExchangeDto = new AddBoxToExchangeDto(
-        addExchangeToTheFront.id,
-        frontId,
-        addExchangeToTheFront.pick_up_date,
-        addExchangeToTheFront.size,
-      );
-
-      await this.boxClient
-        .send(
-          { cmd: boxMessagePatterns.createBox.cmd },
-          { addBoxToExchangeDto },
-        )
-        .toPromise();
-
-      const updatedExchange = new AddExchangeToFrontDto(
-        data.pick_up_date,
-        data.id,
-        data.box_size,
-        addExchangeToTheFront.center_id,
-      );
       return updatedExchange;
     } catch (error) {
       console.error('Error in adding exchange to the front:', error);
@@ -467,16 +391,21 @@ export class ExchangeService {
     }
   }
 
-  async deleteExchangeFromFront(deleteExchangeDto: DeleteExchangeFromFrontDto) {
+  async deleteExchangeFromFront(boxId: number) {
     try {
+      const exchange = await this.exchangeRepository.findOne({
+        where: { box: { id: boxId } },
+        relations: ['front'],
+      });
+
       // Retrieve the front ID for the task
       const wasExchangeDeleted: boolean = await this.frontClient
         .send(
           { cmd: frontMessagePatterns.deleteTaskFromFront.cmd },
           {
-            box_size: deleteExchangeDto.box_size,
-            center_id: deleteExchangeDto.center_id,
-            id: deleteExchangeDto.id,
+            boxSize: exchange.boxSize,
+            front: exchange.front.id,
+            id: exchange.id,
           },
         )
         .toPromise();
@@ -485,20 +414,11 @@ export class ExchangeService {
         throw new Error('Failed to delete the task from the front.');
       }
 
-      const { data, error: updateError } = await supabase
-        .from('exchange')
-        .update({
-          front_id: null,
-          pick_up_date: null,
-        })
-        .eq('id', deleteExchangeDto.id)
-        .select('pick_up_date, id, box_size');
+      exchange.front = null;
+      exchange.box = null;
+      await this.exchangeRepository.save(exchange);
 
-      if (updateError) {
-        throw updateError;
-      }
-
-      return data;
+      return true;
     } catch (error) {
       console.error(error);
       throw error;
@@ -513,23 +433,30 @@ export class ExchangeService {
    * @param {number} changeExchangeStatus.id - Unique identifier of the exchange to update.
    * @param {string} changeExchangeStatus.exchange_state - New state to set in the database.
    */
-  async changeExchangeStatus(changeExchangeStatus: ChangeExchangeStatusDto) {
+  async changeExchangeStatus(
+    changeExchangeStatus: ChangeExchangeStatusDto,
+  ): Promise<void> {
     try {
-      const { data, error: updateError } = await supabase
-        .from('exchange')
-        .update({
-          exchange_state: exchnageStatus[changeExchangeStatus.exchange_state],
-        })
-        .eq('id', changeExchangeStatus.id)
-        .select('pick_up_date, id, box_size');
+      const exchange = await this.exchangeRepository.findOne({
+        relations: ['box'], // Assuming you have a relationship named 'box'
+        where: {
+          box: { id: changeExchangeStatus.id }, // Corrected the syntax
+        },
+      });
 
-      if (updateError) {
-        throw new Error(
-          `Error updating exchange status: ${updateError.message}`,
+      if (!exchange) {
+        throw new NotFoundException(
+          `Exchange with Box ID ${changeExchangeStatus.id} not found`,
         );
       }
+
+      exchange.exchangeState =
+        exchnageStatus[changeExchangeStatus.exchangeState];
+
+      await this.exchangeRepository.save(exchange);
     } catch (error) {
-      console.error('Error in changeExchangeStatus function:', error);
+      console.error('Error updating exchange:', error);
+      throw error;
     }
   }
 
@@ -538,25 +465,24 @@ export class ExchangeService {
    *
    * @param id The ID of the exchange record to retrieve the box size for.
    * @returns A Promise that resolves to the box size as a string.
-   * @throws An error if there's an issue with the Supabase query or if the box size is not found.
+   * @throws An error if there's an issue with the  query or if the box size is not found.
    */
   async getBoxSize(id: number): Promise<string> {
     try {
-      const { data: exchangeData, error: exchangeError } = await supabase
-        .from('exchange')
-        .select('box_size')
-        .eq('id', id)
-        .single();
+      const exchange = await this.exchangeRepository.findOne({
+        where: { id },
+        select: ['boxSize'],
+      });
 
-      if (exchangeError) {
-        console.error('Supabase error while fetching box size:', exchangeError);
-        throw new Error('Error fetching box size'); // Throw a custom error.
+      if (!exchange) {
+        console.error(`No exchange found with id ${id}`);
+        throw new Error('Error fetching box size');
       }
 
-      return exchangeData.box_size;
+      return exchange.boxSize;
     } catch (err) {
       console.error('An error occurred while fetching box size:', err);
-      throw new Error('Error fetching box size'); // Throw a custom error.
+      throw new Error('Error fetching box size');
     }
   }
 
@@ -607,60 +533,31 @@ export class ExchangeService {
     }
   }
 
-  /**
-   * Creates an ExchangeDto based on provided data and item IDs.
-   *
-   * @param data Exchange data to use for creating the ExchangeDto.
-   * @param itemIds Array of item IDs to associate with the ExchangeDto.
-   * @returns Promise<ExchangeDto> A Promise that resolves to the created ExchangeDto.
-   */
-  private async createExchangeDto(
-    data,
+  private async getItemsAndUsers(
+    exchange: Exchange,
+    friendId: number,
+    userId: number,
     itemIds: number[],
-  ): Promise<ExchangeDto> {
-    try {
-      const items: ItemDto[] = await this.itemClient
-        .send(
-          { cmd: itemMessagePatterns.addExchangeId.cmd },
-          {
-            item_ids: itemIds,
-            exchange_id: data.id,
-          },
-        )
-        .toPromise();
-
-      return new ExchangeDto(
-        data.creator_id,
-        data.pick_up_user_id,
-        data.box_size,
-        items,
-        data.id,
-      );
-    } catch (error) {
-      // Handle the error as needed, e.g., log it or throw a custom error
-      console.error('Error creating ExchangeDto:', error);
-      throw new Error('Failed to create ExchangeDto');
-    }
-  }
-
-  /**
-   * Private function that retrieves user and friend information.
-   *
-   * @param user_id - The ID of the user.
-   * @param friend_id - The ID of the friend.
-   * @returns A promise that resolves to an object containing user and friend data.
-   */
-  private async getUserWithFriend(
-    user_id: number,
-    friend_id: number,
-  ): Promise<{ user: UserDto; friend: UserDto }> {
-    const friendShipDto = new CreateFriendshipDto();
-    friendShipDto.friend_id = friend_id;
-    friendShipDto.user_id = user_id;
-    const result = await this.userClient
-      .send({ cmd: userMessagePatterns.getUserWithFriend.cmd }, friendShipDto)
+  ): Promise<{ user: User; friend: User; items: Item[] }> {
+    // Fetch user and friend details
+    const { user, friend }: { user: User; friend: User } = await this.userClient
+      .send(
+        { cmd: userMessagePatterns.getUserWithFriend.cmd },
+        {
+          userId: userId,
+          friendId: friendId,
+        },
+      )
       .toPromise();
 
-    return result;
+    // Associate items with the exchange
+    const items: Item[] = await this.itemClient
+      .send(
+        { cmd: itemMessagePatterns.addExchangeToItems.cmd },
+        { itemIds: itemIds, exchange: exchange },
+      )
+      .toPromise();
+
+    return { user, friend, items };
   }
 }

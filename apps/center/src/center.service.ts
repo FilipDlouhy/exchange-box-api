@@ -2,21 +2,26 @@ import { CenterDto } from '@app/dtos/centerDtos/center.dto';
 import { CenterWithFrontDto } from '@app/dtos/centerDtos/center.with.front.dto';
 import { CreateCenterDto } from '@app/dtos/centerDtos/create.center.dto';
 import { UpdateCenterDto } from '@app/dtos/centerDtos/update.center.dto';
-import { FrontDto } from '@app/dtos/frontDtos/front.dto';
-import { supabase } from '@app/database';
 import { frontMessagePatterns } from '@app/tcp/front.message.patterns';
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { ClientProxyFactory, Transport } from '@nestjs/microservices';
 import axios from 'axios';
 import { GetCenterDto } from '@app/dtos/centerDtos/get.center.dto';
 import { FrontExchangeDto } from '@app/dtos/frontDtos/front.exchange.dto';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Center } from '@app/database/entities/center.entity';
+import { Between, EntityManager, Repository } from 'typeorm';
 
 @Injectable()
 export class CenterService implements OnModuleInit {
   private readonly frontClient;
   private readonly overpassUrl = 'http://overpass-api.de/api/interpreter';
 
-  constructor() {
+  constructor(
+    @InjectRepository(Center)
+    private readonly centerRepository: Repository<Center>,
+    private readonly entityManager: EntityManager,
+  ) {
     this.frontClient = ClientProxyFactory.create({
       transport: Transport.TCP,
       options: {
@@ -35,16 +40,9 @@ export class CenterService implements OnModuleInit {
       // Define a bounding box for geographical coordinates for CZ
       const bbox = '48.378550,12.991661,50.835862,18.996826';
 
-      const { data, error } = await supabase
-        .from('center')
-        .select('id, latitude, longitude');
-
-      if (error) {
-        throw new Error(`Error fetching data from Supabase: ${error.message}`);
-      }
-
-      // If data already exists, no further action is required
-      if (data.length > 0) {
+      // Check if data already exists using TypeORM
+      const existingCenters = await this.centerRepository.count();
+      if (existingCenters > 0) {
         return;
       }
 
@@ -69,6 +67,7 @@ export class CenterService implements OnModuleInit {
         );
       }
 
+      // Process and save the data
       response.data.elements.map(async (center) => {
         try {
           let newCenterDto;
@@ -100,28 +99,26 @@ export class CenterService implements OnModuleInit {
    */
   async getCenter(id: number): Promise<CenterWithFrontDto> {
     try {
-      const { data, error } = await supabase
-        .from('center')
-        .select(
-          `
-        *,
-        front!inner(*)
-      `,
-        )
-        .eq('id', id)
-        .single();
+      // Find the center with the specified id and join with the front entity
+      const center = await this.centerRepository.findOne({
+        where: { id },
+        relations: ['front'], // Assuming 'front' is the correct relation name
+      });
 
-      if (error) {
-        console.error('Error fetching center:', error);
+      if (!center) {
+        console.error('No center found with the given id:', id);
         throw new Error('Failed to retrieve the center');
       }
 
-      const frontObject: FrontDto =
-        data.front && data.front.length > 0 ? data.front[0] : null;
+      // Prepare the CenterWithFrontDto
+      const centerWithFrontDto = new CenterWithFrontDto(
+        center.latitude,
+        center.longitude,
+        center.id.toString(),
+        center.front,
+      );
 
-      const centerDto: CenterWithFrontDto = { ...data, front: frontObject };
-
-      return centerDto;
+      return centerWithFrontDto;
     } catch (err) {
       console.error('Error in getCenter function:', err);
       throw err;
@@ -134,32 +131,34 @@ export class CenterService implements OnModuleInit {
    * @param {UpdateCenterDto} updateCenterDto - The data transfer object containing the center's updated information.
    * @returns {Promise<CenterWithFrontDto>} - Returns a promise that resolves to the updated center, including its associated front.
    */
+
   async updateCenter(
     updateCenterDto: UpdateCenterDto,
   ): Promise<CenterWithFrontDto> {
     try {
-      const { data, error } = await supabase
-        .from('center')
-        .update({
-          name: updateCenterDto.name,
-        })
-        .eq('id', updateCenterDto.id)
-        .select(
-          `
-        *,
-        front!inner(*)
-      `,
-        )
-        .single();
+      // First, find the center by ID
+      const center = await this.centerRepository.findOne({
+        where: { id: updateCenterDto.id },
+        relations: ['front'], // Assuming 'front' is the name of the one-to-one relation with Front entity
+      });
 
-      if (error) {
-        console.error('Error updating center:', error);
-        throw new Error('Failed to update the center');
+      if (!center) {
+        console.error('No center found with the given id:', updateCenterDto.id);
+        throw new Error('Center not found');
       }
 
-      const updatedCenter: CenterWithFrontDto = data;
+      center.latitude = updateCenterDto.latitude;
+      center.longitude = updateCenterDto.longitude;
 
-      return updatedCenter;
+      const updatedCenter = await this.centerRepository.save(center);
+      const centerWithFrontDto = new CenterWithFrontDto(
+        updatedCenter.latitude,
+        updatedCenter.longitude,
+        updatedCenter.id.toString(),
+        updatedCenter.front,
+      );
+
+      return centerWithFrontDto;
     } catch (err) {
       console.error('Error in updateCenter function:', err);
       throw err;
@@ -173,16 +172,22 @@ export class CenterService implements OnModuleInit {
    */
   async getCenters(): Promise<CenterDto[]> {
     try {
-      const { data, error } = await supabase
-        .from('center')
-        .select('id, latitude, longitude');
+      // Fetch all centers from the database using TypeORM
+      const centers = await this.centerRepository.find({
+        select: ['id', 'latitude', 'longitude'], // Select specific fields
+      });
 
-      if (error) {
-        console.error('Error fetching centers:', error);
-        throw new Error('Error retrieving centers');
-      }
+      // Map the centers to DTOs if necessary
+      const centerDtos = centers.map(
+        (center) =>
+          new CenterDto(
+            center.longitude,
+            center.latitude,
+            center.id.toString(),
+          ),
+      );
 
-      return data;
+      return centerDtos;
     } catch (err) {
       console.error('Error in getCenters function:', err);
       throw new Error('Error retrieving centers');
@@ -190,20 +195,17 @@ export class CenterService implements OnModuleInit {
   }
 
   /**
-   * Deletes a center record from the database and deletes paired front from database because of supabase on cascade.
+   * Deletes a center record from the database and deletes paired front from database because of  on cascade.
    *
    * @param {number} id - The ID of the center to be deleted.
    * @returns {Promise<boolean>} - Returns a promise that resolves to `true` if the deletion is successful.
    */
   async deleteCenter(id: number): Promise<boolean> {
     try {
-      const { data, error } = await supabase
-        .from('center')
-        .delete()
-        .match({ id });
+      const deleteResult = await this.centerRepository.delete(id);
 
-      if (error) {
-        console.error('Error deleting center:', error);
+      if (deleteResult.affected === 0) {
+        console.error('No center found with the given id:', id);
         throw new Error('Failed to delete the center');
       }
 
@@ -215,7 +217,7 @@ export class CenterService implements OnModuleInit {
   }
 
   /**
-   * Deletes a center record from the database. Due to the cascading delete setup in Supabase,
+   * Deletes a center record from the database. Due to the cascading delete setup in ,
    * this operation also deletes the associated 'front' record linked to the center.
    *
    * @param {number} id - The ID of the center to be deleted.
@@ -229,45 +231,41 @@ export class CenterService implements OnModuleInit {
     const range = 0.2;
 
     try {
-      const { data, error } = await supabase
-        .from('center')
-        .select(
-          `
-            *,
-            front!inner(*)
-          `,
-        )
-        .gte('latitude', latitude - range)
-        .lte('latitude', latitude + range)
-        .gte('longitude', longitude - range)
-        .lte('longitude', longitude + range);
-
-      if (error) {
-        console.error('Error fetching data:', error);
-        return;
-      }
+      const potentialCenters = await this.centerRepository.find({
+        where: {
+          latitude: Between(latitude - range, latitude + range),
+          longitude: Between(longitude - range, longitude + range),
+        },
+        relations: ['front'],
+      });
 
       // Filter out centers whose 'front' does not have a matching number of tasks in front and total number of tasks
-      const filteredData = data.filter((item) => {
+      const filteredData = potentialCenters.filter((center) => {
         return (
-          item.front[0] &&
-          item.front[0].number_of_tasks_in_front !==
-            item.front[0].total_number_of_tasks_in_front
+          center.front.numberOfLargeBoxes !==
+            center.front.numberOfLargeBoxesTotal &&
+          center.front.numberOfSmallBoxes !==
+            center.front.numberOfSmallBoxesTotal &&
+          center.front.numberOfMediumBoxes !==
+            center.front.numberOfMediumBoxesTotal &&
+          center.front.totalNumberOfTasks !== center.front.numberOfTasksInFront
         );
       });
 
       const centersNearBy = filteredData.map((center) => {
         const frontObject = new FrontExchangeDto(
-          center.front[0].id,
-          center.front[0].number_of_medium_boxes_total -
-            center.front[0].number_of_medium_boxes,
-          center.front[0].number_of_large_boxes_total -
-            center.front[0].number_of_large_boxes,
-          center.front[0].number_of_small_boxes_total -
-            center.front[0].number_of_small_boxes,
+          center.front.id,
+          center.front.numberOfLargeBoxesTotal -
+            center.front.numberOfLargeBoxes,
+          center.front.numberOfSmallBoxesTotal -
+            center.front.numberOfSmallBoxes,
+          center.front.numberOfMediumBoxesTotal -
+            center.front.numberOfMediumBoxes,
         );
         const centerDto: CenterWithFrontDto = {
-          ...center,
+          id: center.id.toString(),
+          latitude: center.latitude,
+          longitude: center.longitude,
           front: frontObject,
         };
         return centerDto;
@@ -289,39 +287,28 @@ export class CenterService implements OnModuleInit {
     createCenterDto: CreateCenterDto,
   ): Promise<CenterDto> {
     try {
-      const { data, error } = await supabase
-        .from('center')
-        .insert([
-          {
-            longitude: createCenterDto.longitude,
-            latitude: createCenterDto.latitude,
-            created_at: new Date(),
-          },
-        ])
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Error creating center:', error);
-        throw new Error('Failed to create the center');
-      }
-
-      // Send a message to the front client to create a front associated with the new center
-      const response = await this.frontClient
-        .send(
-          { cmd: frontMessagePatterns.createFront.cmd },
-          { center_id: data.id },
-        )
+      const frontResponse = await this.frontClient
+        .send({ cmd: frontMessagePatterns.createFront.cmd }, {})
         .toPromise();
 
-      // Check if the front creation was successful
-      if (response === true) {
-        const newCenter = new CenterDto(data.latitude, data.longitude, data.id);
-        return newCenter;
-      } else {
-        console.error('Error creating associated front');
-        throw new Error('Failed to create associated front');
+      if (!frontResponse || !frontResponse.id) {
+        console.error('Error creating front');
+        throw new Error('Failed to create front');
       }
+
+      const newCenter = this.centerRepository.create({
+        longitude: createCenterDto.longitude,
+        latitude: createCenterDto.latitude,
+        front: frontResponse,
+      });
+
+      const savedCenter = await this.centerRepository.save(newCenter);
+
+      return new CenterDto(
+        savedCenter.latitude,
+        savedCenter.longitude,
+        savedCenter.id.toString(),
+      );
     } catch (err) {
       console.error('Error in createCenter function:', err);
       throw err;

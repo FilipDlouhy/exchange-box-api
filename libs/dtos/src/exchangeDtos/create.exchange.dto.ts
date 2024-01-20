@@ -1,10 +1,4 @@
-import {
-  IsInt,
-  IsArray,
-  IsNotEmpty,
-  ArrayNotEmpty,
-  Min,
-} from 'class-validator';
+import { IsInt, IsNotEmpty, ArrayNotEmpty } from 'class-validator';
 
 export class CreateExchangeDto {
   @IsNotEmpty()
@@ -20,11 +14,4 @@ export class CreateExchangeDto {
 
   @ArrayNotEmpty()
   public itemIds: number[];
-
-  constructor() {
-    this.creatorId = 0;
-    this.pickUpPersonId = 0;
-    this.boxSize = '';
-    this.itemIds = [];
-  }
 }

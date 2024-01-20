@@ -1,3 +1,4 @@
+import { Exchange } from '@app/database/entities/exchange.entity';
 import { ArrayNotEmpty, IsInt, IsNotEmpty } from 'class-validator';
 
 export class ToggleExchangeToItemDto {
@@ -7,10 +8,10 @@ export class ToggleExchangeToItemDto {
 
   @IsInt()
   @IsNotEmpty()
-  exchangeId: number = 0;
+  exchange: Exchange;
 
-  constructor(itemIds: number[], exchangeId: number) {
+  constructor(itemIds: number[], exchange: Exchange) {
     this.itemIds = itemIds;
-    this.exchangeId = exchangeId;
+    this.exchange = exchange;
   }
 }

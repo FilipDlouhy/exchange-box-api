@@ -1,10 +1,4 @@
-import {
-  IsInt,
-  IsArray,
-  IsNotEmpty,
-  ArrayNotEmpty,
-  Min,
-} from 'class-validator';
+import { IsInt, IsNotEmpty, ArrayNotEmpty } from 'class-validator';
 
 export class DeleteExchangeDto {
   @IsNotEmpty()

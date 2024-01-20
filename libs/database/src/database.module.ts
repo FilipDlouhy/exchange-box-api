@@ -1,6 +1,6 @@
 // common/database.module.ts
 import { Module } from '@nestjs/common';
-import { databaseConfig } from './database.config';
+import { databaseConfig } from './typeOrm.config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 @Module({

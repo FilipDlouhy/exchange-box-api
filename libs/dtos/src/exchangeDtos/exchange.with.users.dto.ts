@@ -1,13 +1,17 @@
-import {
-  IsInt,
-  IsString,
-  IsArray,
-  ValidateNested,
-  IsNotEmpty,
-} from 'class-validator';
-import { Type } from 'class-transformer';
-import { ExchangeItemDto } from '../itemDtos/exchange.item.dto';
-import { UserDto } from '../userDtos/user.dto';
+import { IsInt, IsString, IsArray, IsNotEmpty } from 'class-validator';
+import { User } from '@app/database/entities/user.entity';
+import { Item } from '@app/database/entities/item.entity';
+
+class UserDto {
+  // Define the properties of the User DTO as needed
+  // For example: username, email, etc.
+  constructor(
+    public id: number,
+    public username: string,
+    public email: string,
+    // ...other properties
+  ) {}
+}
 
 export class ExchangeWithUserDto {
   @IsNotEmpty()
@@ -24,23 +28,28 @@ export class ExchangeWithUserDto {
 
   @IsNotEmpty()
   @IsArray()
-  @ValidateNested({ each: true })
-  @Type(() => ExchangeItemDto)
-  public items: ExchangeItemDto[];
+  public items: Item[];
 
   @IsNotEmpty()
   @IsInt()
   public id: number;
 
   constructor(
-    creator: UserDto,
-    pickUpPerson: UserDto,
+    creator: User,
+    pickUpPerson: User,
     boxSize: string,
     id: number,
+    items: Item[],
   ) {
-    this.creator = creator;
-    this.pickUpPerson = pickUpPerson;
+    // Create UserDto instances from the provided User objects
+    this.creator = new UserDto(creator.id, creator.name, creator.email);
+    this.pickUpPerson = new UserDto(
+      pickUpPerson.id,
+      pickUpPerson.name,
+      pickUpPerson.email,
+    );
     this.boxSize = boxSize;
     this.id = id;
+    this.items = items;
   }
 }

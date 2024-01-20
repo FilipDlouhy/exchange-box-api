@@ -1,15 +1,12 @@
 import { ToggleExchangeToItemDto } from '@app/dtos/itemDtos/toggle.exchange.id.dto';
 import { CreateItemDto } from '@app/dtos/itemDtos/create.item.dto';
-import { ExchangeItemDto } from '@app/dtos/itemDtos/exchange.item.dto';
 import { ItemDto } from '@app/dtos/itemDtos/item.dto';
 import { ItemSizeDto } from '@app/dtos/itemDtos/item.size.dto';
 import { ItemWithUsersDto } from '@app/dtos/itemDtos/item.with.users.dto';
 import { UpdateItemDto } from '@app/dtos/itemDtos/update.item.dto';
-import { UserDto } from '@app/dtos/userDtos/user.dto';
 import {
   deleteFileFromFirebase,
   getImageUrlFromFirebase,
-  supabase,
   updateFileInFirebase,
   uploadFileToFirebase,
 } from '@app/database';
@@ -17,12 +14,21 @@ import { userMessagePatterns } from '@app/tcp';
 import { Injectable } from '@nestjs/common';
 import { ClientProxyFactory, Transport } from '@nestjs/microservices';
 import { UploadItemImageDto } from '@app/dtos/itemDtos/upload.item.image.dto';
+import { InjectRepository } from '@nestjs/typeorm';
+import { EntityManager, In, Repository } from 'typeorm';
+import { Item } from '@app/database/entities/item.entity';
+import { User } from '@app/database/entities/user.entity';
+import { UserDto } from '@app/dtos/userDtos/user.dto';
 
 @Injectable()
 export class ItemService {
   private readonly userClient;
 
-  constructor() {
+  constructor(
+    @InjectRepository(Item)
+    private readonly itemRepository: Repository<Item>,
+    private readonly entityManager: EntityManager,
+  ) {
     this.userClient = ClientProxyFactory.create({
       transport: Transport.TCP,
       options: {
@@ -32,80 +38,89 @@ export class ItemService {
     });
   }
   /**
-   * Asynchronously creates a new item in the 'item' table of the Supabase database.
+   * Asynchronously creates a new item in the 'item' table of the  database.
    *
    * @param createItemDto - An object containing the properties of the new item.
    * @returns A promise resolving to an ItemDto representing the newly created item.
    */
   async createItem(createItemDto: CreateItemDto): Promise<ItemDto> {
     try {
-      const response: boolean = await this.userClient
-        .send(
-          { cmd: userMessagePatterns.checkIfFriends.cmd },
-          {
-            user_id: createItemDto.user_id,
-            friend_id: createItemDto.friend_id,
-          },
-        )
-        .toPromise();
+      // Check if users are friends
+      const { friend, user }: { friend: User; user: User } =
+        await this.userClient
+          .send(
+            { cmd: userMessagePatterns.getUserWithFriend.cmd },
+            {
+              userId: createItemDto.userId,
+              friendId: createItemDto.friendId,
+            },
+          )
+          .toPromise();
 
-      if (!response) {
-        throw new Error(
-          'Cannot create item: The specified users are not friends.',
-        );
-      }
+      // Create a new Item instance
+      const newItem = this.itemRepository.create({
+        user: user,
+        friend: friend,
+        height: createItemDto.heightInCm,
+        length: createItemDto.lengthInCm,
+        name: createItemDto.name,
+        weight: createItemDto.weightInGrams,
+        width: createItemDto.widthInCm,
+      });
 
-      const { data, error } = await supabase
-        .from('item')
-        .insert([
-          {
-            created_at: new Date(),
-            user_id: createItemDto.user_id,
-            friend_id: createItemDto.friend_id,
-            height: createItemDto.heightInCm,
-            length: createItemDto.lengthInCm,
-            name: createItemDto.name,
-            weight: createItemDto.weightInGrams,
-            width: createItemDto.widthInCm,
-          },
-        ])
-        .select()
-        .single();
+      // Save the new item in the database
+      const savedItem = await this.itemRepository.save(newItem);
 
-      if (error) {
-        throw error;
-      }
-
-      const newItemDto = new ItemDto(data);
-
-      return newItemDto;
+      // Create and return the new ItemDto
+      return new ItemDto(
+        savedItem.name,
+        savedItem.user.id,
+        savedItem.friend.id,
+        savedItem.weight,
+        savedItem.id,
+        savedItem.length,
+        savedItem.width,
+        savedItem.height,
+      );
     } catch (error) {
-      // Handle any errors that occur during the API call.
+      console.error('Error creating item:', error);
       throw error;
     }
   }
 
   /**
-   * Asynchronously retrieves all items from the 'item' table in the Supabase database.
+   * Asynchronously retrieves all items from the 'item' table in the  database.
    *
    * @returns A promise resolving to an array of ItemDto representing all items.
    */
   async getAllItems(): Promise<ItemDto[]> {
     try {
-      const { data, error } = await supabase.from('item').select();
+      // Fetch all items from the database using TypeORM
+      const items = await this.itemRepository
+        .createQueryBuilder('item')
+        .leftJoinAndSelect('item.user', 'user')
+        .leftJoinAndSelect('item.friend', 'friend')
+        .select(['item.id', 'user.id', 'friend.id'])
+        .getMany();
+      // Convert each Item entity to ItemDto
+      const itemDtos = items.map(
+        (item) =>
+          new ItemDto(
+            item.name,
+            item.user.id,
+            item.friend.id,
+            item.weight,
+            item.id,
+            item.length,
+            item.width,
+            item.height,
+          ),
+      );
 
-      if (error) {
-        throw error;
-      }
-
-      const itemDtoArray: ItemDto[] = data.map((item) => {
-        return new ItemDto(item);
-      });
-
-      return itemDtoArray;
+      return itemDtos;
     } catch (error) {
-      // Handle any errors that occur during the API call.
-      throw error;
+      console.error('Error fetching items:', error);
+      throw new Error('Failed to retrieve items');
     }
   }
 
@@ -116,27 +131,37 @@ export class ItemService {
    * @param forgoten - A boolean indicating whether to retrieve forgotten items.
    * @returns A promise resolving to an array of ItemDto representing the user's items.
    */
-  async getUserItems(user_id: number, forgoten: boolean): Promise<ItemDto[]> {
+  async getUserItems(userId: number, forgotten: boolean): Promise<ItemDto[]> {
     try {
-      const { data, error } = forgoten
-        ? await supabase.from('item').select().eq('user_id', user_id)
-        : await supabase.from('item').select().eq('friend_id', user_id);
-
-      if (error) {
-        throw error;
-      }
-
-      const itemDtoArray: ItemDto[] = data.map((item) => {
-        return new ItemDto(item);
+      const items = await this.itemRepository.find({
+        where: forgotten
+          ? { user: { id: userId } }
+          : { friend: { id: userId } },
+        relations: ['user', 'friend'],
+        select: ['id'],
       });
 
-      return itemDtoArray;
+      // Convert each Item entity to ItemDto
+      const itemDtos = items.map(
+        (item) =>
+          new ItemDto(
+            item.name,
+            item.user.id,
+            item.friend.id,
+            item.weight,
+            item.id,
+            item.length,
+            item.width,
+            item.height,
+          ),
+      );
+
+      return itemDtos;
     } catch (error) {
-      // Handle any errors that occur during the API call.
-      throw error;
+      console.error('Error fetching user items:', error);
+      throw new Error('Failed to retrieve user items');
     }
   }
-
   /**
    * Deletes an item from the database.
    * It first checks if the item is part of an exchange. If it is, the deletion is not allowed.
@@ -145,31 +170,27 @@ export class ItemService {
    * @returns A boolean indicating if the deletion was successful.
    * @throws Error if the item is part of an exchange.
    */
-  async deleteItem(item_id: number): Promise<boolean> {
+  async deleteItem(itemId: number): Promise<boolean> {
     try {
-      // Check if the item is part of an exchange
-      const { data: itemData, error: fetchError } = await supabase
-        .from('item')
-        .select('exchange_id')
-        .eq('id', item_id)
-        .single();
+      // Find the item by itemId
+      const item = await this.itemRepository.findOne({
+        where: { id: itemId },
+        relations: { exchange: true },
+      });
 
-      if (fetchError) {
-        throw fetchError;
+      // Check if the item exists and if it is part of an exchange
+      if (!item) {
+        throw new Error('Item not found.');
+      }
+      if (item.exchange) {
+        throw new Error('Item is part of an exchange and cannot be deleted.');
       }
 
-      if (itemData && itemData.exchange_id) {
-        throw new Error('Item is in exchange and cannot be deleted.');
-      }
+      const deleteResult = await this.itemRepository.delete(itemId);
 
-      // Proceed with deletion if the item is not part of an exchange
-      const { error: deleteError } = await supabase
-        .from('item')
-        .delete()
-        .match({ id: item_id });
-
-      if (deleteError) {
-        throw deleteError;
+      // Check if the item was successfully deleted
+      if (deleteResult.affected === 0) {
+        throw new Error('Item could not be deleted.');
       }
 
       return true;
@@ -180,36 +201,57 @@ export class ItemService {
   }
 
   /**
-   * Asynchronously updates an item in the 'item' table of the Supabase database.
+   * Asynchronously updates an item in the 'item' table of the  database.
    *
    * @param updateItemDto - An object with updated item properties.
    * @returns A promise resolving to an ItemDto representing the updated item.
    */
   async updateItem(updateItemDto: UpdateItemDto): Promise<ItemDto> {
     try {
-      const { data, error } = await supabase
-        .from('item')
-        .update({
-          updated_at: new Date(),
-          created_at: new Date(),
-          friend_id: updateItemDto.friend_id,
-          height: updateItemDto.heightInCm,
-          length: updateItemDto.lengthInCm,
-          name: updateItemDto.name,
-          weight: updateItemDto.weightInGrams,
-          width: updateItemDto.widthInCm,
-        })
-        .eq('id', updateItemDto.id)
-        .select()
-        .single();
+      // Find the item by its ID
+      const item = await this.itemRepository.findOne({
+        where: { id: updateItemDto.id },
+        relations: ['friend'],
+      });
 
-      if (error) {
-        throw error;
+      if (!item) {
+        throw new Error('Item not found.');
       }
 
-      const updatedItem = new ItemDto(data);
+      if (item.friend.id !== updateItemDto.friendId) {
+        const newFriend = await this.userClient
+          .send(
+            { cmd: userMessagePatterns.getUserForItemUpdate.cmd },
+            {
+              friendId: updateItemDto.friendId,
+            },
+          )
+          .toPromise();
+        item.friend = newFriend;
+      }
 
-      return updatedItem;
+      // Update item properties
+      item.height = updateItemDto.heightInCm;
+      item.length = updateItemDto.lengthInCm;
+      item.name = updateItemDto.name;
+      item.weight = updateItemDto.weightInGrams;
+      item.width = updateItemDto.widthInCm;
+
+      // Save the updated item
+      const updatedItemEntity = await this.itemRepository.save(item);
+
+      // Create and return the updated ItemDto
+      const updatedItemDto = new ItemDto(
+        updatedItemEntity.name,
+        updatedItemEntity.user.id,
+        updatedItemEntity.friend.id,
+        updatedItemEntity.weight,
+        updatedItemEntity.id,
+        updatedItemEntity.length,
+        updatedItemEntity.width,
+        updatedItemEntity.height,
+      );
+      return updatedItemDto;
     } catch (e) {
       console.error('Error updating item:', e);
       throw e;
@@ -217,46 +259,44 @@ export class ItemService {
   }
 
   /**
-   * Fetches an item from the 'item' table in the Supabase database based on the provided item ID.
+   * Fetches an item from the 'item' table in the  database based on the provided item ID.
    * Additionally, retrieves the associated user and friend information.
    *
    * @param item_id - The unique identifier of the item to retrieve.
    * @returns A promise resolving to an ItemWithUsersDto object, which includes the item data
    * along with associated user and friend information.
    */
-  async getItem(item_id: number): Promise<ItemWithUsersDto> {
+  async getItem(itemId: number): Promise<ItemWithUsersDto> {
     try {
-      const { data, error } = await supabase
-        .from('item')
-        .select()
-        .eq('id', item_id)
-        .single();
+      // Fetch the item with user and friend relations
+      const item = await this.itemRepository.findOne({
+        where: { id: itemId },
+        relations: ['user', 'friend'], // Replace with the actual relation names in your Item entity
+      });
 
-      if (error) {
-        throw new Error(`Error fetching item: ${error.message}`);
+      if (!item) {
+        throw new Error(`Item not found.`);
       }
 
-      const itemDto = new ItemDto(data);
-
-      const response: { user: UserDto; friend: UserDto } = await this.userClient
-        .send(
-          { cmd: userMessagePatterns.getUserWithFriend.cmd },
-          {
-            user_id: itemDto.user_id,
-            friend_id: itemDto.friend_id,
-          },
-        )
-        .toPromise();
+      const itemDto = new ItemDto(
+        item.name,
+        item.user.id,
+        item.friend.id,
+        item.weight,
+        item.id,
+        item.length,
+        item.width,
+        item.height,
+      );
 
       const itemWithUsersDto = new ItemWithUsersDto(
         itemDto,
-        response.user,
-        response.friend,
+        item.user,
+        item.friend,
       );
 
       return itemWithUsersDto;
     } catch (e) {
-      // Log and rethrow the error for further handling.
       console.error('Error in fetching item or user data:', e);
       throw new Error('Error processing item retrieval');
     }
@@ -271,28 +311,28 @@ export class ItemService {
    */
   async retrieveItemSizesAndCheckExchange(
     ids: number[],
-    udpate: boolean,
+    update: boolean,
   ): Promise<ItemSizeDto[]> {
     try {
-      const { data, error } = await supabase
-        .from('item')
-        .select('length, width, height, id, exchange_id')
-        .in('id', ids);
+      // Fetch items by their IDs
+      const items = await this.itemRepository.find({
+        where: { id: In(ids) },
+        select: ['length', 'width', 'height', 'id', 'exchange'],
+      });
 
-      if (error) {
-        throw error;
-      }
-
-      if (!udpate) {
+      if (!update) {
         // Check if any item is already in an exchange
-        const itemsInExchange = data.some((item) => item.exchange_id != null);
+        const itemsInExchange = items.some((item) => item.exchange != null);
         if (itemsInExchange) {
           throw new Error('One or more items are already in an exchange');
         }
       }
-      const itemSizes = data.map((item) => {
-        return new ItemSizeDto(item.length, item.width, item.height, item.id);
-      });
+
+      // Map the items to ItemSizeDto
+      const itemSizes = items.map(
+        (item) =>
+          new ItemSizeDto(item.length, item.width, item.height, item.id),
+      );
 
       return itemSizes;
     } catch (err) {
@@ -307,29 +347,21 @@ export class ItemService {
    * @param {ToggleExchangeToItemDto} dto - Object containing exchange_id and item_ids.
    * @returns {Promise<ItemDto[]>} - Resolves with an array of ItemDto objects on success.
    */
-  async addExchangeIdToItem(
-    addExchangeIdToItem: ToggleExchangeToItemDto,
-  ): Promise<ExchangeItemDto[]> {
+  async addExchangeToItems(addExchangeToItemDto: ToggleExchangeToItemDto) {
     try {
-      const { data, error } = await supabase
-        .from('item')
-        .update({
-          exchange_id: addExchangeIdToItem.exchange_id,
-        })
-        .in('id', addExchangeIdToItem.item_ids)
-        .select();
+      // Find the items by their IDs
 
-      if (error) {
-        throw error;
-      }
-
-      const itemDtoArray: ExchangeItemDto[] = data.map(
-        (item) => new ExchangeItemDto(item),
+      const items = await this.itemRepository.findByIds(
+        addExchangeToItemDto.itemIds,
       );
 
-      return itemDtoArray;
+      if (!items || items.length === 0) {
+        throw new Error('No items found.');
+      }
+
+      return items;
     } catch (err) {
-      console.error('Error updating exchange ID for items:', err);
+      console.error('Error updating Exchange for items:', err);
       throw err;
     }
   }
@@ -339,63 +371,27 @@ export class ItemService {
    * @param removeExchangeIdToItemDto - DTO containing item IDs to remove exchange references from.
    * @returns boolean - Returns true if the operation is successful.
    */
-  async deleteExchangeFromItems(
-    removeExchangeIdToItemDto: ToggleExchangeToItemDto,
-  ): Promise<boolean> {
+  async deleteExchangeFromItems(itemIds: number[]): Promise<boolean> {
     try {
-      const { data, error } = await supabase
-        .from('item')
-        .update({
-          exchange_id: null,
-        })
-        .in('id', removeExchangeIdToItemDto.item_ids);
+      // Find the items by their IDs
+      const items = await this.itemRepository.findByIds(itemIds);
 
-      if (error) throw error;
+      if (!items || items.length === 0) {
+        throw new Error('No items found.');
+      }
+
+      // Set the Exchange entity to null for each item
+      for (const item of items) {
+        item.exchange = null;
+      }
+
+      // Save the updated items with null Exchange
+      await this.itemRepository.save(items);
 
       return true;
     } catch (err) {
-      console.error('Error in deleteExchangeFromItems:', err);
+      console.error('Error deleting Exchange from items:', err);
       throw err;
-    }
-  }
-
-  /**
-   * Retrieves items or item IDs associated with a specific exchange.
-   *
-   * @param id - The ID of the exchange.
-   * @param returnIdsOnly - Boolean flag to determine whether to return only item IDs.
-   * @returns An array of ItemDto objects or item IDs associated with the exchange.
-   */
-  async getItemsForOrIdsExchange(
-    id: number,
-    returnIdsOnly: boolean = false,
-  ): Promise<ItemDto[] | number[]> {
-    try {
-      const selectQuery = returnIdsOnly ? 'id' : '*';
-
-      const { data, error } = await supabase
-        .from('item')
-        .select(selectQuery)
-        .eq('exchange_id', id);
-
-      if (error) {
-        throw error;
-      }
-
-      if (returnIdsOnly) {
-        const itemIds: number[] = data.map((item) => item.id);
-        return itemIds;
-      } else {
-        const itemDtoArray: ItemDto[] = data.map((item) => new ItemDto(item));
-        return itemDtoArray;
-      }
-    } catch (error) {
-      console.error(
-        'Failed to retrieve items for exchange with ID:',
-        id,
-        error,
-      );
-      throw error;
     }
   }
 
@@ -410,25 +406,33 @@ export class ItemService {
     update: boolean,
   ) {
     try {
-      const imageUrl = update
+      // Find the Item entity by its ID
+
+      const item = await this.itemRepository.findOneBy({
+        id: parseInt(uploadItemImageDto.itemId),
+      });
+
+      if (!item) {
+        throw new Error('Item not found.');
+      }
+
+      // Update the image_url property
+      item.imageUrl = update
         ? await updateFileInFirebase(
             uploadItemImageDto.file,
-            uploadItemImageDto.item_id,
+            uploadItemImageDto.itemId,
             'Items',
           )
         : await uploadFileToFirebase(
             uploadItemImageDto.file,
-            uploadItemImageDto.item_id,
+            uploadItemImageDto.itemId,
             'Items',
           );
 
-      await supabase
-        .from('item')
-        .update({
-          image_url: imageUrl,
-          updated_at: new Date(),
-        })
-        .eq('id', uploadItemImageDto.item_id);
+      // Set the updated_at property
+
+      // Save the updated Item entity
+      await this.itemRepository.save(item);
     } catch (error) {
       // Handle or rethrow the error appropriately
       console.error('Error uploading item image:', error);
@@ -462,6 +466,8 @@ export class ItemService {
   async deleteItemImage(id: number) {
     try {
       await deleteFileFromFirebase(id.toString(), 'Items');
+
+      await this.itemRepository.update(id, { imageUrl: null });
     } catch (error) {
       // Handle or rethrow the error appropriately
       console.error('Error deleting item image:', error);

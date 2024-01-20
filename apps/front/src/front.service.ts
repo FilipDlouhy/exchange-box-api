@@ -1,41 +1,37 @@
-import { AddExchangeToFrontDto } from '@app/dtos/exchangeDtos/add.exchange.to.front..dto';
+import { Front } from '@app/database/entities/front.entity';
 import { DeleteExchangeFromFrontDto } from '@app/dtos/exchangeDtos/delete.exchange.from.front.dto';
-import { supabase } from '@app/database';
 import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { EntityManager, Repository } from 'typeorm';
 
 @Injectable()
 export class FrontService {
+  constructor(
+    @InjectRepository(Front)
+    private readonly frontRepository: Repository<Front>,
+    private readonly entityManager: EntityManager,
+  ) {}
   /**
    * Creates a new front associated with a given center in the database.
    *
    * @param {number} center_id - The ID of the center to which the front is associated.
    * @returns {Promise<boolean>} - Returns a promise that resolves to `true` if the front is successfully created.
    */
-  async createFront(center_id: number): Promise<boolean> {
+  async createFront(): Promise<Front> {
     try {
       const boxTotals = this.generateBoxNumbersWithTotal();
-      const { data, error } = await supabase
-        .from('front')
-        .insert([
-          {
-            total_number_of_tasks: boxTotals.total,
-            number_of_tasks_in_front: 0,
-            created_at: new Date(),
-            center_id: center_id,
-            number_of_large_boxes_total: boxTotals.largeBoxes,
-            number_of_medium_boxes_total: boxTotals.mediumBoxes,
-            number_of_small_boxes_total: boxTotals.smallBoxes,
-          },
-        ])
-        .select('id')
-        .single();
 
-      if (error) {
-        console.error('Error creating front:', error);
-        throw new Error('Failed to create the front');
-      }
+      const newFront = this.frontRepository.create({
+        totalNumberOfTasks: boxTotals.total,
+        numberOfTasksInFront: 0,
+        numberOfLargeBoxesTotal: boxTotals.largeBoxes,
+        numberOfMediumBoxesTotal: boxTotals.mediumBoxes,
+        numberOfSmallBoxesTotal: boxTotals.smallBoxes,
+      });
 
-      return true;
+      await this.frontRepository.save(newFront);
+
+      return newFront;
     } catch (err) {
       console.error('Error in createFront function:', err);
       throw err;
@@ -51,84 +47,28 @@ export class FrontService {
    * @returns The ID of the front.
    * @throws Error if the data fetch fails or if the center is full for the specified size.
    */
-  async getFrontForTask(size: string, center_id: number): Promise<number> {
+  async getFrontForTask(size: string, frontId: number): Promise<Front> {
     try {
-      // Fetch the current box counts and the front ID from the 'front' table
-      const { data, error } = await supabase
-        .from('front')
-        .select(`number_of_${size}_boxes, number_of_${size}_boxes_total, id`)
-        .eq('center_id', center_id)
-        .limit(1)
-        .single();
+      // Using the repository to find the front with the given center ID
+      const front = await this.frontRepository.findOne({
+        where: { id: frontId },
+      });
 
-      // Check for any errors in fetching the data
-      if (error || !data) {
-        throw new Error('Error fetching data or front does not exist.');
-      }
-
-      const front = data as any;
-
+      // Check if the front exists and if there's room for another box,
       if (
-        front[`number_of_${size}_boxes`] + 1 >
-        front[`number_of_${size}_boxes_total`]
+        !front ||
+        front[`numberOf${size}Boxes`] + 1 > front[`numberOf${size}BoxesTotal`]
       ) {
         throw new Error('Center is full. Try different size or center');
       }
+      front[`numberOf${size}Boxes`] = front[`numberOf${size}Boxes`] + 1;
+
+      const updatedFront = await this.frontRepository.save(front);
 
       // Return the front ID
-      return front.id;
+      return updatedFront;
     } catch (error) {
       console.error('Error getting front for task:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Adds a task to the front for a given exchange. It increments the number of boxes
-   * and tasks in the front and updates the time to complete all tasks.
-   *
-   * @param addExchangeToTheFront - The data transfer object containing the details of the exchange to be added.
-   * @returns A boolean indicating successful addition of the task.
-   */
-  async addTaskToFront(
-    addExchangeToTheFront: AddExchangeToFrontDto,
-  ): Promise<boolean> {
-    try {
-      // Fetch the current values from the 'front' table for the given center_id
-      const { data: currentData, error: fetchError } = await supabase
-        .from('front')
-        .select()
-        .eq('center_id', addExchangeToTheFront.center_id)
-        .single();
-
-      if (fetchError) {
-        throw fetchError;
-      }
-
-      // Ensure pick_up_date is a Date object and calculate the updated values
-      const updatedValues = {
-        [`number_of_${addExchangeToTheFront.size}_boxes`]:
-          (currentData[`number_of_${addExchangeToTheFront.size}_boxes`] ?? 0) +
-          1,
-        number_of_tasks_in_front:
-          (currentData.number_of_tasks_in_front ?? 0) + 1,
-      };
-
-      // Update the 'front' table with the new values
-      const { error: updateError } = await supabase
-        .from('front')
-        .update(updatedValues)
-        .eq('center_id', addExchangeToTheFront.center_id)
-        .single();
-
-      if (updateError) {
-        throw updateError;
-      }
-
-      return true;
-    } catch (error) {
-      console.error('Error adding task to front:', error);
-      // Handle the error appropriately
       throw error;
     }
   }
@@ -141,75 +81,30 @@ export class FrontService {
    */
   async deleteTaskFromFront(
     deleteExchnageFromFront: DeleteExchangeFromFrontDto,
-  ) {
-    const size = deleteExchnageFromFront.box_size;
-    const center_id = deleteExchnageFromFront.center_id;
+  ): Promise<boolean> {
+    const size = deleteExchnageFromFront.boxSize;
+    const frontId = deleteExchnageFromFront.frontId;
 
     try {
       // Fetch the current data
-      const { data: currentData, error: fetchError } = await supabase
-        .from('front')
-        .select(`number_of_${size}_boxes, number_of_tasks_in_front`)
-        .eq('center_id', center_id)
-        .single();
-
-      if (fetchError) {
-        throw fetchError;
+      const front = await this.frontRepository.findOne({
+        where: { id: frontId },
+      });
+      if (!front) {
+        throw new Error('Front not found');
       }
 
-      const front = currentData as any;
-
+      front[`numberOf${size}Boxes`] = front[`numberOf${size}Boxes`] - 1;
+      front.numberOfTasksInFront = front.numberOfTasksInFront - 1;
       // Compute updated values
-      const updatedValues = {
-        [`number_of_${size}_boxes`]: Math.max(
-          (currentData[`number_of_${size}_boxes`] ?? 0) - 1,
-          0,
-        ),
-        number_of_tasks_in_front: Math.max(
-          (front.number_of_tasks_in_front ?? 0) - 1,
-          0,
-        ),
-      };
 
-      // Update the 'front' table
-      const { error: updateError } = await supabase
-        .from('front')
-        .update(updatedValues)
-        .eq('center_id', center_id);
-
-      if (updateError) {
-        throw updateError;
-      }
+      // Update the 'front' entity
+      await this.frontRepository.save(front);
 
       return true;
     } catch (err) {
       console.error(err);
       return false;
-    }
-  }
-
-  /**
-   * Asynchronously retrieves the center ID associated with a given front ID from the database.
-   * Queries the 'center' table and returns the center's ID.
-   *
-   * @param {number} id - Front ID for which the center ID is fetched.
-   * @returns {Promise<number>} Resolves to the center's ID.
-   */
-  async getCenterIdByFront(id: number): Promise<number> {
-    try {
-      const { data, error } = await supabase
-        .from('center')
-        .select('id')
-        .eq('front_id', id)
-        .single();
-
-      if (error) {
-        throw new Error(`Error fetching center ID: ${error.message}`);
-      }
-
-      return parseInt(data.id.toString());
-    } catch (error) {
-      console.error('Error in getCenterIdByFront function:', error);
     }
   }
 

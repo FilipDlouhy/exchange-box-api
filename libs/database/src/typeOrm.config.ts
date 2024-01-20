@@ -8,11 +8,11 @@ import { Item } from './entities/item.entity';
 
 export const databaseConfig: TypeOrmModuleOptions = {
   type: 'mysql',
-  host: '127.0.0.1', // Use the environment variable or default to '127.0.0.1'
-  port: 3306, // Use the environment variable or default to 3306
-  database: 'nestjs_typeorm', // Use the environment variable or default to 'nestjs_typeorm'
-  username: 'root', // Use the environment variable or default to 'root'
-  password: 'randomrootpassword', // Use the environment variable or default to 'randomrootpassword'
+  host: process.env.MYSQL_HOST || '127.0.0.1',
+  port: parseInt(process.env.MYSQL_PORT, 10) || 3306,
+  database: process.env.MYSQL_DATABASE || 'exchangeBox',
+  username: process.env.MYSQL_USERNAME || 'root',
+  password: process.env.MYSQL_PASSWORD || 'randomrootpassword',
   entities: [Front, User, Center, Exchange, Box, Item],
   autoLoadEntities: true,
   synchronize: true,

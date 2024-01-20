@@ -4,12 +4,10 @@ import { exchangeessagePatterns } from '@app/tcp/exchange.message.patterns';
 import { MessagePattern } from '@nestjs/microservices';
 import { CreateExchangeDto } from '@app/dtos/exchangeDtos/create.exchange.dto';
 import { ExchangeDto } from '@app/dtos/exchangeDtos/exchange.dto';
-import { DeleteExchangeDto } from '@app/dtos/exchangeDtos/delete.exchange.dto';
 import { UpdateExchangeDto } from '@app/dtos/exchangeDtos/update.exchange.dto';
-import { ExchangeWithUseDto } from '@app/dtos/exchangeDtos/exchange.with.users.dto';
-import { FullExchangeDto } from '@app/dtos/exchangeDtos/full.exchange.dto';
+import { ExchangeWithUserDto } from '@app/dtos/exchangeDtos/exchange.with.users.dto';
 import { AddExchangeToFrontDto } from '@app/dtos/exchangeDtos/add.exchange.to.front..dto';
-import { DeleteExchangeFromFrontDto } from '@app/dtos/exchangeDtos/delete.exchange.from.front.dto';
+import { Exchange } from '@app/database/entities/exchange.entity';
 import { ChangeExchangeStatusDto } from '@app/dtos/exchangeDtos/change.exchange.status.dto';
 
 @Controller()
@@ -24,9 +22,7 @@ export class ExchangeController {
       forbidNonWhitelisted: true,
     }),
   )
-  async createExchange(
-    createExchangeDto: CreateExchangeDto,
-  ): Promise<ExchangeDto> {
+  async createExchange(createExchangeDto: CreateExchangeDto) {
     return await this.exchangeService.createExchange(createExchangeDto);
   }
 
@@ -38,8 +34,8 @@ export class ExchangeController {
       forbidNonWhitelisted: true,
     }),
   )
-  async deleteExchange(deleteExchangeDto: DeleteExchangeDto): Promise<boolean> {
-    return await this.exchangeService.deleteExchange(deleteExchangeDto);
+  async deleteExchange({ id }: { id: number }): Promise<boolean> {
+    return await this.exchangeService.deleteExchange(id);
   }
 
   @MessagePattern(exchangeessagePatterns.updateExchange)
@@ -61,7 +57,7 @@ export class ExchangeController {
     id,
   }: {
     id: number;
-  }): Promise<ExchangeWithUseDto[]> {
+  }): Promise<ExchangeWithUserDto[]> {
     return await this.exchangeService.getExchangesByUser(id, true);
   }
 
@@ -70,17 +66,17 @@ export class ExchangeController {
     id,
   }: {
     id: number;
-  }): Promise<ExchangeWithUseDto[]> {
+  }): Promise<ExchangeWithUserDto[]> {
     return await this.exchangeService.getExchangesByUser(id, false);
   }
 
   @MessagePattern(exchangeessagePatterns.getFullExchange)
-  async getFullExchangeull({ id }: { id: number }): Promise<FullExchangeDto> {
+  async getFullExchange({ id }: { id: number }) {
     return await this.exchangeService.getFullExchange(id);
   }
 
   @MessagePattern(exchangeessagePatterns.getAllExchanges)
-  async getAllExchanges(): Promise<ExchangeWithUseDto[]> {
+  async getAllExchanges(): Promise<ExchangeWithUserDto[]> {
     return await this.exchangeService.getAllExchanges();
   }
 
@@ -94,7 +90,7 @@ export class ExchangeController {
   )
   async addExchangeToTheFront(
     addExchangeToTheFront: AddExchangeToFrontDto,
-  ): Promise<AddExchangeToFrontDto> {
+  ): Promise<Exchange> {
     return await this.exchangeService.addExchangeToTheFront(
       addExchangeToTheFront,
     );
@@ -108,10 +104,8 @@ export class ExchangeController {
       forbidNonWhitelisted: true,
     }),
   )
-  async deleteExchangeFromFront(deleteExchangeDto: DeleteExchangeFromFrontDto) {
-    return await this.exchangeService.deleteExchangeFromFront(
-      deleteExchangeDto,
-    );
+  async deleteExchangeFromFront({ boxId }: { boxId: number }) {
+    return await this.exchangeService.deleteExchangeFromFront(boxId);
   }
 
   @MessagePattern(exchangeessagePatterns.changeExchangeStatus)
@@ -127,7 +121,6 @@ export class ExchangeController {
       changeExchangeStatus,
     );
   }
-
   @MessagePattern(exchangeessagePatterns.getBoxSize)
   async getBoxSize({ id }: { id: number }): Promise<string> {
     return await this.exchangeService.getBoxSize(id);

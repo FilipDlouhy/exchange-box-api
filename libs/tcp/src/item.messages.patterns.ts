@@ -9,9 +9,8 @@ export const itemMessagePatterns = {
   retrieveItemSizesAndCheckExchange: {
     cmd: 'retrieveItemSizesAndCheckExchange',
   },
-  addExchangeId: { cmd: 'addExchangeId' },
+  addExchangeToItems: { cmd: 'addExchangeToItems' },
   deleteExchangeFromItems: { cmd: 'deleteExchangeFromItems' },
-  getItemsForExchange: { cmd: 'getItemsForExchange' },
   getItemsForIdsExchange: { cmd: 'getItemsForIdsExchange' },
   uploadItemImage: { cmd: 'uploadItemImage' },
   getItemImage: { cmd: 'getItemImage' },

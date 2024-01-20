@@ -2,13 +2,16 @@ import { IsInt, IsString, IsNotEmpty, IsOptional } from 'class-validator';
 
 export class ItemDto {
   @IsInt()
-  lengthInCm: number;
+  @IsOptional()
+  lengthInCm?: number;
 
   @IsInt()
-  widthInCm: number;
+  @IsOptional()
+  widthInCm?: number;
 
   @IsInt()
-  heightInCm: number;
+  @IsOptional()
+  heightInCm?: number;
 
   @IsString()
   @IsNotEmpty()
@@ -28,22 +31,27 @@ export class ItemDto {
 
   @IsString()
   @IsOptional()
-  imageURL: string | undefined;
+  imageURL?: string;
 
-  updatedAt: Date;
-
-  constructor(itemData: {
-    length: number;
-    width: number;
-    height: number;
-    name: string;
-    userId: number;
-    friendId: number;
-    weight: number;
-    id: number;
-    imageURL?: string;
-    updatedAt: Date;
-  }) {
-    Object.assign(this, itemData);
+  constructor(
+    name: string,
+    userId: number,
+    friendId: number,
+    weightInGrams: number,
+    id: number,
+    lengthInCm?: number,
+    widthInCm?: number,
+    heightInCm?: number,
+    imageURL?: string,
+  ) {
+    this.name = name;
+    this.userId = userId;
+    this.friendId = friendId;
+    this.weightInGrams = weightInGrams;
+    this.id = id;
+    this.lengthInCm = lengthInCm;
+    this.widthInCm = widthInCm;
+    this.heightInCm = heightInCm;
+    this.imageURL = imageURL;
   }
 }

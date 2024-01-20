@@ -2,7 +2,6 @@ import { Controller, UsePipes, ValidationPipe } from '@nestjs/common';
 import { CenterService } from './center.service';
 import { MessagePattern } from '@nestjs/microservices';
 import { centerMessagePatterns } from '@app/tcp/center.message.patterns';
-import { CreateCenterDto } from '@app/dtos/centerDtos/create.center.dto';
 import { CenterDto } from '@app/dtos/centerDtos/center.dto';
 import { CenterWithFrontDto } from '@app/dtos/centerDtos/center.with.front.dto';
 import { UpdateCenterDto } from '@app/dtos/centerDtos/update.center.dto';
@@ -11,21 +10,6 @@ import { GetCenterDto } from '@app/dtos/centerDtos/get.center.dto';
 @Controller()
 export class CenterController {
   constructor(private readonly centerService: CenterService) {}
-
-  // Create a new center and return its information.
-  @MessagePattern(centerMessagePatterns.createCenter)
-  @UsePipes(
-    new ValidationPipe({
-      transform: true,
-      whitelist: true,
-      forbidNonWhitelisted: true,
-    }),
-  )
-  async createCenterateUser(
-    createCenterDto: CreateCenterDto,
-  ): Promise<CenterDto> {
-    return this.centerService.createCenter(createCenterDto);
-  }
 
   // Update an existing center and return its updated information.
   @MessagePattern(centerMessagePatterns.updateCenter)
@@ -46,6 +30,11 @@ export class CenterController {
   @MessagePattern(centerMessagePatterns.getCenters)
   async getCenters(): Promise<CenterDto[]> {
     return this.centerService.getCenters();
+  }
+
+  @MessagePattern(centerMessagePatterns.getCenter)
+  async getCenter({ id }: { id: number }): Promise<CenterDto> {
+    return this.centerService.getCenter(id);
   }
 
   // Delete a center by its ID and return a boolean indicating success or failure.

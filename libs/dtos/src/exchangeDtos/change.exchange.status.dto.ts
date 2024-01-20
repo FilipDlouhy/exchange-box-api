@@ -8,9 +8,4 @@ export class ChangeExchangeStatusDto {
   @IsNotEmpty()
   @IsInt()
   public id: number;
-
-  constructor(exchangeState: string, id: number) {
-    this.exchangeState = exchangeState;
-    this.id = id;
-  }
 }

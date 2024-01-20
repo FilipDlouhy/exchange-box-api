@@ -1,5 +1,3 @@
-import { AddBoxToExchangeDto } from '@app/dtos/boxDtos/add.box.to.exhange';
-import { supabase } from '@app/database';
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { generateRandomString } from './helpers/string.helper';
@@ -7,21 +5,17 @@ import { SchedulerRegistry } from '@nestjs/schedule';
 import { ClientProxyFactory, Transport } from '@nestjs/microservices';
 import { exchangeessagePatterns } from '@app/tcp/exchange.message.patterns';
 import { OpenBoxDto } from '@app/dtos/boxDtos/open.box.dto';
-import { frontMessagePatterns } from '@app/tcp/front.message.patterns';
+import { Box } from '@app/database/entities/box.entity';
+import { InjectRepository } from '@nestjs/typeorm';
+import { IsNull, Not, Repository } from 'typeorm';
 @Injectable()
 export class BoxService implements OnModuleInit {
-  private readonly frontClient;
   private readonly exchangeClient;
-
-  constructor(private schedulerRegistry: SchedulerRegistry) {
-    this.frontClient = ClientProxyFactory.create({
-      transport: Transport.TCP,
-      options: {
-        host: 'localhost',
-        port: 3003,
-      },
-    });
-
+  constructor(
+    private schedulerRegistry: SchedulerRegistry,
+    @InjectRepository(Box)
+    private readonly boxRepository: Repository<Box>,
+  ) {
     this.exchangeClient = ClientProxyFactory.create({
       transport: Transport.TCP,
       options: {
@@ -30,77 +24,45 @@ export class BoxService implements OnModuleInit {
       },
     });
   }
-
   /**
    * Asynchronously initializes the module to handle box creation and scheduling.
    * It fetches existing boxes from the database and updates their status based on specific criteria.
    * Additionally, it sets a timeout to handle box deletion or further processing.
    */
   async onModuleInit() {
-    const { data, error } = await supabase
-      .from('box')
-      .select()
-      .not('time_to_open_box', 'is', null);
-
-    data.map(async (box) => {
+    const boxes = await this.boxRepository.find({
+      where: {
+        timeToPutInBox: Not(IsNull()),
+      },
+    });
+    boxes.map(async (box) => {
       const currentDate = new Date();
-
       const timeToPutItemsIntoTheBox = new Date(
         currentDate.getTime() + 2 * 60 * 60 * 1000,
       );
 
-      await supabase
-        .from('box')
-        .update({
-          time_to_put_in_box: timeToPutItemsIntoTheBox,
-        })
-        .eq('id', box.id)
-        .single();
+      box.timeToPutInBox = timeToPutItemsIntoTheBox;
+
+      // Save the new box entity to the database
+      await this.boxRepository.save(box);
 
       const deleteExchangeFromFront = setTimeout(async () => {
         try {
-          if (!box.items_in_box) {
-            const response: number = await this.frontClient
-              .send(
-                { cmd: frontMessagePatterns.getCenterIdByFront.cmd },
-                {
-                  id: box.front_id,
-                },
-              )
-              .toPromise();
-
-            // Fetch the box size and delete the exchange from the front if applicable
-            await this.exchangeClient
-              .send(
-                { cmd: exchangeessagePatterns.getBoxSize.cmd },
-                {
-                  id: box.exchange_id,
-                },
-              )
-              .toPromise();
-
-            await this.exchangeClient
-              .send(
-                { cmd: exchangeessagePatterns.deleteExchangeFromFront.cmd },
-                {
-                  box_size: box.box_size,
-                  center_id: response,
-                  id: box.exchange_id,
-                },
-              )
-              .toPromise();
-
-            // Delete the box from the database
-            await supabase.from('box').delete().eq('id', box.id);
-          }
-
+          await this.exchangeClient
+            .send(
+              { cmd: exchangeessagePatterns.deleteExchangeFromFront.cmd },
+              {
+                boxId: box.id,
+              },
+            )
+            .toPromise();
+          this.boxRepository.delete(box.id);
           console.log('Box deleted successfully');
         } catch (timeoutError) {
           // Handle any errors during the timeout processing
           console.error('Error during timeout processing:', timeoutError);
         }
       }, 7200000); // 2 hours in milliseconds
-
       // Register the timeout in the scheduler
       this.schedulerRegistry.addTimeout(
         `timeout set for box ${box.id}`,
@@ -108,102 +70,64 @@ export class BoxService implements OnModuleInit {
       );
     });
   }
-
   /**
    * Asynchronously creates a box for an exchange and schedules its availability based on provided criteria.
    * This function also generates a random password for the box, hashes it, and inserts the box data into the database.
    * Additionally, it sets a timeout to process the box after a delay, based on the time calculated for the box to be opened.
    */
-  async createBoxForExchange(addBoxToExchangeDto: AddBoxToExchangeDto) {
+  async createBoxForExchange() {
     try {
       // Calculate the time difference to determine when the box can be opened
       const currentDate = new Date();
-
       // Add 2 hours (2 * 60 * 60 * 1000 milliseconds) to it
       const timeToPutItemsIntoTheBox = new Date(
         currentDate.getTime() + 2 * 60 * 60 * 1000,
       );
-
       // Insert the new box data into the 'box' table
-      const { data: boxId, error: insertError } = await supabase
-        .from('box')
-        .insert([
-          {
-            time_to_put_in_box: timeToPutItemsIntoTheBox,
-            exchange_id: addBoxToExchangeDto.exchange_id,
-            front_id: addBoxToExchangeDto.front_id,
-          },
-        ])
-        .select('id')
-        .single();
+      const box = new Box();
+      box.timeToPutInBox = timeToPutItemsIntoTheBox;
 
-      if (insertError) {
-        throw insertError;
-      }
+      // Save the new box entity to the database
+      const insertedBox = await this.boxRepository.save(box);
 
       // Set a timeout to process the message after a delay based on the time to open the box
       const deleteExchangeFromFront = setTimeout(async () => {
         try {
           // Check if the box has items in it
-          const { data, error } = await supabase
-            .from('box')
-            .select()
-            .eq('id', boxId.id)
-            .single();
-
-          if (error) {
-            throw error;
-          }
-
-          if (!data.items_in_box) {
-            // Handle the case when the box is empty
-            // Retrieve associated items and delete exchange from front
-            const response: number = await this.frontClient
-              .send(
-                { cmd: frontMessagePatterns.getCenterIdByFront.cmd },
-                {
-                  id: addBoxToExchangeDto.front_id,
-                },
-              )
-              .toPromise();
-
-            await this.exchangeClient
-              .send(
-                { cmd: exchangeessagePatterns.deleteExchangeFromFront.cmd },
-                {
-                  box_size: addBoxToExchangeDto.box_size,
-                  center_id: response,
-                  id: addBoxToExchangeDto.exchange_id,
-                },
-              )
-              .toPromise();
-
-            await supabase.from('box').delete().eq('id', boxId.id);
-          }
-
+          await this.exchangeClient
+            .send(
+              { cmd: exchangeessagePatterns.deleteExchangeFromFront.cmd },
+              {
+                boxId: insertedBox.id,
+              },
+            )
+            .toPromise();
           console.log('Box deleted successfully');
+
+          await this.boxRepository.delete(insertedBox.id);
         } catch (timeoutError) {
           console.error('Error during timeout processing:', timeoutError);
           // Handle timeout error
         }
       }, 7200000);
-
       // Register the timeout in the scheduler
       this.schedulerRegistry.addTimeout(
-        `timeout set for box ${boxId.id}`,
+        `timeout set for box ${insertedBox.id}`,
         deleteExchangeFromFront,
       );
+
+      return insertedBox;
     } catch (error) {
       console.error('Error in createBoxForExchange function:', error);
       // Handle general errors
     }
   }
-
   /**
-  Generates a secure random password for a box associated with the given ID.
-  @param {number} id - The exchange's ID linked to the box.
-  @returns {Promise<string>} - Resolves with the generated password.
-  */
+   Generates a secure random password for a box associated with the given ID.
+   @param {number} id - The exchange's ID linked to the box.
+   @returns {Promise<string>} - Resolves with the generated password.
+   */
+
   async generateCodeForBoxToOpen(id: number): Promise<string> {
     try {
       // Get the current time and calculate the future time when the box can be opened
@@ -214,14 +138,22 @@ export class BoxService implements OnModuleInit {
       const passwordToOpenBox = generateRandomString(4);
       const hashedPassword = await bcrypt.hash(passwordToOpenBox, 10);
 
-      // Update the 'box' record in the database with the new hashed password and opening time
-      await supabase
-        .from('box')
-        .update({
-          box_open_code: hashedPassword,
-          time_to_open_box: futureTime,
-        })
-        .eq('exchange_id', id);
+      // Find the box by exchange_id
+      const box = await this.boxRepository.findOne({ where: { id: id } });
+
+      if (box.itemsInBox) {
+        throw new Error('Items are in box');
+      }
+
+      if (!box) {
+        console.error(`No box found with exchange id ${id}`);
+        throw new Error('Error generating code for box to open');
+      }
+
+      // Update the 'box' entity with the new hashed password and opening time
+      box.boxOpenCode = hashedPassword;
+      box.timeToPutInBox = futureTime;
+      await this.boxRepository.save(box);
 
       // Return the plain text password for use elsewhere
       return passwordToOpenBox;
@@ -231,84 +163,66 @@ export class BoxService implements OnModuleInit {
       throw error;
     }
   }
-
   /**
    * Asynchronously opens a box, performing checks and updates based on the provided DTO.
    * Retrieves box data, verifies the code, checks timing constraints, and updates the box's status.
    * Sets a timeout for auto-closing the box after a specified duration.
    *
    * @param {object} openBoxDto - DTO with info for opening the box.
-   * @param {number} openBoxDto.exchange_id - Unique identifier of the associated exchange.
+   * @param {number} openBoxDto.id - Unique identifier of the associated exchange.
    * @param {string} openBoxDto.code - Security code for box opening.
    */
   async openBox(openBoxDto: OpenBoxDto) {
     try {
-      // Fetching the box data from the database based on exchange_id
-      const { data: boxData } = await supabase
-        .from('box')
-        .select('box_open_code, time_to_open_box, id')
-        .eq('exchange_id', openBoxDto.exchangeId)
-        .single();
+      const box = await this.boxRepository.findOne({
+        where: { id: openBoxDto.id },
+      });
 
-      // If no box data is found, throw an error
-      if (!boxData) {
-        throw new Error('Box not found');
-      }
-
-      const { box_open_code, time_to_open_box, id } = boxData;
-
+      const { boxOpenCode, timeToPutInBox } = box;
       // Checking if the current time allows for the box to be opened
       const currentTime = new Date();
-      if (currentTime > new Date(time_to_open_box)) {
+      if (currentTime < new Date(timeToPutInBox)) {
         throw new Error('Box cannot be opened');
       }
-
       // Comparing the provided code with the stored box open code
       const codeMatches = await bcrypt.compare(
         openBoxDto.openBoxCode,
-        box_open_code,
+        boxOpenCode,
       );
       if (!codeMatches) {
         throw new Error('Incorrect code');
       }
-
       // Updating the box status to open in the database
-      await supabase
-        .from('box')
-        .update({
-          box_open_code: null,
-          items_in_box: true,
-          time_to_open_box: null,
-          open_or_closed: true,
-        })
-        .eq('id', id);
+      box.boxOpenCode = null;
+      box.itemsInBox = true;
+      box.timeToPutInBox = null;
+      box.openOrClosed = true;
+      await this.boxRepository.save(box);
 
       // Setting a timeout to automatically close the box after 60 seconds
       const closeBox = setTimeout(async () => {
         try {
-          // Updating the box status to closed in the database
-          await supabase
-            .from('box')
-            .update({
-              open_or_closed: false,
-            })
-            .eq('id', id);
+          const box = await this.boxRepository.findOne({
+            where: { id: openBoxDto.id },
+          });
+
+          box.openOrClosed = false;
+
+          await this.boxRepository.save(box);
         } catch (timeoutError) {
           console.error('Error during timeout processing:', timeoutError);
         }
-
         await this.exchangeClient
           .send(
             { cmd: exchangeessagePatterns.changeExchangeStatus.cmd },
             {
               exchange_state: 'inBox',
-              id: openBoxDto.exchangeId,
+              id: openBoxDto.id,
             },
           )
           .toPromise();
       }, 6000);
-
-      // Registering the timeout in the scheduler
+      //     // Registering the timeout in the scheduler
       this.schedulerRegistry.addTimeout('box is closing', closeBox);
     } catch (error) {
       // Handling any errors that occur during the box

@@ -4,9 +4,10 @@ import {
   IsArray,
   ValidateNested,
   IsNotEmpty,
+  IsDate,
+  IsOptional,
 } from 'class-validator';
-import { Type } from 'class-transformer';
-import { ExchangeItemDto } from '../itemDtos/exchange.item.dto';
+import { Item } from '@app/database/entities/item.entity';
 
 export class ExchangeDto {
   @IsNotEmpty()
@@ -24,24 +25,29 @@ export class ExchangeDto {
   @IsNotEmpty()
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => ExchangeItemDto)
-  public items: ExchangeItemDto[];
+  public items: Item[];
 
   @IsNotEmpty()
   @IsInt()
   public id: number;
 
+  @IsOptional()
+  @IsDate()
+  public pickUpDate: Date | null;
+
   constructor(
     creatorId: number,
     pickUpPersonId: number,
     boxSize: string,
-    items: ExchangeItemDto[],
+    items: Item[],
     id: number,
+    pickUpDate: Date | null = null,
   ) {
     this.creatorId = creatorId;
     this.pickUpPersonId = pickUpPersonId;
     this.boxSize = boxSize;
     this.items = items;
     this.id = id;
+    this.pickUpDate = pickUpDate;
   }
 }

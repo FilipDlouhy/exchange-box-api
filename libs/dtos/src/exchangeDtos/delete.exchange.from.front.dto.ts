@@ -1,4 +1,4 @@
-import { IsInt, IsNotEmpty, Min } from 'class-validator';
+import { IsInt, IsNotEmpty, Min, IsArray } from 'class-validator';
 
 export class DeleteExchangeFromFrontDto {
   @IsNotEmpty()
@@ -11,11 +11,17 @@ export class DeleteExchangeFromFrontDto {
   @IsNotEmpty()
   @IsInt()
   @Min(1)
-  public centerId: number;
+  public frontId: number;
+
+  @IsNotEmpty()
+  @IsArray()
+  @IsInt({ each: true })
+  public itemIds: number[];
 
   constructor() {
     this.id = 0;
-    this.centerId = 0;
+    this.frontId = 0;
     this.boxSize = '';
+    this.itemIds = [];
   }
 }

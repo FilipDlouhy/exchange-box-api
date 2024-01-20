@@ -1,4 +1,15 @@
+import { IsNotEmpty, IsNumber } from 'class-validator';
+
 export class UpdateCenterDto {
-  name: string;
+  @IsNotEmpty()
+  @IsNumber()
+  latitude: number;
+
+  @IsNotEmpty()
+  @IsNumber()
+  longitude: number;
+
+  @IsNotEmpty()
+  @IsNumber()
   id: number;
 }

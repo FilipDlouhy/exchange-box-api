@@ -4,13 +4,8 @@ export class OpenBoxDto {
   @IsInt()
   @Min(1)
   @IsNotEmpty()
-  exchangeId: number;
+  id: number;
 
   @IsNotEmpty()
   openBoxCode: string;
-
-  constructor(exchangeId: number, openBoxCode: string) {
-    this.exchangeId = exchangeId;
-    this.openBoxCode = openBoxCode;
-  }
 }

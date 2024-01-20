@@ -8,7 +8,6 @@ import { UpdateItemDto } from '@app/dtos/itemDtos/update.item.dto';
 import { ItemWithUsersDto } from '@app/dtos/itemDtos/item.with.users.dto';
 import { ItemSizeDto } from '@app/dtos/itemDtos/item.size.dto';
 import { ToggleExchangeToItemDto } from '@app/dtos/itemDtos/toggle.exchange.id.dto';
-import { ExchangeItemDto } from '@app/dtos/itemDtos/exchange.item.dto';
 import { UploadItemImageDto } from '@app/dtos/itemDtos/upload.item.image.dto';
 
 @Controller()
@@ -87,18 +86,9 @@ export class ItemController {
   }
 
   // Retrieve an item based on its ID
-  @MessagePattern(itemMessagePatterns.addExchangeId)
-  @UsePipes(
-    new ValidationPipe({
-      transform: true,
-      whitelist: true,
-      forbidNonWhitelisted: true,
-    }),
-  )
-  async addExchangeIdToItem(
-    addExchangeIdToItemDto: ToggleExchangeToItemDto,
-  ): Promise<ExchangeItemDto[]> {
-    return await this.itemService.addExchangeIdToItem(addExchangeIdToItemDto);
+  @MessagePattern(itemMessagePatterns.addExchangeToItems)
+  async addExchangeIdToItem(addExchangeIdToItemDto: ToggleExchangeToItemDto) {
+    return await this.itemService.addExchangeToItems(addExchangeIdToItemDto);
   }
 
   @MessagePattern(itemMessagePatterns.deleteExchangeFromItems)
@@ -109,30 +99,12 @@ export class ItemController {
       forbidNonWhitelisted: true,
     }),
   )
-  async deleteExchangeFromItems(
-    removeExchangeIdToItemDto: ToggleExchangeToItemDto,
-  ): Promise<boolean> {
-    return await this.itemService.deleteExchangeFromItems(
-      removeExchangeIdToItemDto,
-    );
-  }
-
-  @MessagePattern(itemMessagePatterns.getItemsForExchange)
-  async getItemsForOrIdsExchange({
-    id,
+  async deleteExchangeFromItems({
+    itemIds,
   }: {
-    id: number;
-  }): Promise<ItemDto[] | number[]> {
-    return await this.itemService.getItemsForOrIdsExchange(id, false);
-  }
-
-  @MessagePattern(itemMessagePatterns.getItemsForIdsExchange)
-  async getItemsForIdsExchange({
-    id,
-  }: {
-    id: number;
-  }): Promise<ItemDto[] | number[]> {
-    return await this.itemService.getItemsForOrIdsExchange(id, true);
+    itemIds: number[];
+  }): Promise<boolean> {
+    return await this.itemService.deleteExchangeFromItems(itemIds);
   }
 
   @MessagePattern(itemMessagePatterns.uploadItemImage)

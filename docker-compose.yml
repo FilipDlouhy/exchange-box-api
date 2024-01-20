@@ -1,13 +1,7 @@
-version: '3.4'
 services:
   mysql:
-    image: mysql:latest
-    environment:
-      MYSQL_DATABASE: ${MYSQL_DATABASE}
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-    volumes:
-      - mysql-data:/var/lib/mysql
+    image: mysql
+    env_file:
+      - .env
     ports:
       - '3306:3306'
-volumes:
-  mysql-data:

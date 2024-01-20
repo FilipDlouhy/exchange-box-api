@@ -27,11 +27,11 @@ export class Item {
   name: string = '';
 
   @ManyToOne(() => User, (user) => user.items)
-  @JoinColumn({ name: 'user_id' })
+  @JoinColumn({ name: 'userId' })
   user: User;
 
   @ManyToOne(() => User, (user) => user.friends)
-  @JoinColumn({ name: 'friend_id' })
+  @JoinColumn({ name: 'friendId' })
   friend: User;
 
   @Column()
@@ -40,7 +40,7 @@ export class Item {
   @Column({ nullable: true })
   imageUrl: string;
 
-  @OneToOne(() => Exchange, (exchange) => exchange.item)
-  @JoinColumn({ name: 'exchange_id' })
+  @ManyToOne(() => Exchange, (exchange) => exchange.items)
+  @JoinColumn({ name: 'exchangeId' })
   exchange: Exchange;
 }

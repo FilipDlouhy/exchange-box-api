@@ -6,9 +6,12 @@ import {
   JoinColumn,
   ManyToOne,
   UpdateDateColumn,
+  OneToMany,
 } from 'typeorm';
 import { User } from './user.entity';
 import { Front } from './front.entity';
+import { Item } from './item.entity';
+import { Box } from './box.entity';
 
 @Entity()
 export class Exchange {
@@ -21,23 +24,27 @@ export class Exchange {
   @UpdateDateColumn()
   updatedAt: Date;
 
-  @Column({ type: 'date' })
+  @Column({ type: 'date', nullable: true })
   pickUpDate: Date;
 
-  @Column()
+  @Column({ nullable: true })
   price: number;
 
-  @Column({ type: 'date' })
+  @Column({ type: 'date', nullable: true })
   timeElapsedSincePickUpDate: Date;
 
-  @ManyToOne(() => User, (user) => user.exchanges)
-  user: User;
+  @OneToMany(() => Item, (item) => item.exchange)
+  items: Item[];
 
-  @OneToOne(() => User, { cascade: true })
+  @ManyToOne(() => User, { cascade: true }) // Changed to ManyToOne
   @JoinColumn()
   friend: User;
 
-  @Column()
+  @ManyToOne(() => User, { cascade: true }) // Changed to ManyToOne
+  @JoinColumn()
+  user: User;
+
+  @Column({ nullable: true })
   pickUpCode: string;
 
   @Column()
@@ -46,7 +53,10 @@ export class Exchange {
   @Column()
   exchangeState: string;
 
-  @OneToOne(() => Front, { cascade: true })
+  @OneToOne(() => Box, { cascade: true })
   @JoinColumn()
+  box: Box;
+
+  @ManyToOne(() => Front, (front) => front.exchanges)
   front: Front;
 }

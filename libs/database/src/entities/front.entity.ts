@@ -14,34 +14,36 @@ export class Front {
   id: number;
 
   @Column()
-  number_of_tasks_in_front: number;
+  numberOfTasksInFront: number;
 
   @Column()
-  total_number_of_tasks: number;
+  totalNumberOfTasks: number;
+
+  @Column({ default: 0, nullable: true })
+  numberOfLargeBoxes: number;
+
+  @Column({ default: 0, nullable: true })
+  numberOfMediumBoxes: number;
+
+  @Column({ default: 0, nullable: true })
+  numberOfSmallBoxes: number;
 
   @Column()
-  total_number_of_large_boxes: number;
+  numberOfLargeBoxesTotal: number;
 
   @Column()
-  total_number_of_medium_boxes: number;
+  numberOfMediumBoxesTotal: number;
 
   @Column()
-  total_number_of_small_boxes: number;
+  numberOfSmallBoxesTotal: number;
 
-  @Column()
-  total_number_of_large_boxes_total: number;
-
-  @Column()
-  total_number_of_medium_boxes_total: number;
-
-  @Column()
-  total_number_of_small_boxes_total: number;
-
-  @OneToMany(() => Exchange, (exchange) => exchange.front, { cascade: true })
+  @OneToMany(() => Exchange, (exchange) => exchange.front, {
+    cascade: ['remove'],
+  })
   exchanges: Exchange[];
 
   @UpdateDateColumn()
-  updated_at: Date;
+  updatedAt: Date;
 
   constructor(front: Partial<Front>) {
     Object.assign(this, front);
