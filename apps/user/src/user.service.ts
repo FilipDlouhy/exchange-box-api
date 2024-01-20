@@ -6,15 +6,21 @@ import { UserDto } from '@app/dtos/userDtos/user.dto';
 import {
   deleteFileFromFirebase,
   getImageUrlFromFirebase,
-  supabase,
   updateFileInFirebase,
   uploadFileToFirebase,
 } from '@app/database';
 import { Injectable } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
+import { InjectRepository } from '@nestjs/typeorm';
+import { User } from '@app/database/entities/user.entity';
+import { Repository } from 'typeorm';
 
 @Injectable()
 export class UserService {
+  constructor(
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
+  ) {}
   /**
    * Creates a new user in the 'user' table using the provided CreateUserDto.
    * It hashes the password before storing it in the database.
@@ -24,26 +30,11 @@ export class UserService {
    */
   async createUser(createUserDto: CreateUserDto): Promise<UserDto> {
     try {
-      const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
+      createUserDto.password = await bcrypt.hash(createUserDto.password, 10);
 
-      const { data, error } = await supabase
-        .from('user')
-        .insert([
-          {
-            name: createUserDto.name,
-            email: createUserDto.email,
-            password: hashedPassword,
-            created_at: new Date(),
-            updated_at: new Date(),
-          },
-        ])
-        .select('id, name, email')
-        .single();
-
-      if (error) throw error;
-
-      const newUser = new UserDto(data.name, data.email, data.id);
-      return newUser;
+      const user = await this.userRepository.save(createUserDto);
+      const newUserDto = new UserDto(user.name, user.email, user.id);
+      return newUserDto;
     } catch (err) {
       console.error('Error creating user:', err);
       throw new Error('Error creating user');
@@ -58,16 +49,24 @@ export class UserService {
    */
   async getUser(id: number): Promise<UserDto> {
     try {
-      const { data, error } = await supabase
-        .from('user')
-        .select('id, name, email')
-        .eq('id', id)
-        .single();
+      const user = await this.userRepository.findOne({
+        where: { id },
+      });
 
-      if (error) throw error;
+      return new UserDto(user.name, user.email, user.id, user.imageUrl);
+    } catch (err) {
+      console.error('Error retrieving user:', err);
+      throw new Error('Error retrieving user');
+    }
+  }
 
-      const foundUser = new UserDto(data.name, data.email, data.id);
-      return foundUser;
+  async getUserForItemUpdate(id: number): Promise<User> {
+    try {
+      const user = await this.userRepository.findOne({
+        where: { id },
+      });
+
+      return user;
     } catch (err) {
       console.error('Error retrieving user:', err);
       throw new Error('Error retrieving user');
@@ -85,21 +84,24 @@ export class UserService {
     try {
       const hashedPassword = await bcrypt.hash(updateUserDto.password, 10);
 
-      const { data, error } = await supabase
-        .from('user')
-        .update({
-          name: updateUserDto.name,
-          email: updateUserDto.email,
-          password: hashedPassword,
-          updated_at: new Date(),
-        })
-        .eq('id', updateUserDto.id)
-        .select('id, name, email')
-        .single();
+      // Find the user first
+      const user = await this.userRepository.findOne({
+        where: { id: updateUserDto.id },
+      });
+      if (!user) {
+        throw new Error('User not found');
+      }
 
-      if (error) throw error;
+      // Update user properties
+      user.name = updateUserDto.name;
+      user.email = updateUserDto.email;
+      user.password = hashedPassword;
 
-      const updatedUser = new UserDto(data.name, data.email, data.id);
+      // Save the updated user
+      await this.userRepository.save(user);
+
+      // Return the updated user data (omit sensitive fields like password)
+      const updatedUser = new UserDto(user.name, user.email, user.id);
       return updatedUser;
     } catch (err) {
       console.error('Error updating user:', err);
@@ -114,19 +116,15 @@ export class UserService {
    */
   async getUsers(): Promise<UserDto[]> {
     try {
-      const { data, error } = await supabase
-        .from('user')
-        .select('id, name, email, image_url');
-      if (error) throw error;
+      const users = await this.userRepository.find({
+        select: ['id', 'name', 'email', 'imageUrl'],
+      });
 
-      const users: UserDto[] = data.map((user) => ({
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        imageURL: user.image_url,
-      }));
+      const userDtos: UserDto[] = users.map(
+        (user) => new UserDto(user.name, user.email, user.id, user.imageUrl),
+      );
 
-      return users;
+      return userDtos;
     } catch (err) {
       console.error('Error fetching users:', err);
       throw new Error('Error retrieving users');
@@ -143,16 +141,16 @@ export class UserService {
    */
   async deleteUser(id: number): Promise<boolean> {
     try {
-      const { error } = await supabase.from('user').delete().match({ id });
+      const result = await this.userRepository.delete(id);
 
-      if (error) {
-        throw new Error(`Error deleting user with ID ${id}: ${error.message}`);
+      if (result.affected === 0) {
+        throw new Error(`No user found with ID ${id}`);
       }
 
       return true;
     } catch (err) {
       throw new Error(
-        `An error occurred during the deleteUser operation:  ${err.message}`,
+        `An error occurred during the deleteUser operation: ${err.message}`,
       );
     }
   }
@@ -166,40 +164,39 @@ export class UserService {
    */
   async addFriend(toggleFriendDto: ToggleFriendDto): Promise<boolean> {
     try {
-      // Check for an existing friendship
-      const { data: existing, error: existingError } = await supabase
-        .from('users_friend')
-        .select('*')
-        .eq('user_id', toggleFriendDto.user_id)
-        .eq('friend_id', toggleFriendDto.friend_id);
+      // Get user and friend from the database with their friends loaded
+      const user = await this.userRepository.findOne({
+        where: { id: toggleFriendDto.userId },
+        relations: ['friends'],
+      });
+      const friend = await this.userRepository.findOne({
+        where: { id: toggleFriendDto.friendId },
+        relations: ['friends'],
+      });
 
-      if (existingError) {
-        throw new Error(
-          `Error checking for existing friendship: ${existingError.message}`,
-        );
+      if (!user || !friend) {
+        throw new Error('User or friend not found.');
       }
 
-      if (existing && existing.length > 0) {
+      // Check if the friendship already exists
+      if (user.friends.some((f) => f.id === friend.id)) {
         throw new Error('Friendship already exists.');
       }
 
-      const { data, error } = await supabase.from('users_friend').insert([
-        {
-          user_id: toggleFriendDto.user_id,
-          friend_id: toggleFriendDto.friend_id,
-        },
-      ]);
+      // Add each user to the other's friends list
+      user.friends = [...(user.friends || []), friend];
+      friend.friends = [...(friend.friends || []), user];
 
-      if (error) {
-        throw new Error(`Error adding new friend: ${error.message}`);
-      }
+      // Save the updated user entities
+      await this.userRepository.save(user);
+      await this.userRepository.save(friend);
 
       return true;
     } catch (err) {
       console.error(
         `An error occurred during the addFriend operation: ${err.message}`,
       );
-      throw new Error('Friendship already exitsts. Please try again.');
+      throw new Error('Unable to add friend. Please try again.');
     }
   }
 
@@ -210,18 +207,20 @@ export class UserService {
    * @param {number} id - The ID of the friend connection to remove.
    * @returns {Promise<boolean>} - A promise that resolves to true if the operation is successful.
    */
-  async removeFriend(id: number): Promise<boolean> {
+  async removeFriend(userId: number, friendId: number): Promise<boolean> {
     try {
-      const { error } = await supabase
-        .from('users_friend')
-        .delete()
-        .eq('id', id);
+      const user = await this.userRepository.findOne({
+        where: { id: userId },
+        relations: ['friends'],
+      });
 
-      if (error) {
-        throw new Error(
-          `Unable to delete friend with ID: ${id}. Error: ${error.message}`,
-        );
+      if (!user) {
+        throw new Error('User not found.');
       }
+
+      user.friends = user.friends.filter((friend) => friend.id !== friendId);
+
+      await this.userRepository.save(user);
 
       return true;
     } catch (err) {
@@ -233,28 +232,40 @@ export class UserService {
   }
 
   /**
-   * Asynchronously checks if two users are friends by querying the 'users_friend' table in the Supabase database.
+   * Asynchronously checks if two users are friends by querying the 'users_friend' table in the  database.
    *
-   * @param user_id - The ID of the first user.
-   * @param friend_id - The ID of the second user.
+   * @param userId - The ID of the first user.
+   * @param friendId - The ID of the second user.
    * @returns A boolean indicating whether the two users are friends.
    */
-  async checkIfFriends(user_id: number, friend_id: number): Promise<boolean> {
+  async checkIfFriends(userId: number, friendId: number): Promise<boolean> {
     try {
-      const { data: existing, error: existingError } = await supabase
-        .from('users_friend')
-        .select('*')
-        .eq('user_id', user_id)
-        .eq('friend_id', friend_id);
-
-      if (existingError) {
-        throw new Error(`Database query error: ${existingError.message}`);
+      // Find the user by ID
+      const user = await this.userRepository.findOne({
+        where: { id: userId },
+        relations: ['friends'],
+      });
+      if (!user) {
+        throw new Error('User not found.');
       }
 
-      return existing && existing.length > 0;
-    } catch (error) {
-      console.error('Error in checking friendship status:', error);
+      // Find the friend by ID
+      const friend = await this.userRepository.findOne({
+        where: { id: friendId },
+      });
+      if (!friend) {
+        throw new Error('Friend not found.');
+      }
 
+      // Check if the found friend is in the user's friends list
+      const isFriend = user.friends.some((f) => f.id === friendId);
+      if (!isFriend) {
+        throw new Error('The specified users are not friends.');
+      }
+
+      return true;
+    } catch (err) {
+      console.error(`Error in checking friendship status: ${err.message}`);
       throw new Error('Failed to check friendship status. Please try again.');
     }
   }
@@ -263,37 +274,27 @@ export class UserService {
    * Retrieves two users based on the provided user_id and friend_id.
    * Returns user details except for the password.
    *
-   * @param {number} user_id - The unique identifier of the first user.
-   * @param {number} friend_id - The unique identifier of the second user (friend).
-   * @returns {Promise<{ user: UserDto, friend: UserDto }>} - DTOs of the retrieved users.
+   * @param {number} userId - The unique identifier of the first user.
+   * @param {number} friendId - The unique identifier of the second user (friend).
+   * @returns {Promise<{ user: User, friend: User }>} - DTOs of the retrieved users.
    */
   async getUserWithFriend(
-    user_id: number,
-    friend_id: number,
-  ): Promise<{ user: UserDto; friend: UserDto }> {
+    userId: number,
+    friendId: number,
+  ): Promise<{ user: User; friend: User }> {
     try {
-      const { data, error } = await supabase
-        .from('user')
-        .select('id, name, email')
-        .in('id', [user_id, friend_id]);
+      // Fetch both users from the database
+      const users = await this.userRepository.findByIds([userId, friendId]);
 
-      if (error) throw error;
+      // Extract the user and friend data
+      const userEntity = users.find((user) => user.id === userId);
+      const friendEntity = users.find((user) => user.id === friendId);
 
-      const userData = data.find((user) => user.id === user_id);
-      const friendData = data.find((user) => user.id === friend_id);
-
-      if (!userData || !friendData) {
+      if (!userEntity || !friendEntity) {
         throw new Error('One or both users not found');
       }
 
-      const user = new UserDto(userData.name, userData.email, userData.id);
-      const friend = new UserDto(
-        friendData.name,
-        friendData.email,
-        friendData.id,
-      );
-
-      return { user, friend };
+      return { user: userEntity, friend: friendEntity };
     } catch (err) {
       console.error('Error retrieving users:', err);
       throw new Error('Error retrieving users');
@@ -312,29 +313,37 @@ export class UserService {
   async uploadUserImage(
     uploadUserImageDto: UploadUserImageDto,
     update: boolean,
-  ) {
+  ): Promise<boolean> {
     try {
+      // Upload image to Firebase and get the URL
       const imageUrl = update
         ? await updateFileInFirebase(
             uploadUserImageDto.file,
-            uploadUserImageDto.user_id,
+            uploadUserImageDto.userId,
             'Users',
           )
         : await uploadFileToFirebase(
             uploadUserImageDto.file,
-            uploadUserImageDto.user_id,
+            uploadUserImageDto.userId,
             'Users',
           );
 
-      await supabase
-        .from('user')
-        .update({
-          image_url: imageUrl,
-          updated_at: new Date(),
-        })
-        .eq('id', uploadUserImageDto.user_id);
+      // Find the user by ID
+      const user = await this.userRepository.findOne({
+        where: { id: parseInt(uploadUserImageDto.userId) },
+      });
+
+      // If user does not exist, throw an error
+      if (!user) {
+        throw new Error(`User with ID ${uploadUserImageDto.userId} not found`);
+      }
+
+      // Update the user's image URL
+      user.imageUrl = imageUrl;
+      await this.userRepository.save(user);
+
+      return true;
     } catch (error) {
-      // Handle or rethrow the error appropriately
       console.error('Error uploading user image:', error);
       throw error;
     }
@@ -358,16 +367,17 @@ export class UserService {
   }
 
   /**
-   * Deletes a user's image from Firebase Storage.
+   * Deletes a user's image from Firebase Storage and updates the user's imageUrl to null in the database.
    *
    * @param id - The ID of the user whose image is to be deleted.
-   * @throws - Propagates any errors that occur during image deletion.
+   * @throws - Propagates any errors that occur during image deletion or database update.
    */
   async deleteUserImage(id: number) {
     try {
       await deleteFileFromFirebase(id.toString(), 'Users');
+
+      await this.userRepository.update(id, { imageUrl: null });
     } catch (error) {
-      // Handle or rethrow the error appropriately
       console.error('Error deleting user image:', error);
       throw error;
     }

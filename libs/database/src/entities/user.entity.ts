@@ -1,4 +1,13 @@
-import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  OneToMany,
+  ManyToOne,
+  JoinColumn,
+  JoinTable,
+  ManyToMany,
+} from 'typeorm';
 import { Item } from './item.entity'; // Corrected the import statement
 import { Exchange } from './exchange.entity'; // Corrected the import statement
 
@@ -19,13 +28,14 @@ export class User {
   @Column({ nullable: true })
   imageUrl: string;
 
-  @Column('text', { array: true, nullable: true })
-  friends: string[];
+  @ManyToMany(() => User, (user) => user.friends)
+  @JoinTable()
+  friends: User[];
 
-  @OneToMany(() => Item, (item) => item.user, { cascade: true })
+  @OneToMany(() => Item, (item) => item.user)
   items: Item[];
 
-  @OneToMany(() => Exchange, (exchange) => exchange.user, { cascade: true })
+  @OneToMany(() => Exchange, (exchange) => exchange.user)
   exchanges: Exchange[];
 
   constructor(user: Partial<User>) {

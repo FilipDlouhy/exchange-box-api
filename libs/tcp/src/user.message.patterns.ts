@@ -12,4 +12,5 @@ export const userMessagePatterns = {
   getUserImage: { cmd: 'getUserImage' },
   deleteUserImage: { cmd: 'deleteUserImage' },
   updateUserImage: { cmd: 'updateUserImage' },
+  getUserForItemUpdate: { cmd: 'getUserForItemUpdate' },
 };
