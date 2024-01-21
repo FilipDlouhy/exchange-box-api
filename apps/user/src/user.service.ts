@@ -26,15 +26,14 @@ export class UserService {
    * It hashes the password before storing it in the database.
    * After insertion, it retrieves and returns the newly created user details, except for the password.
    * @param {CreateUserDto} createUserDto - The DTO containing the new user data.
-   * @returns {Promise<UserDto>} - The DTO of the newly created user.
    */
-  async createUser(createUserDto: CreateUserDto): Promise<UserDto> {
+  async createUser(createUserDto: CreateUserDto): Promise<boolean> {
     try {
       createUserDto.password = await bcrypt.hash(createUserDto.password, 10);
 
-      const user = await this.userRepository.save(createUserDto);
-      const newUserDto = new UserDto(user.name, user.email, user.id);
-      return newUserDto;
+      await this.userRepository.save(createUserDto);
+
+      return true;
     } catch (err) {
       console.error('Error creating user:', err);
       throw new Error('Error creating user');

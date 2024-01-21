@@ -21,7 +21,7 @@ export class UserController {
       forbidNonWhitelisted: true,
     }),
   )
-  async createUser(createUserDto: CreateUserDto): Promise<UserDto> {
+  async createUser(createUserDto: CreateUserDto): Promise<boolean> {
     return await this.userService.createUser(createUserDto);
   }
 
