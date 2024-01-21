@@ -382,4 +382,23 @@ export class UserService {
       throw error;
     }
   }
+
+  /**
+   * Retrieves a user from the database based on their email.
+   *
+   * @param userEmail - The email of the user to retrieve.
+   * @returns A Promise that resolves to the user if found, or rejects with an error.
+   */
+  async getUserByEmail(userEmail: string): Promise<User> {
+    try {
+      const user = await this.userRepository.findOne({
+        where: { email: userEmail },
+      });
+
+      return user;
+    } catch (err) {
+      console.error('Error retrieving user:', err);
+      throw new Error('Error retrieving user');
+    }
+  }
 }

@@ -13,4 +13,5 @@ export const userMessagePatterns = {
   deleteUserImage: { cmd: 'deleteUserImage' },
   updateUserImage: { cmd: 'updateUserImage' },
   getUserForItemUpdate: { cmd: 'getUserForItemUpdate' },
+  getUserByEmail: { cmd: 'getUserByEmail' },
 };

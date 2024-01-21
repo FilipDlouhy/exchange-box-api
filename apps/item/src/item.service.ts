@@ -15,10 +15,9 @@ import { Injectable } from '@nestjs/common';
 import { ClientProxyFactory, Transport } from '@nestjs/microservices';
 import { UploadItemImageDto } from '@app/dtos/itemDtos/upload.item.image.dto';
 import { InjectRepository } from '@nestjs/typeorm';
-import { EntityManager, In, Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { Item } from '@app/database/entities/item.entity';
 import { User } from '@app/database/entities/user.entity';
-import { UserDto } from '@app/dtos/userDtos/user.dto';
 
 @Injectable()
 export class ItemService {
@@ -27,7 +26,6 @@ export class ItemService {
   constructor(
     @InjectRepository(Item)
     private readonly itemRepository: Repository<Item>,
-    private readonly entityManager: EntityManager,
   ) {
     this.userClient = ClientProxyFactory.create({
       transport: Transport.TCP,

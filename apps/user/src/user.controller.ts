@@ -126,4 +126,9 @@ export class UserController {
   async getUserForItemUpdate({ friendId }: { friendId: number }) {
     return this.userService.getUserForItemUpdate(friendId);
   }
+
+  @MessagePattern(userMessagePatterns.getUserByEmail)
+  async getUserByEmail({ userEmail }: { userEmail: string }): Promise<User> {
+    return this.userService.getUserByEmail(userEmail);
+  }
 }

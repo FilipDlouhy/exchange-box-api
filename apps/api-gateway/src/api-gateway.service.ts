@@ -1,3 +1,4 @@
+import { authMessagePatterns } from '@app/tcp/auth.messages.patterns';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import {
   ClientProxy,
@@ -84,6 +85,10 @@ export class ApiGatewayService {
    * @throws NotFoundException if the service is not found.
    */
   async rerouteRequest(req: Request, file?: Express.Multer.File) {
+    if (req.path === '/auth/check-token') {
+      return await this.handleCheckToken(req);
+    }
+
     const requestUrl = this.parseUrl(req.path.toString());
     let client: ClientProxy | null = null;
     switch (requestUrl[0]) {
@@ -144,5 +149,40 @@ export class ApiGatewayService {
         .toPromise();
       return response;
     }
+  }
+
+  /**
+   * Handles /auth/check-token route: Extracts and validates JWT token from cookies or headers.
+   *
+   * @param {Request} req - The incoming request object.
+   * @returns {Promise} A promise resolving to the validation response.
+   */
+  private async handleCheckToken(req: Request): Promise<boolean> {
+    if (req.path === '/auth/check-token') {
+      // Extract JWT token from the request
+      const token =
+        req.cookies['jwt'] || req.headers['authorization']?.split(' ')[1];
+      if (!token) {
+        false;
+      }
+
+      // Call the AuthService to validate the token
+      try {
+        const isValid = await this.authServiceClient
+          .send(
+            { cmd: authMessagePatterns.checkJwtToken.cmd },
+            { token: token },
+          )
+          .toPromise();
+
+        return isValid;
+      } catch (error) {
+        console.error('Error validating token:', error);
+        return false;
+      }
+    }
+
+    // If the route is not /auth/check-token, return valid: false by default
+    return false;
   }
 }
