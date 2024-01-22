@@ -1,6 +1,6 @@
 import { Controller, UsePipes, ValidationPipe } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { MessagePattern } from '@nestjs/microservices';
+import { MessagePattern, RpcException } from '@nestjs/microservices';
 import { authMessagePatterns } from '@app/tcp/auth.messages.patterns';
 import { LoginUserDto } from '@app/dtos/userDtos/login.user.dto';
 
@@ -17,11 +17,19 @@ export class AuthController {
     }),
   )
   async login({ email, password }: LoginUserDto) {
-    return this.authService.login(email, password);
+    try {
+      return this.authService.login(email, password);
+    } catch (error) {
+      throw new RpcException(error.message);
+    }
   }
 
   @MessagePattern(authMessagePatterns.checkJwtToken)
   async checkToken({ token }: { token: string }) {
-    return this.authService.checkJwtToken(token);
+    try {
+      return this.authService.checkJwtToken(token);
+    } catch (error) {
+      throw new RpcException(error.message);
+    }
   }
 }

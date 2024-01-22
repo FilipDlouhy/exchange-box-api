@@ -1,6 +1,6 @@
 import { Controller, UsePipes, ValidationPipe } from '@nestjs/common';
 import { CenterService } from './center.service';
-import { MessagePattern } from '@nestjs/microservices';
+import { MessagePattern, RpcException } from '@nestjs/microservices';
 import { centerMessagePatterns } from '@app/tcp/center.message.patterns';
 import { CenterDto } from '@app/dtos/centerDtos/center.dto';
 import { CenterWithFrontDto } from '@app/dtos/centerDtos/center.with.front.dto';
@@ -23,24 +23,40 @@ export class CenterController {
   async updateCenter(
     updateCenterDto: UpdateCenterDto,
   ): Promise<CenterWithFrontDto> {
-    return this.centerService.updateCenter(updateCenterDto);
+    try {
+      return this.centerService.updateCenter(updateCenterDto);
+    } catch (error) {
+      throw new RpcException(error.message);
+    }
   }
 
   // Retrieve a list of all centers.
   @MessagePattern(centerMessagePatterns.getCenters)
   async getCenters(): Promise<CenterDto[]> {
-    return this.centerService.getCenters();
+    try {
+      return this.centerService.getCenters();
+    } catch (error) {
+      throw new RpcException(error.message);
+    }
   }
 
   @MessagePattern(centerMessagePatterns.getCenter)
   async getCenter({ id }: { id: number }): Promise<CenterDto> {
-    return this.centerService.getCenter(id);
+    try {
+      return this.centerService.getCenter(id);
+    } catch (error) {
+      throw new RpcException(error.message);
+    }
   }
 
   // Delete a center by its ID and return a boolean indicating success or failure.
   @MessagePattern(centerMessagePatterns.deleteCenter)
   async deleteCenter(id: number): Promise<boolean> {
-    return this.centerService.deleteCenter(id);
+    try {
+      return this.centerService.deleteCenter(id);
+    } catch (error) {
+      throw new RpcException(error.message);
+    }
   }
 
   // Retrieve a center's information by its ID.
@@ -55,6 +71,10 @@ export class CenterController {
   async getCenterForExchnage(
     getCenterDto: GetCenterDto,
   ): Promise<CenterWithFrontDto[]> {
-    return await this.centerService.getCenterForExchange(getCenterDto);
+    try {
+      return await this.centerService.getCenterForExchange(getCenterDto);
+    } catch (error) {
+      throw new RpcException(error.message);
+    }
   }
 }

@@ -9,7 +9,13 @@ import {
   updateFileInFirebase,
   uploadFileToFirebase,
 } from '@app/database';
-import { Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from '@app/database/entities/user.entity';
@@ -35,8 +41,11 @@ export class UserService {
 
       return true;
     } catch (err) {
+      if (err.code === '23505') {
+        throw new ConflictException('Email already exists');
+      }
       console.error('Error creating user:', err);
-      throw new Error('Error creating user');
+      throw new BadRequestException('Error creating user');
     }
   }
 
@@ -51,6 +60,10 @@ export class UserService {
       const user = await this.userRepository.findOne({
         where: { id },
       });
+
+      if (!user) {
+        throw new NotFoundException(`User not found`);
+      }
 
       return new UserDto(user.name, user.email, user.id, user.imageUrl);
     } catch (err) {
@@ -87,8 +100,11 @@ export class UserService {
       const user = await this.userRepository.findOne({
         where: { id: updateUserDto.id },
       });
+
       if (!user) {
-        throw new Error('User not found');
+        throw new NotFoundException(
+          `User with ID ${updateUserDto.id} not found`,
+        );
       }
 
       // Update user properties
@@ -104,7 +120,11 @@ export class UserService {
       return updatedUser;
     } catch (err) {
       console.error('Error updating user:', err);
-      throw new Error('Error updating user');
+      if (err instanceof NotFoundException) {
+        throw err; // Re-throw the NotFoundException
+      } else {
+        throw new BadRequestException('Error updating user');
+      }
     }
   }
 
@@ -119,6 +139,10 @@ export class UserService {
         select: ['id', 'name', 'email', 'imageUrl'],
       });
 
+      if (!users || users.length === 0) {
+        throw new NotFoundException('No users found');
+      }
+
       const userDtos: UserDto[] = users.map(
         (user) => new UserDto(user.name, user.email, user.id, user.imageUrl),
       );
@@ -126,7 +150,11 @@ export class UserService {
       return userDtos;
     } catch (err) {
       console.error('Error fetching users:', err);
-      throw new Error('Error retrieving users');
+      if (err instanceof NotFoundException) {
+        throw err; // Re-throw the NotFoundException
+      } else {
+        throw new InternalServerErrorException('Error retrieving users');
+      }
     }
   }
 
@@ -143,14 +171,19 @@ export class UserService {
       const result = await this.userRepository.delete(id);
 
       if (result.affected === 0) {
-        throw new Error(`No user found with ID ${id}`);
+        throw new NotFoundException(`User with ID ${id} not found`);
       }
 
       return true;
     } catch (err) {
-      throw new Error(
-        `An error occurred during the deleteUser operation: ${err.message}`,
-      );
+      console.error(`Error deleting user with ID ${id}:`, err);
+      if (err instanceof NotFoundException) {
+        throw err; // Re-throw the NotFoundException
+      } else {
+        throw new InternalServerErrorException(
+          `An error occurred during the deleteUser operation: ${err.message}`,
+        );
+      }
     }
   }
 
@@ -174,12 +207,12 @@ export class UserService {
       });
 
       if (!user || !friend) {
-        throw new Error('User or friend not found.');
+        throw new NotFoundException('User or friend not found.');
       }
 
       // Check if the friendship already exists
       if (user.friends.some((f) => f.id === friend.id)) {
-        throw new Error('Friendship already exists.');
+        throw new ConflictException('Friendship already exists.');
       }
 
       // Add each user to the other's friends list
@@ -192,10 +225,17 @@ export class UserService {
 
       return true;
     } catch (err) {
-      console.error(
-        `An error occurred during the addFriend operation: ${err.message}`,
-      );
-      throw new Error('Unable to add friend. Please try again.');
+      console.error(`Error adding friend: ${err.message}`);
+      if (
+        err instanceof NotFoundException ||
+        err instanceof ConflictException
+      ) {
+        throw err; // Re-throw specific exceptions
+      } else {
+        throw new InternalServerErrorException(
+          'Unable to add friend. Please try again.',
+        );
+      }
     }
   }
 
@@ -214,19 +254,29 @@ export class UserService {
       });
 
       if (!user) {
-        throw new Error('User not found.');
+        throw new NotFoundException('User not found.');
       }
 
+      const initialFriendCount = user.friends.length;
+
       user.friends = user.friends.filter((friend) => friend.id !== friendId);
+
+      if (initialFriendCount === user.friends.length) {
+        throw new NotFoundException("Friend not found in user's friends list.");
+      }
 
       await this.userRepository.save(user);
 
       return true;
     } catch (err) {
-      console.error(
-        `An error occurred during the removeFriend operation: ${err.message}`,
-      );
-      throw new Error('Failed to remove friend. Please try again.');
+      console.error(`Error removing friend: ${err.message}`);
+      if (err instanceof NotFoundException) {
+        throw err; // Re-throw the NotFoundException
+      } else {
+        throw new InternalServerErrorException(
+          'Failed to remove friend. Please try again.',
+        );
+      }
     }
   }
 
@@ -245,7 +295,7 @@ export class UserService {
         relations: ['friends'],
       });
       if (!user) {
-        throw new Error('User not found.');
+        throw new NotFoundException('User not found.');
       }
 
       // Find the friend by ID
@@ -253,19 +303,28 @@ export class UserService {
         where: { id: friendId },
       });
       if (!friend) {
-        throw new Error('Friend not found.');
+        throw new NotFoundException('Friend not found.');
       }
 
       // Check if the found friend is in the user's friends list
       const isFriend = user.friends.some((f) => f.id === friendId);
       if (!isFriend) {
-        throw new Error('The specified users are not friends.');
+        throw new ConflictException('The specified users are not friends.');
       }
 
       return true;
     } catch (err) {
       console.error(`Error in checking friendship status: ${err.message}`);
-      throw new Error('Failed to check friendship status. Please try again.');
+      if (
+        err instanceof NotFoundException ||
+        err instanceof ConflictException
+      ) {
+        throw err; // Re-throw specific exceptions
+      } else {
+        throw new InternalServerErrorException(
+          'Failed to check friendship status. Please try again.',
+        );
+      }
     }
   }
 
@@ -290,13 +349,19 @@ export class UserService {
       const friendEntity = users.find((user) => user.id === friendId);
 
       if (!userEntity || !friendEntity) {
-        throw new Error('One or both users not found');
+        throw new NotFoundException('One or both users not found');
       }
 
       return { user: userEntity, friend: friendEntity };
     } catch (err) {
-      console.error('Error retrieving users:', err);
-      throw new Error('Error retrieving users');
+      console.error(`Error retrieving users: ${err.message}`);
+      if (err instanceof NotFoundException) {
+        throw err; // Re-throw the NotFoundException
+      } else {
+        throw new InternalServerErrorException(
+          'Failed to retrieve users. Please try again.',
+        );
+      }
     }
   }
 
@@ -332,9 +397,11 @@ export class UserService {
         where: { id: parseInt(uploadUserImageDto.userId) },
       });
 
-      // If user does not exist, throw an error
+      // If user does not exist, throw a NotFoundException
       if (!user) {
-        throw new Error(`User with ID ${uploadUserImageDto.userId} not found`);
+        throw new NotFoundException(
+          `User with ID ${uploadUserImageDto.userId} not found`,
+        );
       }
 
       // Update the user's image URL
@@ -343,8 +410,14 @@ export class UserService {
 
       return true;
     } catch (error) {
-      console.error('Error uploading user image:', error);
-      throw error;
+      console.error(`Error uploading user image: ${error.message}`);
+      if (error instanceof NotFoundException) {
+        throw error; // Re-throw the NotFoundException
+      } else {
+        throw new InternalServerErrorException(
+          'Failed to upload user image. Please try again.',
+        );
+      }
     }
   }
 
@@ -357,11 +430,23 @@ export class UserService {
    */
   async getUserImage(id: number): Promise<string> {
     try {
-      return await getImageUrlFromFirebase(id.toString(), 'Users');
+      const imageUrl = await getImageUrlFromFirebase(id.toString(), 'Users');
+
+      // If the image URL is not found, throw a NotFoundException
+      if (!imageUrl) {
+        throw new NotFoundException(`User image not found for ID ${id}`);
+      }
+
+      return imageUrl;
     } catch (error) {
-      // Handle or rethrow the error appropriately
-      console.error('Error getting user image URL:', error);
-      throw error;
+      console.error(`Error getting user image URL: ${error.message}`);
+      if (error instanceof NotFoundException) {
+        throw error;
+      } else {
+        throw new InternalServerErrorException(
+          'Failed to get user image URL. Please try again.',
+        );
+      }
     }
   }
 
@@ -373,12 +458,27 @@ export class UserService {
    */
   async deleteUserImage(id: number) {
     try {
+      // Delete the user image from Firebase
       await deleteFileFromFirebase(id.toString(), 'Users');
 
-      await this.userRepository.update(id, { imageUrl: null });
+      // Update the user's imageUrl to null
+      const updateResult = await this.userRepository.update(id, {
+        imageUrl: null,
+      });
+
+      // Check if the user with the given ID exists
+      if (updateResult.affected === 0) {
+        throw new NotFoundException(`User with ID ${id} not found`);
+      }
     } catch (error) {
-      console.error('Error deleting user image:', error);
-      throw error;
+      console.error(`Error deleting user image: ${error.message}`);
+      if (error instanceof NotFoundException) {
+        throw error; // Re-throw the NotFoundException
+      } else {
+        throw new InternalServerErrorException(
+          'Failed to delete user image. Please try again.',
+        );
+      }
     }
   }
 
@@ -394,10 +494,21 @@ export class UserService {
         where: { email: userEmail },
       });
 
+      // If no user is found with the specified email, throw a NotFoundException
+      if (!user) {
+        throw new NotFoundException(`User with email ${userEmail} not found`);
+      }
+
       return user;
-    } catch (err) {
-      console.error('Error retrieving user:', err);
-      throw new Error('Error retrieving user');
+    } catch (error) {
+      console.error(`Error retrieving user by email: ${error.message}`);
+      if (error instanceof NotFoundException) {
+        throw error; // Re-throw the NotFoundException
+      } else {
+        throw new InternalServerErrorException(
+          'Failed to retrieve user by email. Please try again.',
+        );
+      }
     }
   }
 }

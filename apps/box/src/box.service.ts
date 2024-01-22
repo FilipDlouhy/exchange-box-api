@@ -1,4 +1,11 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+  OnModuleInit,
+  UnauthorizedException,
+} from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { generateRandomString } from './helpers/string.helper';
 import { SchedulerRegistry } from '@nestjs/schedule';
@@ -122,6 +129,7 @@ export class BoxService implements OnModuleInit {
       // Handle general errors
     }
   }
+
   /**
    Generates a secure random password for a box associated with the given ID.
    @param {number} id - The exchange's ID linked to the box.
@@ -141,13 +149,12 @@ export class BoxService implements OnModuleInit {
       // Find the box by exchange_id
       const box = await this.boxRepository.findOne({ where: { id: id } });
 
-      if (box.itemsInBox) {
-        throw new Error('Items are in box');
+      if (!box) {
+        throw new NotFoundException(`No box found with exchange id ${id}`);
       }
 
-      if (!box) {
-        console.error(`No box found with exchange id ${id}`);
-        throw new Error('Error generating code for box to open');
+      if (box.itemsInBox) {
+        throw new ConflictException('Items are already in the box');
       }
 
       // Update the 'box' entity with the new hashed password and opening time
@@ -163,6 +170,7 @@ export class BoxService implements OnModuleInit {
       throw error;
     }
   }
+
   /**
    * Asynchronously opens a box, performing checks and updates based on the provided DTO.
    * Retrieves box data, verifies the code, checks timing constraints, and updates the box's status.
@@ -178,20 +186,27 @@ export class BoxService implements OnModuleInit {
         where: { id: openBoxDto.id },
       });
 
+      if (!box) {
+        throw new NotFoundException('Box not found');
+      }
+
       const { boxOpenCode, timeToPutInBox } = box;
+
       // Checking if the current time allows for the box to be opened
       const currentTime = new Date();
       if (currentTime < new Date(timeToPutInBox)) {
-        throw new Error('Box cannot be opened');
+        throw new UnauthorizedException('Box cannot be opened at this time');
       }
+
       // Comparing the provided code with the stored box open code
       const codeMatches = await bcrypt.compare(
         openBoxDto.openBoxCode,
         boxOpenCode,
       );
       if (!codeMatches) {
-        throw new Error('Incorrect code');
+        throw new UnauthorizedException('Incorrect code');
       }
+
       // Updating the box status to open in the database
       box.boxOpenCode = null;
       box.itemsInBox = true;
@@ -206,12 +221,14 @@ export class BoxService implements OnModuleInit {
             where: { id: openBoxDto.id },
           });
 
-          box.openOrClosed = false;
-
-          await this.boxRepository.save(box);
+          if (box) {
+            box.openOrClosed = false;
+            await this.boxRepository.save(box);
+          }
         } catch (timeoutError) {
           console.error('Error during timeout processing:', timeoutError);
         }
+
         await this.exchangeClient
           .send(
             { cmd: exchangeessagePatterns.changeExchangeStatus.cmd },
@@ -222,11 +239,23 @@ export class BoxService implements OnModuleInit {
           )
           .toPromise();
       }, 6000);
-      //     // Registering the timeout in the scheduler
+
+      // Registering the timeout in the scheduler
       this.schedulerRegistry.addTimeout('box is closing', closeBox);
     } catch (error) {
-      // Handling any errors that occur during the box
+      // Handling any errors that occur during the box opening
       console.error('Error in openBox function:', error);
+
+      if (
+        error instanceof NotFoundException ||
+        error instanceof UnauthorizedException
+      ) {
+        throw error; // Re-throw specific exceptions with their messages
+      } else {
+        throw new InternalServerErrorException(
+          'Failed to open the box. Please try again later.',
+        );
+      }
     }
   }
 }

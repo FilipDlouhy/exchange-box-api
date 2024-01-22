@@ -1,6 +1,6 @@
 import { Controller, UsePipes, ValidationPipe } from '@nestjs/common';
 import { UserService } from './user.service';
-import { MessagePattern } from '@nestjs/microservices';
+import { MessagePattern, RpcException } from '@nestjs/microservices';
 import { userMessagePatterns } from '@app/tcp';
 import { CreateUserDto } from '@app/dtos/userDtos/create.user.dto';
 import { UserDto } from '@app/dtos/userDtos/user.dto';
@@ -22,12 +22,20 @@ export class UserController {
     }),
   )
   async createUser(createUserDto: CreateUserDto): Promise<boolean> {
-    return await this.userService.createUser(createUserDto);
+    try {
+      return await this.userService.createUser(createUserDto);
+    } catch (error) {
+      throw new RpcException(error.message);
+    }
   }
 
   @MessagePattern(userMessagePatterns.getUser)
   async getUser({ id }: { id: number }): Promise<UserDto> {
-    return await this.userService.getUser(id);
+    try {
+      return await this.userService.getUser(id);
+    } catch (error) {
+      throw new RpcException(error.message);
+    }
   }
 
   @MessagePattern(userMessagePatterns.updateUser)
@@ -39,12 +47,20 @@ export class UserController {
     }),
   )
   async updateUser(UpdateUserDto: UpdateUserDto): Promise<UserDto> {
-    return await this.userService.updateUser(UpdateUserDto);
+    try {
+      return await this.userService.updateUser(UpdateUserDto);
+    } catch (error) {
+      throw new RpcException(error.message);
+    }
   }
 
   @MessagePattern(userMessagePatterns.getUsers)
   async getUsers(): Promise<UserDto[]> {
-    return await this.userService.getUsers();
+    try {
+      return await this.userService.getUsers();
+    } catch (error) {
+      throw new RpcException(error.message);
+    }
   }
 
   @MessagePattern(userMessagePatterns.addFriend)
@@ -56,12 +72,20 @@ export class UserController {
     }),
   )
   async addFriend(toggleFriendDto: ToggleFriendDto) {
-    return await this.userService.addFriend(toggleFriendDto);
+    try {
+      return await this.userService.addFriend(toggleFriendDto);
+    } catch (error) {
+      throw new RpcException(error.message);
+    }
   }
 
   @MessagePattern(userMessagePatterns.deleteUser)
   async deleteUser({ id }: { id: number }): Promise<boolean> {
-    return await this.userService.deleteUser(id);
+    try {
+      return await this.userService.deleteUser(id);
+    } catch (error) {
+      throw new RpcException(error.message);
+    }
   }
 
   @MessagePattern(userMessagePatterns.removeFriend)
@@ -72,7 +96,11 @@ export class UserController {
     userId: number;
     friendId: number;
   }): Promise<boolean> {
-    return await this.userService.removeFriend(userId, friendId);
+    try {
+      return await this.userService.removeFriend(userId, friendId);
+    } catch (error) {
+      throw new RpcException(error.message);
+    }
   }
 
   @MessagePattern(userMessagePatterns.checkIfFriends)
@@ -84,51 +112,83 @@ export class UserController {
     }),
   )
   async checkIfFriends(toggleFriendDto: ToggleFriendDto): Promise<boolean> {
-    return await this.userService.checkIfFriends(
-      toggleFriendDto.userId,
-      toggleFriendDto.friendId,
-    );
+    try {
+      return await this.userService.checkIfFriends(
+        toggleFriendDto.userId,
+        toggleFriendDto.friendId,
+      );
+    } catch (error) {
+      throw new RpcException(error.message);
+    }
   }
 
   @MessagePattern(userMessagePatterns.getUserWithFriend)
   async getUserWithFriend(
     toggleFriendDto: ToggleFriendDto,
   ): Promise<{ user: User; friend: User }> {
-    return await this.userService.getUserWithFriend(
-      toggleFriendDto.userId,
-      toggleFriendDto.friendId,
-    );
+    try {
+      return await this.userService.getUserWithFriend(
+        toggleFriendDto.userId,
+        toggleFriendDto.friendId,
+      );
+    } catch (error) {
+      throw new RpcException(error.message);
+    }
   }
 
   @MessagePattern(userMessagePatterns.uploadUserImage)
   async uploadUserImage(
     uploadUserImageDto: UploadUserImageDto,
   ): Promise<boolean> {
-    return this.userService.uploadUserImage(uploadUserImageDto, false);
+    try {
+      return this.userService.uploadUserImage(uploadUserImageDto, false);
+    } catch (error) {
+      throw new RpcException(error.message);
+    }
   }
 
   @MessagePattern(userMessagePatterns.updateUserImage)
   async updateUserImage(uploadUserImageDto: UploadUserImageDto) {
-    return this.userService.uploadUserImage(uploadUserImageDto, true);
+    try {
+      return this.userService.uploadUserImage(uploadUserImageDto, true);
+    } catch (error) {
+      throw new RpcException(error.message);
+    }
   }
 
   @MessagePattern(userMessagePatterns.getUserImage)
   async getUserImage({ id }: { id: number }): Promise<string> {
-    return this.userService.getUserImage(id);
+    try {
+      return this.userService.getUserImage(id);
+    } catch (error) {
+      throw new RpcException(error.message);
+    }
   }
 
   @MessagePattern(userMessagePatterns.deleteUserImage)
   async deleteUserImage({ id }: { id: number }) {
-    return this.userService.deleteUserImage(id);
+    try {
+      return this.userService.deleteUserImage(id);
+    } catch (error) {
+      throw new RpcException(error.message);
+    }
   }
 
   @MessagePattern(userMessagePatterns.getUserForItemUpdate)
   async getUserForItemUpdate({ friendId }: { friendId: number }) {
-    return this.userService.getUserForItemUpdate(friendId);
+    try {
+      return this.userService.getUserForItemUpdate(friendId);
+    } catch (error) {
+      throw new RpcException(error.message);
+    }
   }
 
   @MessagePattern(userMessagePatterns.getUserByEmail)
   async getUserByEmail({ userEmail }: { userEmail: string }): Promise<User> {
-    return this.userService.getUserByEmail(userEmail);
+    try {
+      return this.userService.getUserByEmail(userEmail);
+    } catch (error) {
+      throw new RpcException(error.message);
+    }
   }
 }

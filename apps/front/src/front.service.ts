@@ -1,15 +1,19 @@
 import { Front } from '@app/database/entities/front.entity';
 import { DeleteExchangeFromFrontDto } from '@app/dtos/exchangeDtos/delete.exchange.from.front.dto';
-import { Injectable } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { EntityManager, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 
 @Injectable()
 export class FrontService {
   constructor(
     @InjectRepository(Front)
     private readonly frontRepository: Repository<Front>,
-    private readonly entityManager: EntityManager,
   ) {}
   /**
    * Creates a new front associated with a given center in the database.
@@ -21,6 +25,10 @@ export class FrontService {
     try {
       const boxTotals = this.generateBoxNumbersWithTotal();
 
+      if (!boxTotals) {
+        throw new InternalServerErrorException('Failed to generate box totals');
+      }
+
       const newFront = this.frontRepository.create({
         totalNumberOfTasks: boxTotals.total,
         numberOfTasksInFront: 0,
@@ -29,12 +37,16 @@ export class FrontService {
         numberOfSmallBoxesTotal: boxTotals.smallBoxes,
       });
 
+      if (!newFront) {
+        throw new InternalServerErrorException('Failed to create front');
+      }
+
       await this.frontRepository.save(newFront);
 
       return newFront;
-    } catch (err) {
-      console.error('Error in createFront function:', err);
-      throw err;
+    } catch (error) {
+      console.error('Error in createFront function:', error);
+      throw error;
     }
   }
 
@@ -54,21 +66,45 @@ export class FrontService {
         where: { id: frontId },
       });
 
-      // Check if the front exists and if there's room for another box,
-      if (
-        !front ||
-        front[`numberOf${size}Boxes`] + 1 > front[`numberOf${size}BoxesTotal`]
-      ) {
-        throw new Error('Center is full. Try different size or center');
+      if (!front) {
+        throw new NotFoundException(`Front with ID ${frontId} not found`);
       }
-      front[`numberOf${size}Boxes`] = front[`numberOf${size}Boxes`] + 1;
+
+      if (
+        typeof front[`numberOf${size}Boxes`] !== 'number' ||
+        isNaN(front[`numberOf${size}Boxes`])
+      ) {
+        throw new InternalServerErrorException(
+          `Invalid ${size} box count in front`,
+        );
+      }
+
+      if (
+        typeof front[`numberOf${size}BoxesTotal`] !== 'number' ||
+        isNaN(front[`numberOf${size}BoxesTotal`])
+      ) {
+        throw new InternalServerErrorException(
+          `Invalid total ${size} box count in front`,
+        );
+      }
+
+      if (
+        front[`numberOf${size}Boxes`] + 1 >
+        front[`numberOf${size}BoxesTotal`]
+      ) {
+        throw new ConflictException(
+          `Front with ID ${frontId} is full for ${size} boxes`,
+        );
+      }
+
+      front[`numberOf${size}Boxes`] += 1;
 
       const updatedFront = await this.frontRepository.save(front);
 
-      // Return the front ID
+      // Return the updated front
       return updatedFront;
     } catch (error) {
-      console.error('Error getting front for task:', error);
+      console.error('Error in getFrontForTask function:', error);
       throw error;
     }
   }
@@ -90,20 +126,39 @@ export class FrontService {
       const front = await this.frontRepository.findOne({
         where: { id: frontId },
       });
+
       if (!front) {
-        throw new Error('Front not found');
+        throw new NotFoundException(`Front with ID ${frontId} not found`);
       }
 
-      front[`numberOf${size}Boxes`] = front[`numberOf${size}Boxes`] - 1;
-      front.numberOfTasksInFront = front.numberOfTasksInFront - 1;
-      // Compute updated values
+      if (
+        typeof front[`numberOf${size}Boxes`] !== 'number' ||
+        isNaN(front[`numberOf${size}Boxes`])
+      ) {
+        throw new InternalServerErrorException(
+          `Invalid ${size} box count in front`,
+        );
+      }
+
+      if (
+        typeof front.numberOfTasksInFront !== 'number' ||
+        isNaN(front.numberOfTasksInFront)
+      ) {
+        throw new InternalServerErrorException('Invalid task count in front');
+      }
+
+      front[`numberOf${size}Boxes`] = Math.max(
+        front[`numberOf${size}Boxes`] - 1,
+        0,
+      );
+      front.numberOfTasksInFront = Math.max(front.numberOfTasksInFront - 1, 0);
 
       // Update the 'front' entity
       await this.frontRepository.save(front);
 
       return true;
     } catch (err) {
-      console.error(err);
+      console.error('Error in deleteTaskFromFront function:', err);
       return false;
     }
   }

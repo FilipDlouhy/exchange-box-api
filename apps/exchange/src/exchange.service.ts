@@ -13,7 +13,13 @@ import { userMessagePatterns } from '@app/tcp';
 import { boxMessagePatterns } from '@app/tcp/box.message.patterns';
 import { frontMessagePatterns } from '@app/tcp/front.message.patterns';
 import { itemMessagePatterns } from '@app/tcp/item.messages.patterns';
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
 import { ClientProxyFactory, Transport } from '@nestjs/microservices';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Exchange } from '@app/database/entities/exchange.entity';
@@ -74,10 +80,14 @@ export class ExchangeService {
    * @param createExchangeDto DTO containing information needed for creating the exchange.
    * @returns ExchangeDto Returns a data transfer object representing the newly created exchange.
    */
-  async createExchange(createExchangeDto: CreateExchangeDto) {
+  async createExchange(
+    createExchangeDto: CreateExchangeDto,
+  ): Promise<ExchangeDto> {
     try {
       if (createExchangeDto.creatorId === createExchangeDto.pickUpPersonId) {
-        throw new Error('Creator and pick-up person cannot be the same.');
+        throw new ConflictException(
+          'Creator and pick-up person cannot be the same.',
+        );
       }
 
       if (
@@ -87,10 +97,11 @@ export class ExchangeService {
           false,
         )
       ) {
-        throw new Error('Items do not fit in the specified box size.');
+        throw new BadRequestException(
+          'Items do not fit in the specified box size.',
+        );
       }
 
-      // Create a new Exchange entity
       const exchange = new Exchange();
       exchange.exchangeState = exchnageStatus.unscheduled;
 
@@ -103,13 +114,11 @@ export class ExchangeService {
 
       exchange.boxSize = createExchangeDto.boxSize;
       exchange.items = items;
-
       exchange.user = user;
       exchange.friend = friend;
 
-      // Save the new Exchange entity to the database
-
       const savedExchange = await this.exchangeRepository.save(exchange);
+
       return new ExchangeDto(
         savedExchange.user.id,
         savedExchange.friend.id,
@@ -117,11 +126,15 @@ export class ExchangeService {
         savedExchange.items,
         savedExchange.id,
       );
-
-      // Create the ExchangeDto and associate it with items
-    } catch (err) {
-      console.error('Error creating exchange:', err);
-      throw err;
+    } catch (error) {
+      if (
+        error instanceof ConflictException ||
+        error instanceof BadRequestException
+      ) {
+        throw error;
+      }
+      console.error('Error creating exchange:', error);
+      throw new InternalServerErrorException('Failed to create exchange');
     }
   }
 
@@ -133,26 +146,32 @@ export class ExchangeService {
   async deleteExchange(id: number): Promise<boolean> {
     try {
       // Find the exchange by its ID
-
       const exchange = await this.exchangeRepository.findOne({
         where: { id: id },
         relations: ['front'],
       });
+
       if (!exchange) {
-        throw new Error('Exchange not found');
+        throw new NotFoundException('Exchange not found');
       }
 
-      if (exchange.front != null) {
-        throw new Error('Exchange is in front');
+      if (exchange.front !== null) {
+        throw new ConflictException('Exchange is in front');
       }
 
       // Delete the exchange from the database
       await this.exchangeRepository.remove(exchange);
 
       return true;
-    } catch (err) {
-      console.error('Error in deleteExchange:', err);
-      throw err;
+    } catch (error) {
+      if (
+        error instanceof NotFoundException ||
+        error instanceof ConflictException
+      ) {
+        throw error;
+      }
+      console.error('Error in deleteExchange:', error);
+      throw new InternalServerErrorException('Failed to delete exchange');
     }
   }
 
@@ -173,7 +192,9 @@ export class ExchangeService {
       );
 
       if (!itemsFitInBox) {
-        throw new Error('Items do not fit in the specified box size.');
+        throw new BadRequestException(
+          'Items do not fit in the specified box size.',
+        );
       }
 
       // Find the exchange to update
@@ -183,7 +204,7 @@ export class ExchangeService {
       });
 
       if (!exchange) {
-        throw new Error('Exchange not found.');
+        throw new NotFoundException('Exchange not found.');
       }
 
       const { friend, items, user } = await this.getItemsAndUsers(
@@ -197,28 +218,26 @@ export class ExchangeService {
       exchange.friend = friend;
       exchange.items = items;
 
-      const updaetExchnage = await this.exchangeRepository.save(exchange);
+      const updatedExchange = await this.exchangeRepository.save(exchange);
 
       return new ExchangeDto(
-        updaetExchnage.user.id,
-        updaetExchnage.friend.id,
-        updaetExchnage.boxSize,
-        updaetExchnage.items,
-        updaetExchnage.id,
+        updatedExchange.user.id,
+        updatedExchange.friend.id,
+        updatedExchange.boxSize,
+        updatedExchange.items,
+        updatedExchange.id,
       );
     } catch (error) {
-      // Log the error
       console.error('Error updating exchange:', error);
 
-      // Handle specific errors
-      if (error instanceof QueryFailedError) {
-        // Handle TypeORM database query errors
-        // Return an appropriate response to the client
-        throw new Error('Database query failed.');
+      if (
+        error instanceof BadRequestException ||
+        error instanceof NotFoundException
+      ) {
+        throw error;
       }
 
-      // Rethrow other errors
-      throw error;
+      throw new BadRequestException('Failed to update exchange.');
     }
   }
 
@@ -229,6 +248,7 @@ export class ExchangeService {
    * @param isNotFriend - A boolean flag to determine the role of the user in the exchange (creator or pick-up person).
    * @returns An array of ExchangeWithUserDto objects associated with the user.
    */
+
   async getExchangesByUser(
     userId: number,
     isNotFriend: boolean,
@@ -272,11 +292,19 @@ export class ExchangeService {
       return usersExchanges;
     } catch (error) {
       console.error(
-        'Failed to retrieve exchanges for user with ID:',
-        userId,
+        `Failed to retrieve exchanges for user with ID: ${userId}`,
         error,
       );
-      throw error;
+
+      // Rethrow specific errors as NestJS exceptions for better handling
+      if (
+        error instanceof NotFoundException ||
+        error instanceof BadRequestException
+      ) {
+        throw error;
+      }
+
+      throw new BadRequestException('Failed to retrieve exchanges.');
     }
   }
 
@@ -310,6 +338,12 @@ export class ExchangeService {
     } catch (error) {
       // Log and handle errors that occur during the retrieval
       console.error('Failed to retrieve exchanges:', error);
+
+      // Check if it's a TypeORM NotFoundException and re-throw with a specific message
+      if (error instanceof NotFoundException) {
+        throw new NotFoundException('Exchanges not found.');
+      }
+
       throw error;
     }
   }
@@ -330,7 +364,7 @@ export class ExchangeService {
       });
 
       if (!exchange) {
-        throw new Error(`Exchange with ID ${id} not found`);
+        throw new NotFoundException(`Exchange with ID ${id} not found`);
       }
 
       return exchange;
@@ -341,7 +375,13 @@ export class ExchangeService {
         id,
         error,
       );
-      throw error;
+
+      // Check if it's a TypeORM NotFoundException and re-throw with a specific message
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+
+      throw new Error('Failed to retrieve exchange details.');
     }
   }
 
@@ -360,6 +400,12 @@ export class ExchangeService {
         id: addExchangeToTheFront.id,
       });
 
+      if (!exchange) {
+        throw new NotFoundException(
+          `Exchange with ID ${addExchangeToTheFront.id} not found`,
+        );
+      }
+
       // Retrieve the front ID for the task
       const front: Front = await this.frontClient
         .send(
@@ -371,9 +417,19 @@ export class ExchangeService {
         )
         .toPromise();
 
+      if (!front) {
+        throw new NotFoundException(
+          `Front with ID ${addExchangeToTheFront.frontId} not found`,
+        );
+      }
+
       const box = await this.boxClient
         .send({ cmd: boxMessagePatterns.createBox.cmd }, { exchange })
         .toPromise();
+
+      if (!box) {
+        throw new NotFoundException('Failed to create a box for the exchange');
+      }
 
       // Update the exchange with the new front ID and other details
 
@@ -387,18 +443,35 @@ export class ExchangeService {
       return updatedExchange;
     } catch (error) {
       console.error('Error in adding exchange to the front:', error);
-      throw error;
+
+      // Check if it's a NotFoundException and re-throw with a specific message
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+
+      throw new Error('Failed to add exchange to the front.');
     }
   }
 
-  async deleteExchangeFromFront(boxId: number) {
+  /**
+   * Deletes an exchange from the front based on the provided box ID.
+   *
+   * @param {number} boxId - Unique identifier of the box associated with the exchange to be deleted.
+   * @returns {Promise<boolean>} A promise that resolves to `true` if the exchange is successfully deleted from the front.
+   */
+  async deleteExchangeFromFront(boxId: number): Promise<boolean> {
     try {
+      // Find the exchange by the associated box ID and include the 'front' relation
       const exchange = await this.exchangeRepository.findOne({
         where: { box: { id: boxId } },
         relations: ['front'],
       });
 
-      // Retrieve the front ID for the task
+      if (!exchange) {
+        throw new Error(`Exchange with box ID ${boxId} not found.`);
+      }
+
+      // Retrieve the front ID for the task and attempt to delete the task from the front
       const wasExchangeDeleted: boolean = await this.frontClient
         .send(
           { cmd: frontMessagePatterns.deleteTaskFromFront.cmd },
@@ -414,13 +487,14 @@ export class ExchangeService {
         throw new Error('Failed to delete the task from the front.');
       }
 
+      // Clear the 'front' and 'box' associations from the exchange and save it
       exchange.front = null;
       exchange.box = null;
       await this.exchangeRepository.save(exchange);
 
       return true;
     } catch (error) {
-      console.error(error);
+      console.error('Error deleting exchange from the front:', error);
       throw error;
     }
   }
@@ -437,10 +511,11 @@ export class ExchangeService {
     changeExchangeStatus: ChangeExchangeStatusDto,
   ): Promise<void> {
     try {
+      // Find the exchange by the associated Box ID and include the 'box' relation
       const exchange = await this.exchangeRepository.findOne({
-        relations: ['box'], // Assuming you have a relationship named 'box'
+        relations: ['box'],
         where: {
-          box: { id: changeExchangeStatus.id }, // Corrected the syntax
+          box: { id: changeExchangeStatus.id },
         },
       });
 
@@ -450,13 +525,12 @@ export class ExchangeService {
         );
       }
 
-      exchange.exchangeState =
-        exchnageStatus[changeExchangeStatus.exchangeState];
+      exchange.exchangeState = changeExchangeStatus.exchangeState;
 
       await this.exchangeRepository.save(exchange);
     } catch (error) {
       console.error('Error updating exchange:', error);
-      throw error;
+      throw new Error('Failed to update exchange');
     }
   }
 
@@ -476,7 +550,7 @@ export class ExchangeService {
 
       if (!exchange) {
         console.error(`No exchange found with id ${id}`);
-        throw new Error('Error fetching box size');
+        throw new NotFoundException(`Exchange with ID ${id} not found`);
       }
 
       return exchange.boxSize;
@@ -499,17 +573,14 @@ export class ExchangeService {
     udpate: boolean,
   ): Promise<boolean> {
     try {
-      // Retrieve item sizes
       const itemSizes: ItemSizeDto[] = await this.itemClient
         .send(
           { cmd: itemMessagePatterns.retrieveItemSizesAndCheckExchange.cmd },
           { item_ids: itemIds, udpate: udpate },
         )
         .toPromise();
-      // Get the box size using the provided key
       const boxSize = boxSizes[boxSizeKey];
 
-      // Calculate total dimensions of the items
       const { heightToCompare, widthToCompare, lengthToCompare } =
         itemSizes.reduce(
           (acc, itemSize) => {
@@ -521,7 +592,6 @@ export class ExchangeService {
           { heightToCompare: 0, widthToCompare: 0, lengthToCompare: 0 },
         );
 
-      // Check if the total dimensions of the items fit within the specified box size
       return (
         boxSize.height >= heightToCompare &&
         boxSize.width >= widthToCompare &&

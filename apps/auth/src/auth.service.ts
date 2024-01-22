@@ -1,5 +1,9 @@
 import { userMessagePatterns } from '@app/tcp';
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  InternalServerErrorException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ClientProxyFactory, Transport } from '@nestjs/microservices';
 import * as bcrypt from 'bcrypt';
@@ -58,15 +62,28 @@ export class AuthService {
    * @returns An object containing the access token.
    */
   async login(email: string, password: string) {
-    const user = await this.validateUser(email, password);
-    if (!user) {
-      throw new UnauthorizedException();
-    }
+    try {
+      const user = await this.validateUser(email, password);
 
-    const payload = { email: user.email, userId: user.id };
-    return {
-      access_token: this.jwtService.sign(payload),
-    };
+      if (!user) {
+        throw new UnauthorizedException('Invalid credentials');
+      }
+
+      const payload = { email: user.email, userId: user.id };
+      return {
+        access_token: this.jwtService.sign(payload),
+      };
+    } catch (error) {
+      console.error(`Error during login: ${error.message}`);
+
+      if (error instanceof UnauthorizedException) {
+        throw error; // Re-throw the UnauthorizedException with the message
+      } else {
+        throw new InternalServerErrorException(
+          'Failed to log in. Please try again.',
+        );
+      }
+    }
   }
 
   /**

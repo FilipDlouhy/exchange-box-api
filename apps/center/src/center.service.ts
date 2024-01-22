@@ -3,7 +3,12 @@ import { CenterWithFrontDto } from '@app/dtos/centerDtos/center.with.front.dto';
 import { CreateCenterDto } from '@app/dtos/centerDtos/create.center.dto';
 import { UpdateCenterDto } from '@app/dtos/centerDtos/update.center.dto';
 import { frontMessagePatterns } from '@app/tcp/front.message.patterns';
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+  OnModuleInit,
+} from '@nestjs/common';
 import { ClientProxyFactory, Transport } from '@nestjs/microservices';
 import axios from 'axios';
 import { GetCenterDto } from '@app/dtos/centerDtos/get.center.dto';
@@ -106,8 +111,7 @@ export class CenterService implements OnModuleInit {
       });
 
       if (!center) {
-        console.error('No center found with the given id:', id);
-        throw new Error('Failed to retrieve the center');
+        throw new NotFoundException(`No center found with the given id: ${id}`);
       }
 
       // Prepare the CenterWithFrontDto
@@ -121,7 +125,7 @@ export class CenterService implements OnModuleInit {
       return centerWithFrontDto;
     } catch (err) {
       console.error('Error in getCenter function:', err);
-      throw err;
+      throw new InternalServerErrorException('Failed to retrieve the center');
     }
   }
 
@@ -131,7 +135,6 @@ export class CenterService implements OnModuleInit {
    * @param {UpdateCenterDto} updateCenterDto - The data transfer object containing the center's updated information.
    * @returns {Promise<CenterWithFrontDto>} - Returns a promise that resolves to the updated center, including its associated front.
    */
-
   async updateCenter(
     updateCenterDto: UpdateCenterDto,
   ): Promise<CenterWithFrontDto> {
@@ -143,8 +146,9 @@ export class CenterService implements OnModuleInit {
       });
 
       if (!center) {
-        console.error('No center found with the given id:', updateCenterDto.id);
-        throw new Error('Center not found');
+        throw new NotFoundException(
+          `Center not found with ID: ${updateCenterDto.id}`,
+        );
       }
 
       center.latitude = updateCenterDto.latitude;
@@ -161,7 +165,7 @@ export class CenterService implements OnModuleInit {
       return centerWithFrontDto;
     } catch (err) {
       console.error('Error in updateCenter function:', err);
-      throw err;
+      throw new InternalServerErrorException('Failed to update the center');
     }
   }
 
@@ -190,7 +194,7 @@ export class CenterService implements OnModuleInit {
       return centerDtos;
     } catch (err) {
       console.error('Error in getCenters function:', err);
-      throw new Error('Error retrieving centers');
+      throw new InternalServerErrorException('Failed to retrieve centers');
     }
   }
 
@@ -205,14 +209,13 @@ export class CenterService implements OnModuleInit {
       const deleteResult = await this.centerRepository.delete(id);
 
       if (deleteResult.affected === 0) {
-        console.error('No center found with the given id:', id);
-        throw new Error('Failed to delete the center');
+        throw new NotFoundException(`Center with ID ${id} not found`);
       }
 
       return true;
     } catch (error) {
       console.error('Error in deleteCenter function:', error);
-      throw error;
+      throw new InternalServerErrorException('Failed to delete the center');
     }
   }
 
@@ -239,7 +242,7 @@ export class CenterService implements OnModuleInit {
         relations: ['front'],
       });
 
-      // Filter out centers whose 'front' does not have a matching number of tasks in front and total number of tasks
+      // Filter out centers with specific conditions
       const filteredData = potentialCenters.filter((center) => {
         return (
           center.front.numberOfLargeBoxes !==
@@ -271,9 +274,16 @@ export class CenterService implements OnModuleInit {
         return centerDto;
       });
 
+      if (centersNearBy.length === 0) {
+        throw new NotFoundException('No matching centers found');
+      }
+
       return centersNearBy;
     } catch (err) {
-      console.error('Error:', err);
+      console.error('Error in getCenterForExchange function:', err);
+      throw new InternalServerErrorException(
+        'Failed to fetch centers for exchange',
+      );
     }
   }
 
@@ -293,7 +303,7 @@ export class CenterService implements OnModuleInit {
 
       if (!frontResponse || !frontResponse.id) {
         console.error('Error creating front');
-        throw new Error('Failed to create front');
+        throw new NotFoundException('Failed to create front');
       }
 
       const newCenter = this.centerRepository.create({
@@ -304,6 +314,11 @@ export class CenterService implements OnModuleInit {
 
       const savedCenter = await this.centerRepository.save(newCenter);
 
+      if (!savedCenter || !savedCenter.id) {
+        console.error('Error saving center');
+        throw new InternalServerErrorException('Failed to save center');
+      }
+
       return new CenterDto(
         savedCenter.latitude,
         savedCenter.longitude,
@@ -311,7 +326,7 @@ export class CenterService implements OnModuleInit {
       );
     } catch (err) {
       console.error('Error in createCenter function:', err);
-      throw err;
+      throw new InternalServerErrorException('Failed to create center');
     }
   }
 }

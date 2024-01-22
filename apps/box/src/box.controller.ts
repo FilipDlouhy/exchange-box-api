@@ -1,6 +1,6 @@
 import { Controller, UsePipes, ValidationPipe } from '@nestjs/common';
 import { BoxService } from './box.service';
-import { MessagePattern } from '@nestjs/microservices';
+import { MessagePattern, RpcException } from '@nestjs/microservices';
 import { boxMessagePatterns } from '@app/tcp/box.message.patterns';
 import { OpenBoxDto } from '@app/dtos/boxDtos/open.box.dto';
 
@@ -16,7 +16,11 @@ export class BoxController {
     }),
   )
   async createBoxForExchange() {
-    return this.boxService.createBoxForExchange();
+    try {
+      return this.boxService.createBoxForExchange();
+    } catch (error) {
+      throw new RpcException(error.message);
+    }
   }
   @MessagePattern(boxMessagePatterns.generateCodeForBoxToOpen)
   @UsePipes(
@@ -27,7 +31,11 @@ export class BoxController {
     }),
   )
   async generateCodeForBoxToOpen({ id }: { id: number }) {
-    return this.boxService.generateCodeForBoxToOpen(id);
+    try {
+      return this.boxService.generateCodeForBoxToOpen(id);
+    } catch (error) {
+      throw new RpcException(error.message);
+    }
   }
 
   @MessagePattern(boxMessagePatterns.openBox)
@@ -39,6 +47,10 @@ export class BoxController {
     }),
   )
   async openBox(openBoxDto: OpenBoxDto) {
-    return this.boxService.openBox(openBoxDto);
+    try {
+      return this.boxService.openBox(openBoxDto);
+    } catch (error) {
+      throw new RpcException(error.message);
+    }
   }
 }

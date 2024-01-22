@@ -1,5 +1,10 @@
 import { authMessagePatterns } from '@app/tcp/auth.messages.patterns';
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  HttpException,
+  HttpStatus,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import {
   ClientProxy,
   ClientProxyFactory,
@@ -85,69 +90,78 @@ export class ApiGatewayService {
    * @throws NotFoundException if the service is not found.
    */
   async rerouteRequest(req: Request, file?: Express.Multer.File) {
-    if (req.path === '/auth/check-token') {
-      return await this.handleCheckToken(req);
-    }
-
-    const requestUrl = this.parseUrl(req.path.toString());
-    let client: ClientProxy | null = null;
-    switch (requestUrl[0]) {
-      case 'payment':
-        client = this.paymentServiceClient;
-        break;
-      case 'auth':
-        client = this.authServiceClient;
-        break;
-      case 'center':
-        client = this.centerServiceClient;
-        break;
-      case 'front':
-        client = this.frontServiceClient;
-        break;
-      case 'item':
-        client = this.itemServiceClient;
-        break;
-      case 'user':
-        client = this.userServiceClient;
-        break;
-      case 'exchange':
-        client = this.exchangeClient;
-        break;
-      case 'box':
-        client = this.boxClient;
-        break;
-      case 'chat':
-        client = this.chatClient;
-      case 'chatSupport':
-        client = this.chatSupportClient;
-        break;
-      default:
-        throw new NotFoundException('Service not found');
-    }
-
-    if (req.method === 'POST' || req.method === 'PUT') {
-      if (req.body && Object.keys(req.body).length > 0) {
-        const response = file
-          ? await client
-              .send(
-                { cmd: this.kebabToCamel(requestUrl[1]) },
-                { ...req.body, file },
-              )
-              .toPromise()
-          : await client
-              .send({ cmd: this.kebabToCamel(requestUrl[1]) }, req.body)
-              .toPromise();
-        return response;
-      } else {
-        throw new Error('Request body is empty or invalid');
+    try {
+      if (req.path === '/auth/check-token') {
+        return await this.handleCheckToken(req);
       }
-    } else {
-      const reqBody = requestUrl[2] ? { id: requestUrl[2] } : {};
 
-      const response = await client
-        .send({ cmd: this.kebabToCamel(requestUrl[1]) }, reqBody)
-        .toPromise();
-      return response;
+      const requestUrl = this.parseUrl(req.path.toString());
+      let client: ClientProxy | null = null;
+      switch (requestUrl[0]) {
+        case 'payment':
+          client = this.paymentServiceClient;
+          break;
+        case 'auth':
+          client = this.authServiceClient;
+          break;
+        case 'center':
+          client = this.centerServiceClient;
+          break;
+        case 'front':
+          client = this.frontServiceClient;
+          break;
+        case 'item':
+          client = this.itemServiceClient;
+          break;
+        case 'user':
+          client = this.userServiceClient;
+          break;
+        case 'exchange':
+          client = this.exchangeClient;
+          break;
+        case 'box':
+          client = this.boxClient;
+          break;
+        case 'chat':
+          client = this.chatClient;
+        case 'chatSupport':
+          client = this.chatSupportClient;
+          break;
+        default:
+          throw new NotFoundException('Service not found');
+      }
+
+      if (!client) {
+        return { error: 'Service not found' };
+      }
+
+      if (req.method === 'POST' || req.method === 'PUT') {
+        if (req.body && Object.keys(req.body).length > 0) {
+          const response = file
+            ? await client
+                .send(
+                  { cmd: this.kebabToCamel(requestUrl[1]) },
+                  { ...req.body, file },
+                )
+                .toPromise()
+            : await client
+                .send({ cmd: this.kebabToCamel(requestUrl[1]) }, req.body)
+                .toPromise();
+          return response;
+        } else {
+          throw new Error('Request body is empty or invalid');
+        }
+      } else {
+        const reqBody = requestUrl[2] ? { id: requestUrl[2] } : {};
+
+        const response = await client
+          .send({ cmd: this.kebabToCamel(requestUrl[1]) }, reqBody)
+          .toPromise();
+        return response;
+      }
+    } catch (error) {
+      console.error('Error received from microservice:', error);
+      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
     }
   }
 

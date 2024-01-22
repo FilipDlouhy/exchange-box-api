@@ -1,7 +1,7 @@
 import { Controller, UsePipes, ValidationPipe } from '@nestjs/common';
 import { ItemService } from './item.service';
 import { CreateItemDto } from '@app/dtos/itemDtos/create.item.dto';
-import { MessagePattern } from '@nestjs/microservices';
+import { MessagePattern, RpcException } from '@nestjs/microservices';
 import { itemMessagePatterns } from '@app/tcp/item.messages.patterns';
 import { ItemDto } from '@app/dtos/itemDtos/item.dto';
 import { UpdateItemDto } from '@app/dtos/itemDtos/update.item.dto';
@@ -24,31 +24,51 @@ export class ItemController {
     }),
   )
   async createItem(createItemDto: CreateItemDto): Promise<ItemDto> {
-    return await this.itemService.createItem(createItemDto);
+    try {
+      return await this.itemService.createItem(createItemDto);
+    } catch (error) {
+      throw new RpcException(error.message);
+    }
   }
 
   // Retrieve all items
   @MessagePattern(itemMessagePatterns.getAllItems)
   async getAllItems(): Promise<ItemDto[]> {
-    return await this.itemService.getAllItems();
+    try {
+      return await this.itemService.getAllItems();
+    } catch (error) {
+      throw new RpcException(error.message);
+    }
   }
 
   // Retrieve items belonging to a specific user
   @MessagePattern(itemMessagePatterns.getUserItems)
   async getUserItems({ id }: { id: number }): Promise<ItemDto[]> {
-    return await this.itemService.getUserItems(id, true);
+    try {
+      return await this.itemService.getUserItems(id, true);
+    } catch (error) {
+      throw new RpcException(error.message);
+    }
   }
 
   // Retrieve forgotten items belonging to a specific user
   @MessagePattern(itemMessagePatterns.getUserForgotenItems)
   async getUserForgotenItems({ id }: { id: number }): Promise<ItemDto[]> {
-    return await this.itemService.getUserItems(id, false);
+    try {
+      return await this.itemService.getUserItems(id, false);
+    } catch (error) {
+      throw new RpcException(error.message);
+    }
   }
 
   // Delete an item based on its ID
   @MessagePattern(itemMessagePatterns.deleteItem)
   async deleteItem({ id }: { id: number }): Promise<boolean> {
-    return await this.itemService.deleteItem(id);
+    try {
+      return await this.itemService.deleteItem(id);
+    } catch (error) {
+      throw new RpcException(error.message);
+    }
   }
 
   // Update an existing item using the provided DTO
@@ -61,13 +81,21 @@ export class ItemController {
     }),
   )
   async updateItem(updateItemDto: UpdateItemDto): Promise<ItemDto> {
-    return await this.itemService.updateItem(updateItemDto);
+    try {
+      return await this.itemService.updateItem(updateItemDto);
+    } catch (error) {
+      throw new RpcException(error.message);
+    }
   }
 
   // Retrieve an item based on its ID
   @MessagePattern(itemMessagePatterns.getItem)
   async getItem({ id }: { id: number }): Promise<ItemWithUsersDto> {
-    return await this.itemService.getItem(id);
+    try {
+      return await this.itemService.getItem(id);
+    } catch (error) {
+      throw new RpcException(error.message);
+    }
   }
 
   // Retrieve an item based on its ID
@@ -79,16 +107,24 @@ export class ItemController {
     item_ids: number[];
     udpate: boolean;
   }): Promise<ItemSizeDto[]> {
-    return await this.itemService.retrieveItemSizesAndCheckExchange(
-      item_ids,
-      udpate,
-    );
+    try {
+      return await this.itemService.retrieveItemSizesAndCheckExchange(
+        item_ids,
+        udpate,
+      );
+    } catch (error) {
+      throw new RpcException(error.message);
+    }
   }
 
   // Retrieve an item based on its ID
   @MessagePattern(itemMessagePatterns.addExchangeToItems)
   async addExchangeIdToItem(addExchangeIdToItemDto: ToggleExchangeToItemDto) {
-    return await this.itemService.addExchangeToItems(addExchangeIdToItemDto);
+    try {
+      return await this.itemService.addExchangeToItems(addExchangeIdToItemDto);
+    } catch (error) {
+      throw new RpcException(error.message);
+    }
   }
 
   @MessagePattern(itemMessagePatterns.deleteExchangeFromItems)
@@ -104,26 +140,46 @@ export class ItemController {
   }: {
     itemIds: number[];
   }): Promise<boolean> {
-    return await this.itemService.deleteExchangeFromItems(itemIds);
+    try {
+      return await this.itemService.deleteExchangeFromItems(itemIds);
+    } catch (error) {
+      throw new RpcException(error.message);
+    }
   }
 
   @MessagePattern(itemMessagePatterns.uploadItemImage)
   async uploadUserImage(uploadUserImageDto: UploadItemImageDto) {
-    return this.itemService.uploadItemImage(uploadUserImageDto, false);
+    try {
+      return this.itemService.uploadItemImage(uploadUserImageDto, false);
+    } catch (error) {
+      throw new RpcException(error.message);
+    }
   }
 
   @MessagePattern(itemMessagePatterns.updateItemImage)
   async updateItemImage(uploadUserImageDto: UploadItemImageDto) {
-    return this.itemService.uploadItemImage(uploadUserImageDto, true);
+    try {
+      return this.itemService.uploadItemImage(uploadUserImageDto, true);
+    } catch (error) {
+      throw new RpcException(error.message);
+    }
   }
 
   @MessagePattern(itemMessagePatterns.getItemImage)
   async getUserImage({ id }: { id: number }): Promise<string> {
-    return this.itemService.getItemImage(id);
+    try {
+      return this.itemService.getItemImage(id);
+    } catch (error) {
+      throw new RpcException(error.message);
+    }
   }
 
   @MessagePattern(itemMessagePatterns.deleteItemImage)
   async deleteUserImage({ id }: { id: number }) {
-    return this.itemService.deleteItemImage(id);
+    try {
+      return this.itemService.deleteItemImage(id);
+    } catch (error) {
+      throw new RpcException(error.message);
+    }
   }
 }

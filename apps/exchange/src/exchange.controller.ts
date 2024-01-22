@@ -1,7 +1,7 @@
 import { Controller, UsePipes, ValidationPipe } from '@nestjs/common';
 import { ExchangeService } from './exchange.service';
 import { exchangeessagePatterns } from '@app/tcp/exchange.message.patterns';
-import { MessagePattern } from '@nestjs/microservices';
+import { MessagePattern, RpcException } from '@nestjs/microservices';
 import { CreateExchangeDto } from '@app/dtos/exchangeDtos/create.exchange.dto';
 import { ExchangeDto } from '@app/dtos/exchangeDtos/exchange.dto';
 import { UpdateExchangeDto } from '@app/dtos/exchangeDtos/update.exchange.dto';
@@ -23,7 +23,11 @@ export class ExchangeController {
     }),
   )
   async createExchange(createExchangeDto: CreateExchangeDto) {
-    return await this.exchangeService.createExchange(createExchangeDto);
+    try {
+      return await this.exchangeService.createExchange(createExchangeDto);
+    } catch (error) {
+      throw new RpcException(error.message);
+    }
   }
 
   @MessagePattern(exchangeessagePatterns.deleteExchange)
@@ -35,7 +39,11 @@ export class ExchangeController {
     }),
   )
   async deleteExchange({ id }: { id: number }): Promise<boolean> {
-    return await this.exchangeService.deleteExchange(id);
+    try {
+      return await this.exchangeService.deleteExchange(id);
+    } catch (error) {
+      throw new RpcException(error.message);
+    }
   }
 
   @MessagePattern(exchangeessagePatterns.updateExchange)
@@ -49,7 +57,11 @@ export class ExchangeController {
   async updateExchange(
     updateExchangeDto: UpdateExchangeDto,
   ): Promise<ExchangeDto> {
-    return await this.exchangeService.updateExchange(updateExchangeDto);
+    try {
+      return await this.exchangeService.updateExchange(updateExchangeDto);
+    } catch (error) {
+      throw new RpcException(error.message);
+    }
   }
 
   @MessagePattern(exchangeessagePatterns.getUserExchanges)
@@ -58,7 +70,11 @@ export class ExchangeController {
   }: {
     id: number;
   }): Promise<ExchangeWithUserDto[]> {
-    return await this.exchangeService.getExchangesByUser(id, true);
+    try {
+      return await this.exchangeService.getExchangesByUser(id, true);
+    } catch (error) {
+      throw new RpcException(error.message);
+    }
   }
 
   @MessagePattern(exchangeessagePatterns.getFriendExchanges)
@@ -67,17 +83,29 @@ export class ExchangeController {
   }: {
     id: number;
   }): Promise<ExchangeWithUserDto[]> {
-    return await this.exchangeService.getExchangesByUser(id, false);
+    try {
+      return await this.exchangeService.getExchangesByUser(id, false);
+    } catch (error) {
+      throw new RpcException(error.message);
+    }
   }
 
   @MessagePattern(exchangeessagePatterns.getFullExchange)
   async getFullExchange({ id }: { id: number }) {
-    return await this.exchangeService.getFullExchange(id);
+    try {
+      return await this.exchangeService.getFullExchange(id);
+    } catch (error) {
+      throw new RpcException(error.message);
+    }
   }
 
   @MessagePattern(exchangeessagePatterns.getAllExchanges)
   async getAllExchanges(): Promise<ExchangeWithUserDto[]> {
-    return await this.exchangeService.getAllExchanges();
+    try {
+      return await this.exchangeService.getAllExchanges();
+    } catch (error) {
+      throw new RpcException(error.message);
+    }
   }
 
   @MessagePattern(exchangeessagePatterns.addExchangeToTheFront)
@@ -91,9 +119,13 @@ export class ExchangeController {
   async addExchangeToTheFront(
     addExchangeToTheFront: AddExchangeToFrontDto,
   ): Promise<Exchange> {
-    return await this.exchangeService.addExchangeToTheFront(
-      addExchangeToTheFront,
-    );
+    try {
+      return await this.exchangeService.addExchangeToTheFront(
+        addExchangeToTheFront,
+      );
+    } catch (error) {
+      throw new RpcException(error.message);
+    }
   }
 
   @MessagePattern(exchangeessagePatterns.deleteExchangeFromFront)
@@ -105,7 +137,11 @@ export class ExchangeController {
     }),
   )
   async deleteExchangeFromFront({ boxId }: { boxId: number }) {
-    return await this.exchangeService.deleteExchangeFromFront(boxId);
+    try {
+      return await this.exchangeService.deleteExchangeFromFront(boxId);
+    } catch (error) {
+      throw new RpcException(error.message);
+    }
   }
 
   @MessagePattern(exchangeessagePatterns.changeExchangeStatus)
@@ -117,12 +153,20 @@ export class ExchangeController {
     }),
   )
   async changeExchangeStatus(changeExchangeStatus: ChangeExchangeStatusDto) {
-    return await this.exchangeService.changeExchangeStatus(
-      changeExchangeStatus,
-    );
+    try {
+      return await this.exchangeService.changeExchangeStatus(
+        changeExchangeStatus,
+      );
+    } catch (error) {
+      throw new RpcException(error.message);
+    }
   }
   @MessagePattern(exchangeessagePatterns.getBoxSize)
   async getBoxSize({ id }: { id: number }): Promise<string> {
-    return await this.exchangeService.getBoxSize(id);
+    try {
+      return await this.exchangeService.getBoxSize(id);
+    } catch (error) {
+      throw new RpcException(error.message);
+    }
   }
 }
