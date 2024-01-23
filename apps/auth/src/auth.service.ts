@@ -93,9 +93,10 @@ export class AuthService {
    * @param {string} token - The JWT token to be verified.
    * @returns A promise that resolves to a boolean indicating token validity.
    */
-  async checkJwtToken(token: string): Promise<boolean> {
+  async checkToken(token: string): Promise<boolean> {
     try {
       this.jwtService.verify(token);
+
       return true;
     } catch (error) {
       console.error('Token verification error:', error);

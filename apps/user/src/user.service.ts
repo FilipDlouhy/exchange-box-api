@@ -41,7 +41,7 @@ export class UserService {
 
       return true;
     } catch (err) {
-      if (err.code === '23505') {
+      if (err.code === 'ER_DUP_ENTRY') {
         throw new ConflictException('Email already exists');
       }
       console.error('Error creating user:', err);

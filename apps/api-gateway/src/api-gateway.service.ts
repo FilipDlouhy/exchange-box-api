@@ -175,7 +175,7 @@ export class ApiGatewayService {
     if (req.path === '/auth/check-token') {
       // Extract JWT token from the request
       const token =
-        req.cookies['jwt'] || req.headers['authorization']?.split(' ')[1];
+        req.cookies['jwtToken'] || req.headers['authorization']?.split(' ')[1];
       if (!token) {
         false;
       }
@@ -183,10 +183,7 @@ export class ApiGatewayService {
       // Call the AuthService to validate the token
       try {
         const isValid = await this.authServiceClient
-          .send(
-            { cmd: authMessagePatterns.checkJwtToken.cmd },
-            { token: token },
-          )
+          .send({ cmd: authMessagePatterns.checkToken.cmd }, { token: token })
           .toPromise();
 
         return isValid;

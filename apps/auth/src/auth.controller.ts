@@ -24,10 +24,10 @@ export class AuthController {
     }
   }
 
-  @MessagePattern(authMessagePatterns.checkJwtToken)
+  @MessagePattern(authMessagePatterns.checkToken)
   async checkToken({ token }: { token: string }) {
     try {
-      return this.authService.checkJwtToken(token);
+      return this.authService.checkToken(token);
     } catch (error) {
       throw new RpcException(error.message);
     }
