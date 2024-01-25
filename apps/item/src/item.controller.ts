@@ -1,4 +1,4 @@
-import { Controller, UsePipes, ValidationPipe } from '@nestjs/common';
+import { Controller, Inject, UsePipes, ValidationPipe } from '@nestjs/common';
 import { ItemService } from './item.service';
 import { CreateItemDto } from '@app/dtos/itemDtos/create.item.dto';
 import { MessagePattern, RpcException } from '@nestjs/microservices';
@@ -9,10 +9,14 @@ import { ItemWithUsersDto } from '@app/dtos/itemDtos/item.with.users.dto';
 import { ItemSizeDto } from '@app/dtos/itemDtos/item.size.dto';
 import { ToggleExchangeToItemDto } from '@app/dtos/itemDtos/toggle.exchange.id.dto';
 import { UploadItemImageDto } from '@app/dtos/itemDtos/upload.item.image.dto';
+import { CACHE_MANAGER, Cache } from '@nestjs/cache-manager';
 
 @Controller()
 export class ItemController {
-  constructor(private readonly itemService: ItemService) {}
+  constructor(
+    private readonly itemService: ItemService,
+    @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
+  ) {}
 
   // Create a new item using the provided DTO
   @MessagePattern(itemMessagePatterns.createItem)
@@ -35,7 +39,18 @@ export class ItemController {
   @MessagePattern(itemMessagePatterns.getAllItems)
   async getAllItems(): Promise<ItemDto[]> {
     try {
-      return await this.itemService.getAllItems();
+      const cacheKey = 'allItems';
+      const cachedItems: ItemDto[] = await this.cacheManager.get(cacheKey);
+
+      if (cachedItems) {
+        return cachedItems;
+      }
+
+      const items = await this.itemService.getAllItems();
+
+      await this.cacheManager.set(cacheKey, items, 18000);
+
+      return items;
     } catch (error) {
       throw new RpcException(error.message);
     }
@@ -45,7 +60,18 @@ export class ItemController {
   @MessagePattern(itemMessagePatterns.getUserItems)
   async getUserItems({ id }: { id: number }): Promise<ItemDto[]> {
     try {
-      return await this.itemService.getUserItems(id, true);
+      const cacheKey = `userItems:${id}`;
+      const cachedUserItems: ItemDto[] = await this.cacheManager.get(cacheKey);
+
+      if (cachedUserItems) {
+        return cachedUserItems;
+      }
+
+      const userItems = await this.itemService.getUserItems(id, true);
+
+      await this.cacheManager.set(cacheKey, userItems, 18000);
+
+      return userItems;
     } catch (error) {
       throw new RpcException(error.message);
     }
@@ -55,7 +81,19 @@ export class ItemController {
   @MessagePattern(itemMessagePatterns.getUserForgotenItems)
   async getUserForgotenItems({ id }: { id: number }): Promise<ItemDto[]> {
     try {
-      return await this.itemService.getUserItems(id, false);
+      const cacheKey = `userForgottenItems:${id}`;
+      const cachedUserForgottenItems: ItemDto[] =
+        await this.cacheManager.get(cacheKey);
+
+      if (cachedUserForgottenItems) {
+        return cachedUserForgottenItems;
+      }
+
+      const userForgottenItems = await this.itemService.getUserItems(id, false);
+
+      await this.cacheManager.set(cacheKey, userForgottenItems, 18000);
+
+      return userForgottenItems;
     } catch (error) {
       throw new RpcException(error.message);
     }
@@ -92,7 +130,19 @@ export class ItemController {
   @MessagePattern(itemMessagePatterns.getItem)
   async getItem({ id }: { id: number }): Promise<ItemWithUsersDto> {
     try {
-      return await this.itemService.getItem(id);
+      const cacheKey = `item:${id}`;
+      const cachedItem: ItemWithUsersDto =
+        await this.cacheManager.get(cacheKey);
+
+      if (cachedItem) {
+        return cachedItem;
+      }
+
+      const item = await this.itemService.getItem(id);
+
+      await this.cacheManager.set(cacheKey, item, 18000);
+
+      return item;
     } catch (error) {
       throw new RpcException(error.message);
     }

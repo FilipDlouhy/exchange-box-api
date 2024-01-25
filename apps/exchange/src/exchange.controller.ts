@@ -1,4 +1,4 @@
-import { Controller, UsePipes, ValidationPipe } from '@nestjs/common';
+import { Controller, Inject, UsePipes, ValidationPipe } from '@nestjs/common';
 import { ExchangeService } from './exchange.service';
 import { exchangeessagePatterns } from '@app/tcp/exchange.message.patterns';
 import { MessagePattern, RpcException } from '@nestjs/microservices';
@@ -9,10 +9,14 @@ import { ExchangeWithUserDto } from '@app/dtos/exchangeDtos/exchange.with.users.
 import { AddExchangeToFrontDto } from '@app/dtos/exchangeDtos/add.exchange.to.front..dto';
 import { Exchange } from '@app/database/entities/exchange.entity';
 import { ChangeExchangeStatusDto } from '@app/dtos/exchangeDtos/change.exchange.status.dto';
+import { CACHE_MANAGER, Cache } from '@nestjs/cache-manager';
 
 @Controller()
 export class ExchangeController {
-  constructor(private readonly exchangeService: ExchangeService) {}
+  constructor(
+    private readonly exchangeService: ExchangeService,
+    @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
+  ) {}
 
   @MessagePattern(exchangeessagePatterns.createExchange)
   @UsePipes(
@@ -71,7 +75,21 @@ export class ExchangeController {
     id: number;
   }): Promise<ExchangeWithUserDto[]> {
     try {
-      return await this.exchangeService.getExchangesByUser(id, true);
+      const cacheKey = `userExchanges:${id}`;
+      const cachedUserExchanges: ExchangeWithUserDto[] =
+        await this.cacheManager.get(cacheKey);
+
+      if (cachedUserExchanges) {
+        return cachedUserExchanges;
+      }
+
+      const userExchanges = await this.exchangeService.getExchangesByUser(
+        id,
+        true,
+      );
+      await this.cacheManager.set(cacheKey, userExchanges, 18000);
+
+      return userExchanges;
     } catch (error) {
       throw new RpcException(error.message);
     }
@@ -84,7 +102,20 @@ export class ExchangeController {
     id: number;
   }): Promise<ExchangeWithUserDto[]> {
     try {
-      return await this.exchangeService.getExchangesByUser(id, false);
+      const cacheKey = `friendExchanges:${id}`;
+      const cachedFriendExchanges: ExchangeWithUserDto[] =
+        await this.cacheManager.get(cacheKey);
+
+      if (cachedFriendExchanges) {
+        return cachedFriendExchanges;
+      }
+      const friendExchanges = await this.exchangeService.getExchangesByUser(
+        id,
+        false,
+      );
+      await this.cacheManager.set(cacheKey, friendExchanges, 18000);
+
+      return friendExchanges;
     } catch (error) {
       throw new RpcException(error.message);
     }
@@ -93,7 +124,18 @@ export class ExchangeController {
   @MessagePattern(exchangeessagePatterns.getFullExchange)
   async getFullExchange({ id }: { id: number }) {
     try {
-      return await this.exchangeService.getFullExchange(id);
+      const cacheKey = `fullExchange:${id}`;
+      const cachedFullExchange: any = await this.cacheManager.get(cacheKey);
+
+      if (cachedFullExchange) {
+        return cachedFullExchange;
+      }
+
+      const fullExchange = await this.exchangeService.getFullExchange(id);
+
+      await this.cacheManager.set(cacheKey, fullExchange, 18000);
+
+      return fullExchange;
     } catch (error) {
       throw new RpcException(error.message);
     }
@@ -102,7 +144,18 @@ export class ExchangeController {
   @MessagePattern(exchangeessagePatterns.getAllExchanges)
   async getAllExchanges(): Promise<ExchangeWithUserDto[]> {
     try {
-      return await this.exchangeService.getAllExchanges();
+      const cacheKey = 'allExchanges';
+      const cachedExchanges: ExchangeWithUserDto[] =
+        await this.cacheManager.get(cacheKey);
+
+      if (cachedExchanges) {
+        return cachedExchanges;
+      }
+
+      const allExchanges = await this.exchangeService.getAllExchanges();
+      await this.cacheManager.set(cacheKey, allExchanges, 18000);
+
+      return allExchanges;
     } catch (error) {
       throw new RpcException(error.message);
     }

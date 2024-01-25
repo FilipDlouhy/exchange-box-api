@@ -1,4 +1,4 @@
-import { Controller, UsePipes, ValidationPipe } from '@nestjs/common';
+import { Controller, Inject, UsePipes, ValidationPipe } from '@nestjs/common';
 import { UserService } from './user.service';
 import { MessagePattern, RpcException } from '@nestjs/microservices';
 import { userMessagePatterns } from '@app/tcp';
@@ -8,10 +8,14 @@ import { UpdateUserDto } from '@app/dtos/userDtos/update.user.dto';
 import { ToggleFriendDto } from '@app/dtos/userDtos/toggle.friend.dto';
 import { UploadUserImageDto } from '@app/dtos/userDtos/upload.user.image.dto';
 import { User } from '@app/database/entities/user.entity';
+import { CACHE_MANAGER, Cache } from '@nestjs/cache-manager';
 
 @Controller()
 export class UserController {
-  constructor(private readonly userService: UserService) {}
+  constructor(
+    private readonly userService: UserService,
+    @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
+  ) {}
 
   @MessagePattern(userMessagePatterns.createUser)
   @UsePipes(
@@ -32,7 +36,15 @@ export class UserController {
   @MessagePattern(userMessagePatterns.getUser)
   async getUser({ id }: { id: number }): Promise<UserDto> {
     try {
-      return await this.userService.getUser(id);
+      const cachedUser: UserDto = await this.cacheManager.get('getUser');
+      if (cachedUser) {
+        return cachedUser;
+      }
+
+      const user = await this.userService.getUser(id);
+      await this.cacheManager.set('getUser', user, 18000);
+
+      return user;
     } catch (error) {
       throw new RpcException(error.message);
     }
@@ -57,7 +69,17 @@ export class UserController {
   @MessagePattern(userMessagePatterns.getUsers)
   async getUsers(): Promise<UserDto[]> {
     try {
-      return await this.userService.getUsers();
+      const cachedUsers: UserDto[] = await this.cacheManager.get('getUsers');
+
+      if (cachedUsers) {
+        return cachedUsers;
+      }
+
+      const users = await this.userService.getUsers();
+
+      await this.cacheManager.set('getUsers', users, 18000);
+
+      return users;
     } catch (error) {
       throw new RpcException(error.message);
     }
@@ -159,7 +181,17 @@ export class UserController {
   @MessagePattern(userMessagePatterns.getUserImage)
   async getUserImage({ id }: { id: number }): Promise<string> {
     try {
-      return this.userService.getUserImage(id);
+      const cacheKey = `userImage:${id}`;
+      const cachedImage: string = await this.cacheManager.get(cacheKey);
+
+      if (cachedImage) {
+        return cachedImage;
+      }
+
+      const userImage = await this.userService.getUserImage(id);
+      await this.cacheManager.set(cacheKey, userImage, 18000);
+
+      return userImage;
     } catch (error) {
       throw new RpcException(error.message);
     }

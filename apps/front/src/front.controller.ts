@@ -1,4 +1,4 @@
-import { Controller, UsePipes, ValidationPipe } from '@nestjs/common';
+import { Controller, Inject, UsePipes, ValidationPipe } from '@nestjs/common';
 import { FrontService } from './front.service';
 import { frontMessagePatterns } from '@app/tcp/front.message.patterns';
 import { MessagePattern, RpcException } from '@nestjs/microservices';
