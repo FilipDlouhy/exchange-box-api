@@ -31,6 +31,7 @@ export class BoxService implements OnModuleInit {
       },
     });
   }
+
   /**
    * Asynchronously initializes the module to handle box creation and scheduling.
    * It fetches existing boxes from the database and updates their status based on specific criteria.
@@ -77,6 +78,7 @@ export class BoxService implements OnModuleInit {
       );
     });
   }
+
   /**
    * Asynchronously creates a box for an exchange and schedules its availability based on provided criteria.
    * This function also generates a random password for the box, hashes it, and inserts the box data into the database.

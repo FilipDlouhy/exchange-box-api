@@ -7,6 +7,7 @@ import { OpenBoxDto } from '@app/dtos/boxDtos/open.box.dto';
 @Controller()
 export class BoxController {
   constructor(private readonly boxService: BoxService) {}
+
   @MessagePattern(boxMessagePatterns.createBox)
   @UsePipes(
     new ValidationPipe({
@@ -22,6 +23,7 @@ export class BoxController {
       throw new RpcException(error.message);
     }
   }
+
   @MessagePattern(boxMessagePatterns.generateCodeForBoxToOpen)
   @UsePipes(
     new ValidationPipe({

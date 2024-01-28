@@ -15,6 +15,7 @@ export class FrontService {
     @InjectRepository(Front)
     private readonly frontRepository: Repository<Front>,
   ) {}
+
   /**
    * Creates a new front associated with a given center in the database.
    *

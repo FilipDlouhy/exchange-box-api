@@ -35,6 +35,7 @@ export class ItemService {
       },
     });
   }
+
   /**
    * Asynchronously creates a new item in the 'item' table of the  database.
    *
@@ -160,6 +161,7 @@ export class ItemService {
       throw new Error('Failed to retrieve user items');
     }
   }
+
   /**
    * Deletes an item from the database.
    * It first checks if the item is part of an exchange. If it is, the deletion is not allowed.

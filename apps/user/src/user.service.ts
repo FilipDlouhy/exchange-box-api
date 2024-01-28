@@ -72,6 +72,13 @@ export class UserService {
     }
   }
 
+  /**
+   * Retrieve a user for updating an item based on their ID.
+   *
+   * @param {number} id - The ID of the user to retrieve.
+   * @returns {Promise<User>} A Promise that resolves to the retrieved user.
+   * @throws {Error} If there's an error while retrieving the user.
+   */
   async getUserForItemUpdate(id: number): Promise<User> {
     try {
       const user = await this.userRepository.findOne({

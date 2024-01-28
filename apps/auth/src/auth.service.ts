@@ -22,6 +22,7 @@ export class AuthService {
       },
     });
   }
+
   /**
    * Validates the provided email and password against the stored credentials.
    * If the user is found and the password matches, the user object is returned.
