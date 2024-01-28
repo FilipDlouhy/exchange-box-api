@@ -3,8 +3,6 @@ import {
   PrimaryGeneratedColumn,
   Column,
   OneToMany,
-  ManyToOne,
-  JoinColumn,
   JoinTable,
   ManyToMany,
 } from 'typeorm';
@@ -27,6 +25,18 @@ export class User {
 
   @Column({ nullable: true })
   imageUrl: string;
+
+  @Column({ nullable: true })
+  address: string | null;
+
+  @Column({ nullable: true })
+  telephone: string | null;
+
+  @Column({ type: 'float', nullable: true })
+  longitude: number | null;
+
+  @Column({ type: 'float', nullable: true })
+  latitude: number | null;
 
   @ManyToMany(() => User, (user) => user.friends)
   @JoinTable()

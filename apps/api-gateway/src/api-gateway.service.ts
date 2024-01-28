@@ -1,3 +1,4 @@
+import { User } from '@app/database/entities/user.entity';
 import { authMessagePatterns } from '@app/tcp/auth.messages.patterns';
 import {
   HttpException,
@@ -91,7 +92,10 @@ export class ApiGatewayService {
    */
   async rerouteRequest(req: Request, file?: Express.Multer.File) {
     try {
-      if (req.path === '/auth/check-token') {
+      if (
+        req.path === '/auth/check-token' ||
+        req.path === '/auth/get-user-by-token'
+      ) {
         return await this.handleCheckToken(req);
       }
 
@@ -171,29 +175,34 @@ export class ApiGatewayService {
    * @param {Request} req - The incoming request object.
    * @returns {Promise} A promise resolving to the validation response.
    */
-  private async handleCheckToken(req: Request): Promise<boolean> {
-    if (req.path === '/auth/check-token') {
-      // Extract JWT token from the request
-      const token =
-        req.cookies['jwtToken'] || req.headers['authorization']?.split(' ')[1];
-      if (!token) {
-        false;
-      }
-
-      // Call the AuthService to validate the token
-      try {
-        const isValid = await this.authServiceClient
-          .send({ cmd: authMessagePatterns.checkToken.cmd }, { token: token })
-          .toPromise();
-
-        return isValid;
-      } catch (error) {
-        console.error('Error validating token:', error);
-        return false;
-      }
+  private async handleCheckToken(req: Request): Promise<boolean | User> {
+    // Extract JWT token from the request
+    const token =
+      req.cookies['jwtToken'] || req.headers['authorization']?.split(' ')[1];
+    if (!token) {
+      false;
     }
 
-    // If the route is not /auth/check-token, return valid: false by default
-    return false;
+    // Call the AuthService to validate the token or get user by token
+    try {
+      if (req.path === '/auth/get-user-by-token') {
+        const userDto = await this.authServiceClient
+          .send(
+            { cmd: authMessagePatterns.getUserByToken.cmd },
+            { token: token },
+          )
+          .toPromise();
+
+        return userDto;
+      }
+      const isValid = await this.authServiceClient
+        .send({ cmd: authMessagePatterns.checkToken.cmd }, { token: token })
+        .toPromise();
+
+      return isValid;
+    } catch (error) {
+      console.error('Error validating token:', error);
+      return false;
+    }
   }
 }

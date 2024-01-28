@@ -11,6 +11,14 @@ export class UserDto {
   @IsNotEmpty()
   name: string;
 
+  @IsString()
+  @IsNotEmpty()
+  telephone: string | undefined;
+
+  @IsString()
+  @IsNotEmpty()
+  address: string | undefined;
+
   @IsEmail()
   email: string;
 
@@ -22,10 +30,19 @@ export class UserDto {
   @IsOptional()
   imageURL: string | undefined;
 
-  constructor(name: string, email: string, id: number, imageURL?: string) {
+  constructor(
+    name: string,
+    email: string,
+    id: number,
+    telephone?: string,
+    address?: string,
+    imageURL?: string,
+  ) {
     this.name = name;
     this.email = email;
     this.id = id;
     this.imageURL = imageURL;
+    this.telephone = telephone;
+    this.address = address;
   }
 }

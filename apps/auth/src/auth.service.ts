@@ -1,3 +1,4 @@
+import { User } from '@app/database/entities/user.entity';
 import { userMessagePatterns } from '@app/tcp';
 import {
   Injectable,
@@ -96,8 +97,31 @@ export class AuthService {
   async checkToken(token: string): Promise<boolean> {
     try {
       this.jwtService.verify(token);
-
       return true;
+    } catch (error) {
+      console.error('Token verification error:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Retrieves a user by their JWT token.
+   * @param {string} token - JWT token of the user to be retrieved.
+   * @returns {Promise<boolean>} A promise that resolves to the user object if the token is valid and the user is found, otherwise false.
+   */
+  async getUserByToken(token: string) {
+    try {
+      const decoded = this.jwtService.verify(token);
+
+      const user: User = await this.userClient
+        .send(
+          { cmd: userMessagePatterns.getUserByEmail.cmd },
+          { userEmail: decoded.email },
+        )
+        .toPromise();
+
+      delete user.password;
+      return user;
     } catch (error) {
       console.error('Token verification error:', error);
       return false;

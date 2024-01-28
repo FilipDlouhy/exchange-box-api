@@ -136,7 +136,15 @@ export class UserService {
   async getUsers(): Promise<UserDto[]> {
     try {
       const users = await this.userRepository.find({
-        select: ['id', 'name', 'email', 'imageUrl'],
+        select: [
+          'id',
+          'name',
+          'email',
+          'imageUrl',
+          'email',
+          'address',
+          'telephone',
+        ],
       });
 
       if (!users || users.length === 0) {
@@ -144,7 +152,15 @@ export class UserService {
       }
 
       const userDtos: UserDto[] = users.map(
-        (user) => new UserDto(user.name, user.email, user.id, user.imageUrl),
+        (user) =>
+          new UserDto(
+            user.name,
+            user.email,
+            user.id,
+            user.telephone,
+            user.address,
+            user.imageUrl,
+          ),
       );
 
       return userDtos;
@@ -154,6 +170,43 @@ export class UserService {
         throw err; // Re-throw the NotFoundException
       } else {
         throw new InternalServerErrorException('Error retrieving users');
+      }
+    }
+  }
+
+  /**
+   * Retrieves the friends of a given user.
+   * @param {number} id - The ID of the user whose friends are to be retrieved.
+   * @returns {Promise<UserDto[]>} A promise that resolves to an array of UserDto objects representing the user's friends.
+   * @throws {NotFoundException} Throws NotFoundException if the user is not found.
+   * @throws {InternalServerErrorException} Throws InternalServerErrorException for any other errors during the retrieval process.
+   */
+  async getFriends(id: number): Promise<UserDto[]> {
+    try {
+      const user = await this.userRepository.findOne({
+        where: { id: id },
+        relations: ['friends'],
+      });
+
+      const friendDtos: UserDto[] = user.friends.map(
+        (user) =>
+          new UserDto(
+            user.name,
+            user.email,
+            user.id,
+            user.telephone,
+            user.address,
+            user.imageUrl,
+          ),
+      );
+
+      return friendDtos;
+    } catch (err) {
+      console.error('Error fetching friends:', err);
+      if (err instanceof NotFoundException) {
+        throw err;
+      } else {
+        throw new InternalServerErrorException('Error retrieving friends');
       }
     }
   }

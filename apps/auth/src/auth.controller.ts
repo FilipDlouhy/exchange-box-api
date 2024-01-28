@@ -32,4 +32,13 @@ export class AuthController {
       throw new RpcException(error.message);
     }
   }
+
+  @MessagePattern(authMessagePatterns.getUserByToken)
+  async getUserByToken({ token }: { token: string }) {
+    try {
+      return this.authService.getUserByToken(token);
+    } catch (error) {
+      throw new RpcException(error.message);
+    }
+  }
 }

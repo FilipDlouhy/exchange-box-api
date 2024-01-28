@@ -223,4 +223,13 @@ export class UserController {
       throw new RpcException(error.message);
     }
   }
+
+  @MessagePattern(userMessagePatterns.getFriends)
+  async getFriends({ id }: { id: number }): Promise<UserDto[]> {
+    try {
+      return this.userService.getFriends(id);
+    } catch (error) {
+      throw new RpcException(error.message);
+    }
+  }
 }
