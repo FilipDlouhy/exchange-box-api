@@ -19,7 +19,7 @@ import {
 import * as bcrypt from 'bcrypt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from '@app/database/entities/user.entity';
-import { Repository } from 'typeorm';
+import { Not, Repository } from 'typeorm';
 
 @Injectable()
 export class UserService {
@@ -182,18 +182,58 @@ export class UserService {
   }
 
   /**
-   * Retrieves the friends of a given user.
-   * @param {number} id - The ID of the user whose friends are to be retrieved.
-   * @returns {Promise<UserDto[]>} A promise that resolves to an array of UserDto objects representing the user's friends.
-   * @throws {NotFoundException} Throws NotFoundException if the user is not found.
-   * @throws {InternalServerErrorException} Throws InternalServerErrorException for any other errors during the retrieval process.
+   * Retrieves either the friends of a user or the users who are not friends with the given user.
+   * @param id The id of the user.
+   * @param isFriends A boolean indicating whether to return friends (true) or non-friends (false).
+   * @returns A Promise of an array of UserDto objects.
    */
-  async getFriends(id: number): Promise<UserDto[]> {
+  async getFriendsOrNonFriends(
+    id: number,
+    isFriends: boolean,
+  ): Promise<UserDto[]> {
     try {
       const user = await this.userRepository.findOne({
         where: { id: id },
         relations: ['friends'],
       });
+
+      if (!user) {
+        throw new NotFoundException('User not found');
+      }
+
+      if (!isFriends) {
+        const allUsers = await this.userRepository.find({
+          where: {
+            id: Not(id),
+          },
+        });
+
+        const frendIds = user.friends.map((user) => {
+          return user.id;
+        });
+
+        const nonFriendUsers = allUsers.map((u) => {
+          if (!frendIds.includes(u.id)) {
+            return u;
+          }
+        });
+
+        const nonFriendUserDtos = nonFriendUsers
+          .filter((u) => u != null)
+          .map(
+            (u) =>
+              new UserDto(
+                u.name,
+                u.email,
+                u.id,
+                u.telephone,
+                u.address,
+                u.imageUrl,
+              ),
+          );
+
+        return nonFriendUserDtos;
+      }
 
       const friendDtos: UserDto[] = user.friends.map(
         (user) =>
@@ -209,11 +249,11 @@ export class UserService {
 
       return friendDtos;
     } catch (err) {
-      console.error('Error fetching friends:', err);
+      console.error('Error fetching users:', err);
       if (err instanceof NotFoundException) {
         throw err;
       } else {
-        throw new InternalServerErrorException('Error retrieving friends');
+        throw new InternalServerErrorException('Error retrieving users');
       }
     }
   }

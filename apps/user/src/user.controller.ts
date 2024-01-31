@@ -226,8 +226,38 @@ export class UserController {
 
   @MessagePattern(userMessagePatterns.getFriends)
   async getFriends({ id }: { id: number }): Promise<UserDto[]> {
+    const cacheKey = `getFriends:${id}`;
+    const cachedFriends: UserDto[] = await this.cacheManager.get(cacheKey);
+
+    if (cachedFriends) {
+      return cachedFriends;
+    }
+
+    const userFriends = await this.userService.getFriendsOrNonFriends(id, true);
+    await this.cacheManager.set(cacheKey, userFriends, 18000);
     try {
-      return this.userService.getFriends(id);
+      return this.userService.getFriendsOrNonFriends(id, true);
+    } catch (error) {
+      throw new RpcException(error.message);
+    }
+  }
+
+  @MessagePattern(userMessagePatterns.getNewFriends)
+  async getNewFriends({ id }: { id: number }): Promise<UserDto[]> {
+    const cacheKey = `getNewFriends:${id}`;
+    const cachedFriends: UserDto[] = await this.cacheManager.get(cacheKey);
+
+    if (cachedFriends) {
+      return cachedFriends;
+    }
+
+    const userFriends = await this.userService.getFriendsOrNonFriends(
+      id,
+      false,
+    );
+    await this.cacheManager.set(cacheKey, userFriends, 18000);
+    try {
+      return this.userService.getFriendsOrNonFriends(id, false);
     } catch (error) {
       throw new RpcException(error.message);
     }
