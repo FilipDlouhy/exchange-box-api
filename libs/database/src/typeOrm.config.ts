@@ -5,6 +5,7 @@ import { Center } from './entities/center.entity';
 import { Exchange } from './entities/exchange.entity';
 import { Box } from './entities/box.entity';
 import { Item } from './entities/item.entity';
+import { FriendRequest } from './entities/friend.request.entity';
 
 export const databaseConfig: TypeOrmModuleOptions = {
   type: 'mysql',
@@ -13,7 +14,7 @@ export const databaseConfig: TypeOrmModuleOptions = {
   database: process.env.MYSQL_DATABASE || 'exchangeBox',
   username: process.env.MYSQL_USERNAME || 'root',
   password: process.env.MYSQL_PASSWORD || 'randomrootpassword',
-  entities: [Front, User, Center, Exchange, Box, Item],
+  entities: [Front, User, Center, Exchange, Box, Item, FriendRequest],
   autoLoadEntities: true,
   synchronize: true,
 };
