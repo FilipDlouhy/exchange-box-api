@@ -16,4 +16,8 @@ export const userMessagePatterns = {
   getUserForItemUpdate: { cmd: 'getUserForItemUpdate' },
   getUserByEmail: { cmd: 'getUserByEmail' },
   getNewFriends: { cmd: 'getNewFriends' },
+  createFriendRequest: { cmd: 'createFriendRequest' },
+  getFriendRequests: { cmd: 'getFriendRequests' },
+  acceptFriendRequest: { cmd: 'acceptFriendRequest' },
+  denyFriendRequest: { cmd: 'denyFriendRequest' },
 };

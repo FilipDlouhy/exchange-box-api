@@ -20,13 +20,19 @@ import * as bcrypt from 'bcrypt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from '@app/database/entities/user.entity';
 import { Not, Repository } from 'typeorm';
+import { FriendRequest } from '@app/database/entities/friend.request.entity';
+import { NotFoundError } from 'rxjs';
+import { FriendRequestDto } from '@app/dtos/userDtos/friend.request.dto';
 
 @Injectable()
 export class UserService {
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    @InjectRepository(FriendRequest)
+    private readonly friendRequestRepository: Repository<FriendRequest>,
   ) {}
+
   /**
    * Creates a new user in the 'user' table using the provided CreateUserDto.
    * It hashes the password before storing it in the database.
@@ -208,12 +214,18 @@ export class UserService {
           },
         });
 
+        const friendRequests = await this.friendRequestRepository.find();
+
+        const friendRequestIds = friendRequests.map((request) =>
+          request.friendId === id ? request.userId : request.friendId,
+        );
+
         const frendIds = user.friends.map((user) => {
           return user.id;
         });
 
         const nonFriendUsers = allUsers.map((u) => {
-          if (!frendIds.includes(u.id)) {
+          if (!frendIds.includes(u.id) && !friendRequestIds.includes(u.id)) {
             return u;
           }
         });
@@ -294,7 +306,7 @@ export class UserService {
    * @param {ToggleFriendDto} toggleFriendDto - Data Transfer Object containing user_id and friend_id.
    * @returns {Promise<boolean>} - A promise that resolves to true if the operation is successful.
    */
-  async addFriend(toggleFriendDto: ToggleFriendDto): Promise<boolean> {
+  private async addFriend(toggleFriendDto: ToggleFriendDto): Promise<boolean> {
     try {
       // Get user and friend from the database with their friends loaded
       const user = await this.userRepository.findOne({
@@ -441,10 +453,8 @@ export class UserService {
     friendId: number,
   ): Promise<{ user: User; friend: User }> {
     try {
-      // Fetch both users from the database
       const users = await this.userRepository.findByIds([userId, friendId]);
 
-      // Extract the user and friend data
       const userEntity = users.find((user) => user.id === userId);
       const friendEntity = users.find((user) => user.id === friendId);
 
@@ -456,7 +466,7 @@ export class UserService {
     } catch (err) {
       console.error(`Error retrieving users: ${err.message}`);
       if (err instanceof NotFoundException) {
-        throw err; // Re-throw the NotFoundException
+        throw err;
       } else {
         throw new InternalServerErrorException(
           'Failed to retrieve users. Please try again.',
@@ -479,7 +489,6 @@ export class UserService {
     update: boolean,
   ): Promise<boolean> {
     try {
-      // Upload image to Firebase and get the URL
       const imageUrl = update
         ? await updateFileInFirebase(
             uploadUserImageDto.file,
@@ -492,19 +501,16 @@ export class UserService {
             'Users',
           );
 
-      // Find the user by ID
       const user = await this.userRepository.findOne({
         where: { id: parseInt(uploadUserImageDto.userId) },
       });
 
-      // If user does not exist, throw a NotFoundException
       if (!user) {
         throw new NotFoundException(
           `User with ID ${uploadUserImageDto.userId} not found`,
         );
       }
 
-      // Update the user's image URL
       user.imageUrl = imageUrl;
       await this.userRepository.save(user);
 
@@ -512,7 +518,7 @@ export class UserService {
     } catch (error) {
       console.error(`Error uploading user image: ${error.message}`);
       if (error instanceof NotFoundException) {
-        throw error; // Re-throw the NotFoundException
+        throw error;
       } else {
         throw new InternalServerErrorException(
           'Failed to upload user image. Please try again.',
@@ -532,7 +538,6 @@ export class UserService {
     try {
       const imageUrl = await getImageUrlFromFirebase(id.toString(), 'Users');
 
-      // If the image URL is not found, throw a NotFoundException
       if (!imageUrl) {
         throw new NotFoundException(`User image not found for ID ${id}`);
       }
@@ -558,22 +563,19 @@ export class UserService {
    */
   async deleteUserImage(id: number) {
     try {
-      // Delete the user image from Firebase
       await deleteFileFromFirebase(id.toString(), 'Users');
 
-      // Update the user's imageUrl to null
       const updateResult = await this.userRepository.update(id, {
         imageUrl: null,
       });
 
-      // Check if the user with the given ID exists
       if (updateResult.affected === 0) {
         throw new NotFoundException(`User with ID ${id} not found`);
       }
     } catch (error) {
       console.error(`Error deleting user image: ${error.message}`);
       if (error instanceof NotFoundException) {
-        throw error; // Re-throw the NotFoundException
+        throw error;
       } else {
         throw new InternalServerErrorException(
           'Failed to delete user image. Please try again.',
@@ -594,7 +596,6 @@ export class UserService {
         where: { email: userEmail },
       });
 
-      // If no user is found with the specified email, throw a NotFoundException
       if (!user) {
         throw new NotFoundException(`User with email ${userEmail} not found`);
       }
@@ -603,12 +604,148 @@ export class UserService {
     } catch (error) {
       console.error(`Error retrieving user by email: ${error.message}`);
       if (error instanceof NotFoundException) {
-        throw error; // Re-throw the NotFoundException
+        throw error;
       } else {
         throw new InternalServerErrorException(
           'Failed to retrieve user by email. Please try again.',
         );
       }
     }
+  }
+
+  /**
+   * Retrieves friend requests for a user from the database.
+   *
+   * @param id - The ID of the user for whom to retrieve friend requests.
+   * @returns A Promise that resolves to an array of friend requests if found, or rejects with an error.
+   */
+  async getFriendRequests(id: number): Promise<FriendRequestDto[]> {
+    try {
+      const friendRequests = await this.friendRequestRepository.find({
+        where: { friendId: id, accepted: null },
+      });
+
+      const friendRequestDtos = friendRequests.map((friendRequest) => {
+        return new FriendRequestDto(
+          friendRequest.id.toString(),
+          friendRequest.createdAt,
+          friendRequest.friendId,
+          friendRequest.userId,
+          friendRequest.friendImageUrl,
+          friendRequest.userName,
+        );
+      });
+
+      return friendRequestDtos;
+    } catch (error) {
+      throw new Error(
+        `Error while retrieving friend requests: ${error.message}`,
+      );
+    }
+  }
+
+  /**
+   * Creates a new friend request in the database.
+   *
+   * @param toggleFriendDto - The DTO containing data for creating the friend request.
+   * @returns A Promise that resolves to the created friend request, or rejects with an error.
+   */
+  async createFriendRequest(toggleFriendDto: ToggleFriendDto) {
+    return await this.friendRequestRepository.manager
+      .transaction(async (entityManager) => {
+        const userWithSpecificFriend = await entityManager
+          .createQueryBuilder(User, 'user')
+          .leftJoinAndSelect('user.friends', 'friend')
+          .where('user.id = :userId', { userId: toggleFriendDto.userId })
+          .andWhere('friend.id = :friendId', {
+            friendId: toggleFriendDto.friendId,
+          })
+          .getOne();
+
+        if (userWithSpecificFriend) {
+          throw new Error('You are already friends.');
+        }
+
+        const friendRequestExists = await entityManager.findOne(FriendRequest, {
+          where: {
+            friendId: toggleFriendDto.userId,
+            userId: toggleFriendDto.friendId,
+          },
+        });
+
+        if (friendRequestExists) {
+          throw new Error('Friend request already sent.');
+        }
+        const friend = await entityManager.findOne(User, {
+          where: {
+            id: toggleFriendDto.friendId,
+          },
+        });
+
+        const newFriendRequest = new FriendRequest();
+        newFriendRequest.friendId = toggleFriendDto.userId;
+        newFriendRequest.userId = toggleFriendDto.friendId;
+        newFriendRequest.accepted = false;
+        newFriendRequest.friendImageUrl = friend.imageUrl;
+        newFriendRequest.userName = friend.name;
+
+        const expirationDate = new Date();
+        expirationDate.setDate(expirationDate.getDate() + 7);
+        newFriendRequest.expirationDate = expirationDate;
+        newFriendRequest.createdAt = new Date();
+
+        await entityManager.save(newFriendRequest);
+      })
+      .catch((error) => {
+        console.error(
+          `Error while creating a friend request: ${error.message}`,
+        );
+        throw new Error(
+          `Error while creating a friend request: ${error.message}`,
+        );
+      });
+  }
+
+  /**
+   * Accepts a friend request in the database.
+   *
+   * @param toggleFriendDto - The DTO containing data for accepting the friend request.
+   * @returns A Promise that resolves to the accepted friend request, or rejects with an error.
+   */
+  async accepOrDenytFriendRequest(
+    toggleFriendDto: ToggleFriendDto,
+    isAcepted: boolean,
+  ): Promise<FriendRequest> {
+    return await this.friendRequestRepository.manager
+      .transaction(async (entityManager) => {
+        const friendRequest = await entityManager.findOne(FriendRequest, {
+          where: {
+            friendId: toggleFriendDto.friendId,
+            userId: toggleFriendDto.userId,
+          },
+        });
+
+        if (!friendRequest) {
+          throw new NotFoundError('Friend request not found.');
+        }
+
+        friendRequest.accepted = isAcepted;
+
+        if (isAcepted) {
+          await this.addFriend(toggleFriendDto);
+        }
+
+        await entityManager.save(friendRequest);
+
+        return friendRequest;
+      })
+      .catch((error) => {
+        console.error(
+          `Error while accepting a friend request: ${error.message}`,
+        );
+        throw new Error(
+          `Error while accepting a friend request: ${error.message}`,
+        );
+      });
   }
 }

@@ -9,6 +9,7 @@ import { ToggleFriendDto } from '@app/dtos/userDtos/toggle.friend.dto';
 import { UploadUserImageDto } from '@app/dtos/userDtos/upload.user.image.dto';
 import { User } from '@app/database/entities/user.entity';
 import { CACHE_MANAGER, Cache } from '@nestjs/cache-manager';
+import { FriendRequestDto } from '@app/dtos/userDtos/friend.request.dto';
 
 @Controller()
 export class UserController {
@@ -80,22 +81,6 @@ export class UserController {
       await this.cacheManager.set('getUsers', users, 18000);
 
       return users;
-    } catch (error) {
-      throw new RpcException(error.message);
-    }
-  }
-
-  @MessagePattern(userMessagePatterns.addFriend)
-  @UsePipes(
-    new ValidationPipe({
-      transform: true,
-      whitelist: true,
-      forbidNonWhitelisted: true,
-    }),
-  )
-  async addFriend(toggleFriendDto: ToggleFriendDto) {
-    try {
-      return await this.userService.addFriend(toggleFriendDto);
     } catch (error) {
       throw new RpcException(error.message);
     }
@@ -258,6 +243,76 @@ export class UserController {
     await this.cacheManager.set(cacheKey, userFriends, 18000);
     try {
       return this.userService.getFriendsOrNonFriends(id, false);
+    } catch (error) {
+      throw new RpcException(error.message);
+    }
+  }
+
+  @MessagePattern(userMessagePatterns.getFriendRequests)
+  async getFriendRequests({ id }: { id: number }): Promise<FriendRequestDto[]> {
+    const cacheKey = `getFriendRequests:${id}`;
+    const cachedFriendRequests: FriendRequestDto[] =
+      await this.cacheManager.get(cacheKey);
+
+    if (cachedFriendRequests) {
+      return cachedFriendRequests;
+    }
+
+    const getFriendRequests = await this.userService.getFriendRequests(id);
+    await this.cacheManager.set(cacheKey, getFriendRequests, 18000);
+
+    try {
+      return this.userService.getFriendRequests(id);
+    } catch (error) {
+      throw new RpcException(error.message);
+    }
+  }
+
+  @MessagePattern(userMessagePatterns.createFriendRequest)
+  @UsePipes(
+    new ValidationPipe({
+      transform: true,
+      whitelist: true,
+      forbidNonWhitelisted: true,
+    }),
+  )
+  async createFriendRequest(toggleFriendDto: ToggleFriendDto) {
+    try {
+      const cacheKey = `getNewFriends:${toggleFriendDto.friendId}`;
+      await this.cacheManager.del(cacheKey);
+      return this.userService.createFriendRequest(toggleFriendDto);
+    } catch (error) {
+      throw new RpcException(error.message);
+    }
+  }
+
+  @MessagePattern(userMessagePatterns.acceptFriendRequest)
+  @UsePipes(
+    new ValidationPipe({
+      transform: true,
+      whitelist: true,
+      forbidNonWhitelisted: true,
+    }),
+  )
+  async acceptFriendRequest(toggleFriendDto: ToggleFriendDto) {
+    try {
+      return this.userService.accepOrDenytFriendRequest(toggleFriendDto, true);
+    } catch (error) {
+      throw new RpcException(error.message);
+    }
+  }
+
+  @MessagePattern(userMessagePatterns.denyFriendRequest)
+  @UsePipes(
+    new ValidationPipe({
+      transform: true,
+      whitelist: true,
+      forbidNonWhitelisted: true,
+    }),
+  )
+  async denyFriendRequest(toggleFriendDto: ToggleFriendDto) {
+    try {
+      return this.userService.accepOrDenytFriendRequest(toggleFriendDto, false);
     } catch (error) {
       throw new RpcException(error.message);
     }
