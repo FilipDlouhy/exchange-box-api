@@ -134,7 +134,7 @@ export class UserService {
     } catch (err) {
       console.error('Error updating user:', err);
       if (err instanceof NotFoundException) {
-        throw err; // Re-throw the NotFoundException
+        throw err;
       } else {
         throw new BadRequestException('Error updating user');
       }
@@ -180,7 +180,7 @@ export class UserService {
     } catch (err) {
       console.error('Error fetching users:', err);
       if (err instanceof NotFoundException) {
-        throw err; // Re-throw the NotFoundException
+        throw err;
       } else {
         throw new InternalServerErrorException('Error retrieving users');
       }
@@ -290,7 +290,7 @@ export class UserService {
     } catch (err) {
       console.error(`Error deleting user with ID ${id}:`, err);
       if (err instanceof NotFoundException) {
-        throw err; // Re-throw the NotFoundException
+        throw err;
       } else {
         throw new InternalServerErrorException(
           `An error occurred during the deleteUser operation: ${err.message}`,
@@ -308,7 +308,6 @@ export class UserService {
    */
   private async addFriend(toggleFriendDto: ToggleFriendDto): Promise<boolean> {
     try {
-      // Get user and friend from the database with their friends loaded
       const user = await this.userRepository.findOne({
         where: { id: toggleFriendDto.userId },
         relations: ['friends'],
@@ -322,16 +321,13 @@ export class UserService {
         throw new NotFoundException('User or friend not found.');
       }
 
-      // Check if the friendship already exists
       if (user.friends.some((f) => f.id === friend.id)) {
         throw new ConflictException('Friendship already exists.');
       }
 
-      // Add each user to the other's friends list
       user.friends = [...(user.friends || []), friend];
       friend.friends = [...(friend.friends || []), user];
 
-      // Save the updated user entities
       await this.userRepository.save(user);
       await this.userRepository.save(friend);
 
@@ -342,7 +338,7 @@ export class UserService {
         err instanceof NotFoundException ||
         err instanceof ConflictException
       ) {
-        throw err; // Re-throw specific exceptions
+        throw err;
       } else {
         throw new InternalServerErrorException(
           'Unable to add friend. Please try again.',
@@ -352,38 +348,59 @@ export class UserService {
   }
 
   /**
-   * This method attempts to remove a friend connection from the 'users_friend' table.
-   * It takes an ID as an argument, which represents the unique identifier of the friend connection to remove.
-   * If the operation is successful, it returns true. If it fails, it throws an error.
-   * @param {number} id - The ID of the friend connection to remove.
-   * @returns {Promise<boolean>} - A promise that resolves to true if the operation is successful.
-   */
-  async removeFriend(userId: number, friendId: number): Promise<boolean> {
+    Removes a friendship connection between two users in the system within a transaction.
+    If the friend is found in the user's list of friends, they are removed from each other's lists.
+    @param {number} userId - Initiating user's ID.
+    @param {number} friendId - Friend's ID to be removed.
+    @throws {NotFoundException} - If user or friend is not found.
+    @throws {InternalServerErrorException} - If any other error occurs.
+    @returns {Promise<void>} - Resolves if the operation is successful.
+    */
+  async removeFriend(userId: number, friendId: number) {
     try {
-      const user = await this.userRepository.findOne({
-        where: { id: userId },
-        relations: ['friends'],
-      });
+      await this.friendRequestRepository.manager.transaction(
+        async (entityManager) => {
+          const user = await entityManager.findOne(User, {
+            where: { id: userId },
+            relations: ['friends'],
+          });
 
-      if (!user) {
-        throw new NotFoundException('User not found.');
-      }
+          if (!user) {
+            throw new NotFoundException('User not found.');
+          }
 
-      const initialFriendCount = user.friends.length;
+          const initialFriendCount = user.friends.length;
+          user.friends = user.friends.filter(
+            (friend) => friend.id !== friendId,
+          );
 
-      user.friends = user.friends.filter((friend) => friend.id !== friendId);
+          if (initialFriendCount === user.friends.length) {
+            throw new NotFoundException(
+              "Friend not found in user's friends list.",
+            );
+          }
 
-      if (initialFriendCount === user.friends.length) {
-        throw new NotFoundException("Friend not found in user's friends list.");
-      }
+          await entityManager.save(user);
 
-      await this.userRepository.save(user);
+          const friend = await entityManager.findOne(User, {
+            where: { id: friendId },
+            relations: ['friends'],
+          });
 
-      return true;
+          if (!friend) {
+            throw new NotFoundException('Friend user not found.');
+          }
+
+          friend.friends = friend.friends.filter(
+            (friend) => friend.id !== userId,
+          );
+          await entityManager.save(friend);
+        },
+      );
     } catch (err) {
       console.error(`Error removing friend: ${err.message}`);
       if (err instanceof NotFoundException) {
-        throw err; // Re-throw the NotFoundException
+        throw err;
       } else {
         throw new InternalServerErrorException(
           'Failed to remove friend. Please try again.',
@@ -653,16 +670,11 @@ export class UserService {
   async createFriendRequest(toggleFriendDto: ToggleFriendDto) {
     return await this.friendRequestRepository.manager
       .transaction(async (entityManager) => {
-        const userWithSpecificFriend = await entityManager
-          .createQueryBuilder(User, 'user')
-          .leftJoinAndSelect('user.friends', 'friend')
-          .where('user.id = :userId', { userId: toggleFriendDto.userId })
-          .andWhere('friend.id = :friendId', {
-            friendId: toggleFriendDto.friendId,
-          })
-          .getOne();
-
-        if (userWithSpecificFriend) {
+        const areTheyFriends = this.checkIfFriends(
+          toggleFriendDto.userId,
+          toggleFriendDto.friendId,
+        );
+        if (areTheyFriends) {
           throw new Error('You are already friends.');
         }
 

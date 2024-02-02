@@ -96,15 +96,14 @@ export class UserController {
   }
 
   @MessagePattern(userMessagePatterns.removeFriend)
-  async removeFriend({
-    userId,
-    friendId,
-  }: {
-    userId: number;
-    friendId: number;
-  }): Promise<boolean> {
+  async removeFriend(toggleFriendDto: ToggleFriendDto) {
     try {
-      return await this.userService.removeFriend(userId, friendId);
+      const cacheKey = `getFriends:${toggleFriendDto.userId}`;
+      await this.cacheManager.del(cacheKey);
+      return await this.userService.removeFriend(
+        toggleFriendDto.userId,
+        toggleFriendDto.friendId,
+      );
     } catch (error) {
       throw new RpcException(error.message);
     }
