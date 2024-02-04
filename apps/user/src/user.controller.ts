@@ -316,4 +316,20 @@ export class UserController {
       throw new RpcException(error.message);
     }
   }
+
+  @MessagePattern(userMessagePatterns.getUserForProfile)
+  @UsePipes(
+    new ValidationPipe({
+      transform: true,
+      whitelist: true,
+      forbidNonWhitelisted: true,
+    }),
+  )
+  async getUserForProfile(toggleFriendDto: ToggleFriendDto) {
+    try {
+      return this.userService.getUserForProfile(toggleFriendDto);
+    } catch (error) {
+      throw new RpcException(error.message);
+    }
+  }
 }

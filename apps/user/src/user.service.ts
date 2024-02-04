@@ -3,6 +3,7 @@ import { ToggleFriendDto } from '@app/dtos/userDtos/toggle.friend.dto';
 import { UpdateUserDto } from '@app/dtos/userDtos/update.user.dto';
 import { UploadUserImageDto } from '@app/dtos/userDtos/upload.user.image.dto';
 import { UserDto } from '@app/dtos/userDtos/user.dto';
+import { friendStatusEnum } from '@app/dtos/userEnums/friend.enum';
 import {
   deleteFileFromFirebase,
   getImageUrlFromFirebase,
@@ -23,6 +24,9 @@ import { Not, Repository } from 'typeorm';
 import { FriendRequest } from '@app/database/entities/friend.request.entity';
 import { NotFoundError } from 'rxjs';
 import { FriendRequestDto } from '@app/dtos/userDtos/friend.request.dto';
+import { UserProfileFriendDto } from '@app/dtos/userDtos/user.profile.friend.dto';
+import { UserProfileItemDto } from '@app/dtos/userDtos/user.profile.item.dto';
+import { UserProfileDto } from '@app/dtos/userDtos/user.profile.dto';
 
 @Injectable()
 export class UserService {
@@ -437,11 +441,11 @@ export class UserService {
 
       // Check if the found friend is in the user's friends list
       const isFriend = user.friends.some((f) => f.id === friendId);
-      if (!isFriend) {
-        throw new ConflictException('The specified users are not friends.');
+      if (isFriend) {
+        throw new ConflictException('The specified users are friends.');
       }
 
-      return true;
+      return false;
     } catch (err) {
       console.error(`Error in checking friendship status: ${err.message}`);
       if (
@@ -638,6 +642,9 @@ export class UserService {
    */
   async getFriendRequests(id: number): Promise<FriendRequestDto[]> {
     try {
+      if (id == null) {
+        throw new Error(`No Id`);
+      }
       const friendRequests = await this.friendRequestRepository.find({
         where: { friendId: id, accepted: null },
       });
@@ -670,10 +677,11 @@ export class UserService {
   async createFriendRequest(toggleFriendDto: ToggleFriendDto) {
     return await this.friendRequestRepository.manager
       .transaction(async (entityManager) => {
-        const areTheyFriends = this.checkIfFriends(
+        const areTheyFriends = await this.checkIfFriends(
           toggleFriendDto.userId,
           toggleFriendDto.friendId,
         );
+
         if (areTheyFriends) {
           throw new Error('You are already friends.');
         }
@@ -690,7 +698,7 @@ export class UserService {
         }
         const friend = await entityManager.findOne(User, {
           where: {
-            id: toggleFriendDto.friendId,
+            id: toggleFriendDto.userId,
           },
         });
 
@@ -759,5 +767,106 @@ export class UserService {
           `Error while accepting a friend request: ${error.message}`,
         );
       });
+  }
+
+  /**
+   * Retrieves and enriches the profile data of a specified user.
+   * This method fetches a user and their friend's profile, including pending friend requests,
+   * and enriches the profile with items and friends' details.
+   *
+   * @param toggleFriendDto - DTO containing userId and friendId for which profile data is to be retrieved.
+   * @returns A promise of UserProfileDto containing detailed profile info, items, and friends.
+   */
+  async getUserForProfile(
+    toggleFriendDto: ToggleFriendDto,
+  ): Promise<UserProfileDto> {
+    try {
+      const { userId, friendId } = toggleFriendDto;
+      const userPromise = this.userRepository.findOne({
+        where: { id: userId },
+        relations: ['friends'],
+      });
+
+      const friendRequestsPromise = this.friendRequestRepository.find({
+        where: [
+          { friendId: userId, accepted: null },
+          { userId, accepted: null },
+        ],
+      });
+
+      const profileUserPromise = this.userRepository.findOne({
+        where: { id: friendId },
+        relations: ['friends', 'items'],
+      });
+
+      const [user, friendRequests, profileUser] = await Promise.all([
+        userPromise,
+        friendRequestsPromise,
+        profileUserPromise,
+      ]);
+
+      if (!user) throw new Error('User not found.');
+      if (!profileUser) throw new Error('Profile user not found.');
+
+      const userFriendIds = new Set(user.friends.map((friend) => friend.id));
+      const friendRequestSentIds = new Set();
+      const friendRequestReceivedIds = new Set();
+
+      friendRequests.forEach((request) => {
+        if (request.userId === userId)
+          friendRequestSentIds.add(request.friendId);
+        else friendRequestReceivedIds.add(request.userId);
+      });
+
+      const getFriendStatus = (id) =>
+        userFriendIds.has(id)
+          ? friendStatusEnum.IsFriend
+          : friendRequestSentIds.has(id) || friendRequestReceivedIds.has(id)
+            ? friendStatusEnum.FriendRequestSentRecieved
+            : friendStatusEnum.NotFriend;
+
+      const profileUserFriends = profileUser.friends.map(
+        (friend) =>
+          new UserProfileFriendDto(
+            friend.name,
+            friend.email,
+            friend.id,
+            friend.imageUrl,
+            friend.address,
+            friend.telephone,
+            getFriendStatus(friend.id),
+          ),
+      );
+
+      const profileUserItems = profileUser.items.map(
+        (item) =>
+          new UserProfileItemDto(
+            item.name,
+            item.weight,
+            item.id,
+            item.length,
+            item.width,
+            item.height,
+            item.imageUrl,
+          ),
+      );
+
+      const friendStatus = getFriendStatus(profileUser.id);
+
+      return new UserProfileDto(
+        profileUser.name,
+        profileUser.email,
+        profileUser.id,
+        profileUserItems,
+        profileUserFriends,
+        profileUser.imageUrl,
+        profileUser.address,
+        profileUser.telephone,
+        friendStatus,
+      );
+    } catch (error) {
+      console.error('Failed to retrieve user profile:', error);
+      throw error;
+    }
   }
 }

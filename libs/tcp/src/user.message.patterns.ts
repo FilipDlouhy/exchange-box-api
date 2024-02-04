@@ -20,4 +20,5 @@ export const userMessagePatterns = {
   getFriendRequests: { cmd: 'getFriendRequests' },
   acceptFriendRequest: { cmd: 'acceptFriendRequest' },
   denyFriendRequest: { cmd: 'denyFriendRequest' },
+  getUserForProfile: { cmd: 'getUserForProfile' },
 };
