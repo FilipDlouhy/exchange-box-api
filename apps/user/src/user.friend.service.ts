@@ -106,7 +106,7 @@ export class UserFriendService {
    * @param {ToggleFriendDto} toggleFriendDto - Data Transfer Object containing user_id and friend_id.
    * @returns {Promise<boolean>} - A promise that resolves to true if the operation is successful.
    */
-  private async addFriend(toggleFriendDto: ToggleFriendDto): Promise<boolean> {
+  private async addFriend(toggleFriendDto: ToggleFriendDto) {
     try {
       const user = await this.userRepository.findOne({
         where: { id: toggleFriendDto.userId },
@@ -130,8 +130,6 @@ export class UserFriendService {
 
       await this.userRepository.save(user);
       await this.userRepository.save(friend);
-
-      return true;
     } catch (err) {
       console.error(`Error adding friend: ${err.message}`);
       if (

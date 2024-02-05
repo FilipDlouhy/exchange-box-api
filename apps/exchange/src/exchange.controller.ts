@@ -42,7 +42,7 @@ export class ExchangeController {
       forbidNonWhitelisted: true,
     }),
   )
-  async deleteExchange({ id }: { id: number }): Promise<boolean> {
+  async deleteExchange({ id }: { id: number }) {
     try {
       return await this.exchangeService.deleteExchange(id);
     } catch (error) {

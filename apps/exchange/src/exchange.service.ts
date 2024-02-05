@@ -141,9 +141,8 @@ export class ExchangeService {
   /**
    * Deletes an exchange and removes its references from items.
    * @param deleteExchangeDto - DTO containing the ID of the exchange to be deleted and associated item IDs.
-   * @returns boolean - Returns true if the operation is successful.
    */
-  async deleteExchange(id: number): Promise<boolean> {
+  async deleteExchange(id: number) {
     try {
       // Find the exchange by its ID
       const exchange = await this.exchangeRepository.findOne({
@@ -161,8 +160,6 @@ export class ExchangeService {
 
       // Delete the exchange from the database
       await this.exchangeRepository.remove(exchange);
-
-      return true;
     } catch (error) {
       if (
         error instanceof NotFoundException ||

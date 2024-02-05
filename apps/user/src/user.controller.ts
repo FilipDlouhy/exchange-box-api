@@ -28,7 +28,7 @@ export class UserController {
       forbidNonWhitelisted: true,
     }),
   )
-  async createUser(createUserDto: CreateUserDto): Promise<boolean> {
+  async createUser(createUserDto: CreateUserDto) {
     try {
       return await this.userService.createUser(createUserDto);
     } catch (error) {
@@ -89,7 +89,7 @@ export class UserController {
   }
 
   @MessagePattern(userMessagePatterns.deleteUser)
-  async deleteUser({ id }: { id: number }): Promise<boolean> {
+  async deleteUser({ id }: { id: number }) {
     try {
       return await this.userService.deleteUser(id);
     } catch (error) {
@@ -145,9 +145,7 @@ export class UserController {
   }
 
   @MessagePattern(userMessagePatterns.uploadUserImage)
-  async uploadUserImage(
-    uploadUserImageDto: UploadUserImageDto,
-  ): Promise<boolean> {
+  async uploadUserImage(uploadUserImageDto: UploadUserImageDto) {
     try {
       return this.userService.uploadUserImage(uploadUserImageDto, false);
     } catch (error) {

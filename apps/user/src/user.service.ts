@@ -41,13 +41,11 @@ export class UserService {
    * After insertion, it retrieves and returns the newly created user details, except for the password.
    * @param {CreateUserDto} createUserDto - The DTO containing the new user data.
    */
-  async createUser(createUserDto: CreateUserDto): Promise<boolean> {
+  async createUser(createUserDto: CreateUserDto) {
     try {
       createUserDto.password = await bcrypt.hash(createUserDto.password, 10);
 
       await this.userRepository.save(createUserDto);
-
-      return true;
     } catch (err) {
       if (err.code === 'ER_DUP_ENTRY') {
         throw new ConflictException('Email already exists');
@@ -197,15 +195,13 @@ export class UserService {
    * @param {number} id - The unique identifier of the user to be deleted.
    * @returns {Promise<boolean>} - A promise that resolves to true if the deletion is successful.
    */
-  async deleteUser(id: number): Promise<boolean> {
+  async deleteUser(id: number) {
     try {
       const result = await this.userRepository.delete(id);
 
       if (result.affected === 0) {
         throw new NotFoundException(`User with ID ${id} not found`);
       }
-
-      return true;
     } catch (err) {
       console.error(`Error deleting user with ID ${id}:`, err);
       if (err instanceof NotFoundException) {
@@ -230,7 +226,7 @@ export class UserService {
   async uploadUserImage(
     uploadUserImageDto: UploadUserImageDto,
     update: boolean,
-  ): Promise<boolean> {
+  ) {
     try {
       const imageUrl = update
         ? await updateFileInFirebase(
@@ -256,8 +252,6 @@ export class UserService {
 
       user.imageUrl = imageUrl;
       await this.userRepository.save(user);
-
-      return true;
     } catch (error) {
       console.error(`Error uploading user image: ${error.message}`);
       if (error instanceof NotFoundException) {

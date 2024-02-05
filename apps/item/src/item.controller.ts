@@ -101,7 +101,7 @@ export class ItemController {
 
   // Delete an item based on its ID
   @MessagePattern(itemMessagePatterns.deleteItem)
-  async deleteItem({ id }: { id: number }): Promise<boolean> {
+  async deleteItem({ id }: { id: number }) {
     try {
       return await this.itemService.deleteItem(id);
     } catch (error) {

@@ -170,7 +170,7 @@ export class ItemService {
    * @returns A boolean indicating if the deletion was successful.
    * @throws Error if the item is part of an exchange.
    */
-  async deleteItem(itemId: number): Promise<boolean> {
+  async deleteItem(itemId: number) {
     try {
       // Find the item by itemId
       const item = await this.itemRepository.findOne({
@@ -192,8 +192,6 @@ export class ItemService {
       if (deleteResult.affected === 0) {
         throw new Error('Item could not be deleted.');
       }
-
-      return true;
     } catch (e) {
       console.error('Error in deleteItem:', e);
       return false;

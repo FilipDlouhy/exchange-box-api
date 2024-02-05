@@ -202,17 +202,14 @@ export class CenterService implements OnModuleInit {
    * Deletes a center record from the database and deletes paired front from database because of  on cascade.
    *
    * @param {number} id - The ID of the center to be deleted.
-   * @returns {Promise<boolean>} - Returns a promise that resolves to `true` if the deletion is successful.
    */
-  async deleteCenter(id: number): Promise<boolean> {
+  async deleteCenter(id: number) {
     try {
       const deleteResult = await this.centerRepository.delete(id);
 
       if (deleteResult.affected === 0) {
         throw new NotFoundException(`Center with ID ${id} not found`);
       }
-
-      return true;
     } catch (error) {
       console.error('Error in deleteCenter function:', error);
       throw new InternalServerErrorException('Failed to delete the center');
