@@ -10,11 +10,13 @@ import { UploadUserImageDto } from '@app/dtos/userDtos/upload.user.image.dto';
 import { User } from '@app/database/entities/user.entity';
 import { CACHE_MANAGER, Cache } from '@nestjs/cache-manager';
 import { FriendRequestDto } from '@app/dtos/userDtos/friend.request.dto';
+import { UserFriendService } from './user.friend.service';
 
 @Controller()
 export class UserController {
   constructor(
     private readonly userService: UserService,
+    private readonly userFriendService: UserFriendService,
     @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
   ) {}
 
@@ -100,7 +102,7 @@ export class UserController {
     try {
       const cacheKey = `getFriends:${toggleFriendDto.userId}`;
       await this.cacheManager.del(cacheKey);
-      return await this.userService.removeFriend(
+      return await this.userFriendService.removeFriend(
         toggleFriendDto.userId,
         toggleFriendDto.friendId,
       );
@@ -119,7 +121,7 @@ export class UserController {
   )
   async checkIfFriends(toggleFriendDto: ToggleFriendDto): Promise<boolean> {
     try {
-      return await this.userService.checkIfFriends(
+      return await this.userFriendService.checkIfFriends(
         toggleFriendDto.userId,
         toggleFriendDto.friendId,
       );
@@ -133,7 +135,7 @@ export class UserController {
     toggleFriendDto: ToggleFriendDto,
   ): Promise<{ user: User; friend: User }> {
     try {
-      return await this.userService.getUserWithFriend(
+      return await this.userFriendService.getUserWithFriend(
         toggleFriendDto.userId,
         toggleFriendDto.friendId,
       );
@@ -217,10 +219,13 @@ export class UserController {
       return cachedFriends;
     }
 
-    const userFriends = await this.userService.getFriendsOrNonFriends(id, true);
+    const userFriends = await this.userFriendService.getFriendsOrNonFriends(
+      id,
+      true,
+    );
     await this.cacheManager.set(cacheKey, userFriends, 18000);
     try {
-      return this.userService.getFriendsOrNonFriends(id, true);
+      return this.userFriendService.getFriendsOrNonFriends(id, true);
     } catch (error) {
       throw new RpcException(error.message);
     }
@@ -235,13 +240,13 @@ export class UserController {
       return cachedFriends;
     }
 
-    const userFriends = await this.userService.getFriendsOrNonFriends(
+    const userFriends = await this.userFriendService.getFriendsOrNonFriends(
       id,
       false,
     );
     await this.cacheManager.set(cacheKey, userFriends, 18000);
     try {
-      return this.userService.getFriendsOrNonFriends(id, false);
+      return this.userFriendService.getFriendsOrNonFriends(id, false);
     } catch (error) {
       throw new RpcException(error.message);
     }
@@ -257,11 +262,12 @@ export class UserController {
       return cachedFriendRequests;
     }
 
-    const getFriendRequests = await this.userService.getFriendRequests(id);
+    const getFriendRequests =
+      await this.userFriendService.getFriendRequests(id);
     await this.cacheManager.set(cacheKey, getFriendRequests, 18000);
 
     try {
-      return this.userService.getFriendRequests(id);
+      return this.userFriendService.getFriendRequests(id);
     } catch (error) {
       throw new RpcException(error.message);
     }
@@ -279,7 +285,7 @@ export class UserController {
     try {
       const cacheKey = `getNewFriends:${toggleFriendDto.friendId}`;
       await this.cacheManager.del(cacheKey);
-      return this.userService.createFriendRequest(toggleFriendDto);
+      return this.userFriendService.createFriendRequest(toggleFriendDto);
     } catch (error) {
       throw new RpcException(error.message);
     }
@@ -295,7 +301,10 @@ export class UserController {
   )
   async acceptFriendRequest(toggleFriendDto: ToggleFriendDto) {
     try {
-      return this.userService.accepOrDenytFriendRequest(toggleFriendDto, true);
+      return this.userFriendService.accepOrDenytFriendRequest(
+        toggleFriendDto,
+        true,
+      );
     } catch (error) {
       throw new RpcException(error.message);
     }
@@ -311,7 +320,10 @@ export class UserController {
   )
   async denyFriendRequest(toggleFriendDto: ToggleFriendDto) {
     try {
-      return this.userService.accepOrDenytFriendRequest(toggleFriendDto, false);
+      return this.userFriendService.accepOrDenytFriendRequest(
+        toggleFriendDto,
+        false,
+      );
     } catch (error) {
       throw new RpcException(error.message);
     }

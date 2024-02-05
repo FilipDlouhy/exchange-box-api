@@ -6,6 +6,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from '@app/database/entities/user.entity';
 import { CacheModule } from '@nestjs/cache-manager';
 import { FriendRequest } from '@app/database/entities/friend.request.entity';
+import { UserFriendService } from './user.friend.service';
 @Module({
   imports: [
     DatabaseModule,
@@ -13,6 +14,6 @@ import { FriendRequest } from '@app/database/entities/friend.request.entity';
     CacheModule.register(),
   ],
   controllers: [UserController],
-  providers: [UserService],
+  providers: [UserService, UserFriendService],
 })
 export class UserModule {}
