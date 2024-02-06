@@ -75,7 +75,7 @@ export class CenterController {
 
   // Delete a center by its ID and return a boolean indicating success or failure.
   @MessagePattern(centerMessagePatterns.deleteCenter)
-  async deleteCenter(id: number): Promise<boolean> {
+  async deleteCenter(id: number) {
     try {
       return this.centerService.deleteCenter(id);
     } catch (error) {

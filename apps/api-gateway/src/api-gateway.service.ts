@@ -156,7 +156,9 @@ export class ApiGatewayService {
           throw new Error('Request body is empty or invalid');
         }
       } else {
-        const reqBody = requestUrl[2] ? { id: requestUrl[2] } : {};
+        const reqBody = requestUrl[2]
+          ? { id: requestUrl[2], query: req.query }
+          : {};
 
         const response = await client
           .send({ cmd: this.kebabToCamel(requestUrl[1]) }, reqBody)

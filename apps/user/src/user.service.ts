@@ -221,7 +221,7 @@ export class UserService {
    * @param uploadUserImageDto - Data transfer object containing the file to upload and the user ID.
    * @param update - A boolean flag that determines whether to update an existing image (true) or upload a new image (false).
    * @throws - Propagates any errors that occur during file upload or update.
-   *           Errors may occur due to file upload issues, Firebase Storage operations, or database update operations.
+   *Errors may occur due to file upload issues, Firebase Storage operations, or database update operations.
    */
   async uploadUserImage(
     uploadUserImageDto: UploadUserImageDto,

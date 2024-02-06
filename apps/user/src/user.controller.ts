@@ -11,6 +11,7 @@ import { User } from '@app/database/entities/user.entity';
 import { CACHE_MANAGER, Cache } from '@nestjs/cache-manager';
 import { FriendRequestDto } from '@app/dtos/userDtos/friend.request.dto';
 import { UserFriendService } from './user.friend.service';
+import { Query } from 'mysql2/typings/mysql/lib/protocol/sequences/Query';
 
 @Controller()
 export class UserController {
@@ -209,7 +210,7 @@ export class UserController {
   }
 
   @MessagePattern(userMessagePatterns.getFriends)
-  async getFriends({ id }: { id: number }): Promise<UserDto[]> {
+  async getFriends({ id, query }: { id: number; query }): Promise<UserDto[]> {
     const cacheKey = `getFriends:${id}`;
     const cachedFriends: UserDto[] = await this.cacheManager.get(cacheKey);
 
@@ -220,17 +221,24 @@ export class UserController {
     const userFriends = await this.userFriendService.getFriendsOrNonFriends(
       id,
       true,
+      query,
     );
     await this.cacheManager.set(cacheKey, userFriends, 18000);
     try {
-      return this.userFriendService.getFriendsOrNonFriends(id, true);
+      return this.userFriendService.getFriendsOrNonFriends(id, true, query);
     } catch (error) {
       throw new RpcException(error.message);
     }
   }
 
   @MessagePattern(userMessagePatterns.getNewFriends)
-  async getNewFriends({ id }: { id: number }): Promise<UserDto[]> {
+  async getNewFriends({
+    id,
+    query,
+  }: {
+    id: number;
+    query;
+  }): Promise<UserDto[]> {
     const cacheKey = `getNewFriends:${id}`;
     const cachedFriends: UserDto[] = await this.cacheManager.get(cacheKey);
 
@@ -241,10 +249,11 @@ export class UserController {
     const userFriends = await this.userFriendService.getFriendsOrNonFriends(
       id,
       false,
+      query,
     );
     await this.cacheManager.set(cacheKey, userFriends, 18000);
     try {
-      return this.userFriendService.getFriendsOrNonFriends(id, false);
+      return this.userFriendService.getFriendsOrNonFriends(id, false, query);
     } catch (error) {
       throw new RpcException(error.message);
     }

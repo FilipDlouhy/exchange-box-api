@@ -25,6 +25,7 @@ export class UserFriendService {
   async getFriendsOrNonFriends(
     id: number,
     isFriends: boolean,
+    query: any,
   ): Promise<UserDto[]> {
     try {
       const user = await this.userRepository.findOne({
@@ -41,6 +42,8 @@ export class UserFriendService {
           where: {
             id: Not(id),
           },
+          skip: query.page,
+          take: query.limit,
         });
 
         const friendRequests = await this.friendRequestRepository.find();
@@ -303,6 +306,7 @@ export class UserFriendService {
       }
       const friendRequests = await this.friendRequestRepository.find({
         where: { friendId: id, accepted: null },
+        take: 10,
       });
 
       const friendRequestDtos = friendRequests.map((friendRequest) => {
