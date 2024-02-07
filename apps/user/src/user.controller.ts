@@ -260,7 +260,13 @@ export class UserController {
   }
 
   @MessagePattern(userMessagePatterns.getFriendRequests)
-  async getFriendRequests({ id }: { id: number }): Promise<FriendRequestDto[]> {
+  async getFriendRequests({
+    id,
+    query,
+  }: {
+    id: number;
+    query;
+  }): Promise<FriendRequestDto[]> {
     const cacheKey = `getFriendRequests:${id}`;
     const cachedFriendRequests: FriendRequestDto[] =
       await this.cacheManager.get(cacheKey);
@@ -269,12 +275,14 @@ export class UserController {
       return cachedFriendRequests;
     }
 
-    const getFriendRequests =
-      await this.userFriendService.getFriendRequests(id);
+    const getFriendRequests = await this.userFriendService.getFriendRequests(
+      id,
+      query,
+    );
     await this.cacheManager.set(cacheKey, getFriendRequests, 18000);
 
     try {
-      return this.userFriendService.getFriendRequests(id);
+      return this.userFriendService.getFriendRequests(id, query);
     } catch (error) {
       throw new RpcException(error.message);
     }

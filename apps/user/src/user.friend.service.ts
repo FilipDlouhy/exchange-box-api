@@ -299,14 +299,15 @@ export class UserFriendService {
    * @param id - The ID of the user for whom to retrieve friend requests.
    * @returns A Promise that resolves to an array of friend requests if found, or rejects with an error.
    */
-  async getFriendRequests(id: number): Promise<FriendRequestDto[]> {
+  async getFriendRequests(id: number, query): Promise<FriendRequestDto[]> {
     try {
       if (id == null) {
         throw new Error(`No Id`);
       }
       const friendRequests = await this.friendRequestRepository.find({
         where: { friendId: id, accepted: null },
-        take: 10,
+        skip: query.page,
+        take: query.limit,
       });
 
       const friendRequestDtos = friendRequests.map((friendRequest) => {
