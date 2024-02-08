@@ -1,5 +1,5 @@
 import { User } from '@app/database/entities/user.entity';
-import { userMessagePatterns } from '@app/tcp';
+import { userManagementCommands } from '@app/tcp';
 import {
   Injectable,
   InternalServerErrorException,
@@ -35,7 +35,7 @@ export class AuthService {
   async validateUser(email: string, pass: string): Promise<any> {
     const user = await this.userClient
       .send(
-        { cmd: userMessagePatterns.getUserByEmail.cmd },
+        { cmd: userManagementCommands.getUserByEmail.cmd },
         {
           userEmail: email,
         },
@@ -116,7 +116,7 @@ export class AuthService {
 
       const user: User = await this.userClient
         .send(
-          { cmd: userMessagePatterns.getUserByEmail.cmd },
+          { cmd: userManagementCommands.getUserByEmail.cmd },
           { userEmail: decoded.email },
         )
         .toPromise();

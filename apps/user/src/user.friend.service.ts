@@ -25,7 +25,7 @@ export class UserFriendService {
   async getFriendsOrNonFriends(
     id: number,
     isFriends: boolean,
-    query: any,
+    query: any = {},
   ): Promise<UserDto[]> {
     try {
       const user = await this.userRepository.findOne({
@@ -37,13 +37,16 @@ export class UserFriendService {
         throw new NotFoundException('User not found');
       }
 
+      const page = parseInt(query.page, 10) || 1;
+      const limit = parseInt(query.limit, 10) || 10;
+
       if (!isFriends) {
         const allUsers = await this.userRepository.find({
           where: {
             id: Not(id),
           },
-          skip: query.page,
-          take: query.limit,
+          skip: (page - 1) * limit,
+          take: limit,
         });
 
         const friendRequests = await this.friendRequestRepository.find();
@@ -52,34 +55,28 @@ export class UserFriendService {
           request.friendId === id ? request.userId : request.friendId,
         );
 
-        const frendIds = user.friends.map((user) => {
-          return user.id;
-        });
+        const friendIds = user.friends.map((user) => user.id);
 
-        const nonFriendUsers = allUsers.map((u) => {
-          if (!frendIds.includes(u.id) && !friendRequestIds.includes(u.id)) {
-            return u;
-          }
-        });
+        const nonFriendUsers = allUsers.filter(
+          (u) => !friendIds.includes(u.id) && !friendRequestIds.includes(u.id),
+        );
 
-        const nonFriendUserDtos = nonFriendUsers
-          .filter((u) => u != null)
-          .map(
-            (u) =>
-              new UserDto(
-                u.name,
-                u.email,
-                u.id,
-                u.telephone,
-                u.address,
-                u.imageUrl,
-              ),
-          );
+        const nonFriendUserDtos = nonFriendUsers.map(
+          (u) =>
+            new UserDto(
+              u.name,
+              u.email,
+              u.id,
+              u.telephone,
+              u.address,
+              u.imageUrl,
+            ),
+        );
 
         return nonFriendUserDtos;
       }
 
-      const friendDtos: UserDto[] = user.friends.map(
+      const friendDtos = user.friends.map(
         (user) =>
           new UserDto(
             user.name,
@@ -299,15 +296,18 @@ export class UserFriendService {
    * @param id - The ID of the user for whom to retrieve friend requests.
    * @returns A Promise that resolves to an array of friend requests if found, or rejects with an error.
    */
-  async getFriendRequests(id: number, query): Promise<FriendRequestDto[]> {
+  async getFriendRequests(
+    id: number,
+    query: any = {},
+  ): Promise<FriendRequestDto[]> {
     try {
-      if (id == null) {
-        throw new Error(`No Id`);
-      }
+      const page = parseInt(query.page, 10) || 1;
+      const limit = parseInt(query.limit, 10) || 10;
+
       const friendRequests = await this.friendRequestRepository.find({
         where: { friendId: id, accepted: null },
-        skip: query.page,
-        take: query.limit,
+        skip: (page - 1) * limit,
+        take: limit,
       });
 
       const friendRequestDtos = friendRequests.map((friendRequest) => {
@@ -323,6 +323,9 @@ export class UserFriendService {
 
       return friendRequestDtos;
     } catch (error) {
+      console.error(
+        `Error while retrieving friend requests for id ${id}: ${error.message}`,
+      );
       throw new Error(
         `Error while retrieving friend requests: ${error.message}`,
       );

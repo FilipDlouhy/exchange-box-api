@@ -267,7 +267,7 @@ export class UserController {
     query,
   }: {
     id: number;
-    query;
+    query: any;
   }): Promise<FriendRequestDto[]> {
     const cacheKey = `getFriendRequests:${id}`;
     const cachedFriendRequests: FriendRequestDto[] =
