@@ -225,6 +225,7 @@ export class UserController {
       true,
       query,
     );
+
     await this.cacheManager.set(cacheKey, userFriends, 18000);
     try {
       return this.userFriendService.getFriendsOrNonFriends(id, true, query);

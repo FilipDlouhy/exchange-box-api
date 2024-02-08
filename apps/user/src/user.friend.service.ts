@@ -68,17 +68,32 @@ export class UserFriendService {
           (u) => !friendIds.includes(u.id) && !friendRequestIds.includes(u.id),
         );
 
-        const nonFriendUserDtos = nonFriendUsers.map(
-          (u) =>
-            new UserDto(
-              u.name,
-              u.email,
-              u.id,
-              u.telephone,
-              u.address,
-              u.imageUrl,
-            ),
-        );
+        const nonFriendUserDtos =
+          query.search && query.search.length > 0
+            ? nonFriendUsers
+                .filter((u) => u.name.includes(query.search))
+                .map(
+                  (u) =>
+                    new UserDto(
+                      u.name,
+                      u.email,
+                      u.id,
+                      u.telephone,
+                      u.address,
+                      u.imageUrl,
+                    ),
+                )
+            : nonFriendUsers.map(
+                (u) =>
+                  new UserDto(
+                    u.name,
+                    u.email,
+                    u.id,
+                    u.telephone,
+                    u.address,
+                    u.imageUrl,
+                  ),
+              );
 
         return nonFriendUserDtos;
       }
@@ -91,19 +106,35 @@ export class UserFriendService {
         return [];
       }
 
-      const friendDtos = user.friends
-        .slice(startIndex, startIndex + limit)
-        .map(
-          (friend) =>
-            new UserDto(
-              friend.name,
-              friend.email,
-              friend.id,
-              friend.telephone,
-              friend.address,
-              friend.imageUrl,
-            ),
-        );
+      const friendDtos =
+        query.search && query.search.length > 0
+          ? user.friends
+              .filter((friend) => friend.name.includes(query.search))
+              .slice(startIndex, startIndex + limit)
+              .map(
+                (friend) =>
+                  new UserDto(
+                    friend.name,
+                    friend.email,
+                    friend.id,
+                    friend.telephone,
+                    friend.address,
+                    friend.imageUrl,
+                  ),
+              )
+          : user.friends
+              .slice(startIndex, startIndex + limit)
+              .map(
+                (friend) =>
+                  new UserDto(
+                    friend.name,
+                    friend.email,
+                    friend.id,
+                    friend.telephone,
+                    friend.address,
+                    friend.imageUrl,
+                  ),
+              );
 
       return friendDtos;
     } catch (err) {
@@ -327,16 +358,32 @@ export class UserFriendService {
         take: limit,
       });
 
-      const friendRequestDtos = friendRequests.map((friendRequest) => {
-        return new FriendRequestDto(
-          friendRequest.id.toString(),
-          friendRequest.createdAt,
-          friendRequest.friendId,
-          friendRequest.userId,
-          friendRequest.friendImageUrl,
-          friendRequest.userName,
-        );
-      });
+      const friendRequestDtos =
+        query.search && query.search.length > 0
+          ? friendRequests
+              .filter((friendRequest) =>
+                friendRequest.userName.includes(query.search),
+              )
+              .map((friendRequest) => {
+                return new FriendRequestDto(
+                  friendRequest.id.toString(),
+                  friendRequest.createdAt,
+                  friendRequest.friendId,
+                  friendRequest.userId,
+                  friendRequest.friendImageUrl,
+                  friendRequest.userName,
+                );
+              })
+          : friendRequests.map((friendRequest) => {
+              return new FriendRequestDto(
+                friendRequest.id.toString(),
+                friendRequest.createdAt,
+                friendRequest.friendId,
+                friendRequest.userId,
+                friendRequest.friendImageUrl,
+                friendRequest.userName,
+              );
+            });
 
       return friendRequestDtos;
     } catch (error) {
