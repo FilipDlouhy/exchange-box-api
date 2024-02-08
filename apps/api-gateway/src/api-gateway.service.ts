@@ -5,6 +5,7 @@ import {
   HttpStatus,
   Injectable,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import {
   ClientProxy,
@@ -156,14 +157,27 @@ export class ApiGatewayService {
           throw new Error('Request body is empty or invalid');
         }
       } else {
-        const reqBody = requestUrl[2]
-          ? { id: requestUrl[2], query: req.query }
-          : {};
-
-        const response = await client
-          .send({ cmd: this.kebabToCamel(requestUrl[1]) }, reqBody)
+        const userId = await this.authServiceClient
+          .send(
+            { cmd: authMessagePatterns.getUserId.cmd },
+            {
+              token:
+                req.cookies['jwtToken'] ||
+                req.headers['authorization']?.split(' ')[1],
+            },
+          )
           .toPromise();
-        return response;
+
+        if (userId) {
+          const reqBody = { id: userId, query: req.query };
+
+          const response = await client
+            .send({ cmd: this.kebabToCamel(requestUrl[1]) }, reqBody)
+            .toPromise();
+          return response;
+        } else {
+          throw new UnauthorizedException('Invalid JWT token');
+        }
       }
     } catch (error) {
       console.error('Error received from microservice:', error);

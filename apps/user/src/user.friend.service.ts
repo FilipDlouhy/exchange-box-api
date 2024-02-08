@@ -56,7 +56,6 @@ export class UserFriendService {
           take: limit,
         });
 
-        console.log(allUsers);
         const friendRequests = await this.friendRequestRepository.find();
 
         const friendRequestIds = friendRequests.map((request) =>

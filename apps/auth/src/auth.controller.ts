@@ -41,4 +41,13 @@ export class AuthController {
       throw new RpcException(error.message);
     }
   }
+
+  @MessagePattern(authMessagePatterns.getUserId)
+  async getUserIdFromToken({ token }: { token: string }): Promise<number> {
+    try {
+      return this.authService.getUserIdFromToken(token);
+    } catch (error) {
+      throw new RpcException(error.message);
+    }
+  }
 }

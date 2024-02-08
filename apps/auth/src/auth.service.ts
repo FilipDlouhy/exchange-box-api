@@ -128,4 +128,29 @@ export class AuthService {
       return false;
     }
   }
+
+  /**
+   * Parses a JWT token and extracts the user ID from it.
+   * Throws an error if the token is invalid or if the user ID cannot be extracted.
+   *
+   * @param {string} token - The JWT token to be parsed.
+   * @returns {number} The user ID extracted from the token.
+   */
+  async getUserIdFromToken(token: string): Promise<number> {
+    try {
+      const decoded = this.jwtService.verify(token);
+      const userId = decoded.userId;
+
+      if (!userId) {
+        throw new InternalServerErrorException(
+          'User ID not found in JWT token',
+        );
+      }
+
+      return userId;
+    } catch (error) {
+      console.error('Error parsing JWT token:', error);
+      throw new UnauthorizedException('Invalid JWT token');
+    }
+  }
 }
