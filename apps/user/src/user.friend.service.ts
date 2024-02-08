@@ -22,6 +22,13 @@ export class UserFriendService {
     private readonly friendRequestRepository: Repository<FriendRequest>,
   ) {}
 
+  /**
+   * Retrieves either friends or non-friends users based on the input parameters.
+   * @param id The ID of the user for whom to retrieve friends or non-friends.
+   * @param isFriends A boolean indicating whether to fetch friends (true) or non-friends (false).
+   * @param query Optional query parameters including pagination options.
+   * @returns A promise that resolves to an array of UserDto objects.
+   */
   async getFriendsOrNonFriends(
     id: number,
     isFriends: boolean,
@@ -45,10 +52,11 @@ export class UserFriendService {
           where: {
             id: Not(id),
           },
-          skip: (page - 1) * limit,
+          skip: page,
           take: limit,
         });
 
+        console.log(allUsers);
         const friendRequests = await this.friendRequestRepository.find();
 
         const friendRequestIds = friendRequests.map((request) =>
@@ -76,17 +84,27 @@ export class UserFriendService {
         return nonFriendUserDtos;
       }
 
-      const friendDtos = user.friends.map(
-        (user) =>
-          new UserDto(
-            user.name,
-            user.email,
-            user.id,
-            user.telephone,
-            user.address,
-            user.imageUrl,
-          ),
-      );
+      const totalFriends = user.friends.length;
+
+      const startIndex = (page - 1) * limit;
+
+      if (startIndex >= totalFriends) {
+        return [];
+      }
+
+      const friendDtos = user.friends
+        .slice(startIndex, startIndex + limit)
+        .map(
+          (friend) =>
+            new UserDto(
+              friend.name,
+              friend.email,
+              friend.id,
+              friend.telephone,
+              friend.address,
+              friend.imageUrl,
+            ),
+        );
 
       return friendDtos;
     } catch (err) {

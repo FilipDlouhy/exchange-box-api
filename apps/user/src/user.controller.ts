@@ -216,7 +216,7 @@ export class UserController {
     const cacheKey = `getFriends:${id}`;
     const cachedFriends: UserDto[] = await this.cacheManager.get(cacheKey);
 
-    if (cachedFriends) {
+    if (cachedFriends && query == null) {
       return cachedFriends;
     }
 
@@ -241,10 +241,10 @@ export class UserController {
     id: number;
     query;
   }): Promise<UserDto[]> {
-    const cacheKey = `getNewFriends:${id}`;
+    const cacheKey = `getNewFriends:${id + query.page + query.limit}`;
     const cachedFriends: UserDto[] = await this.cacheManager.get(cacheKey);
 
-    if (cachedFriends) {
+    if (cachedFriends && query == null) {
       return cachedFriends;
     }
 
@@ -273,7 +273,7 @@ export class UserController {
     const cachedFriendRequests: FriendRequestDto[] =
       await this.cacheManager.get(cacheKey);
 
-    if (cachedFriendRequests) {
+    if (cachedFriendRequests && query == null) {
       return cachedFriendRequests;
     }
 
