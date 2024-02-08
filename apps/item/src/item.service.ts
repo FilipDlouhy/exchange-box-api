@@ -1,9 +1,9 @@
-import { ToggleExchangeToItemDto } from '@app/dtos/itemDtos/toggle.exchange.id.dto';
-import { CreateItemDto } from '@app/dtos/itemDtos/create.item.dto';
-import { ItemDto } from '@app/dtos/itemDtos/item.dto';
-import { ItemSizeDto } from '@app/dtos/itemDtos/item.size.dto';
-import { ItemWithUsersDto } from '@app/dtos/itemDtos/item.with.users.dto';
-import { UpdateItemDto } from '@app/dtos/itemDtos/update.item.dto';
+import { ToggleExchangeToItemDto } from 'libs/dtos/itemDtos/toggle.exchange.id.dto';
+import { CreateItemDto } from 'libs/dtos/itemDtos/create.item.dto';
+import { ItemDto } from 'libs/dtos/itemDtos/item.dto';
+import { ItemSizeDto } from 'libs/dtos/itemDtos/item.size.dto';
+import { ItemWithUsersDto } from 'libs/dtos/itemDtos/item.with.users.dto';
+import { UpdateItemDto } from 'libs/dtos/itemDtos/update.item.dto';
 import {
   deleteFileFromFirebase,
   getImageUrlFromFirebase,
@@ -12,7 +12,7 @@ import {
 } from '@app/database';
 import { Injectable } from '@nestjs/common';
 import { ClientProxyFactory, Transport } from '@nestjs/microservices';
-import { UploadItemImageDto } from '@app/dtos/itemDtos/upload.item.image.dto';
+import { UploadItemImageDto } from 'libs/dtos/itemDtos/upload.item.image.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { Item } from '@app/database/entities/item.entity';

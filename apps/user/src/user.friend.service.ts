@@ -1,5 +1,5 @@
-import { ToggleFriendDto } from '@app/dtos/userDtos/toggle.friend.dto';
-import { UserDto } from '@app/dtos/userDtos/user.dto';
+import { ToggleFriendDto } from 'libs/dtos/userDtos/toggle.friend.dto';
+import { UserDto } from 'libs/dtos/userDtos/user.dto';
 import {
   ConflictException,
   Injectable,
@@ -11,7 +11,7 @@ import { User } from '@app/database/entities/user.entity';
 import { Not, Repository } from 'typeorm';
 import { FriendRequest } from '@app/database/entities/friend.request.entity';
 import { NotFoundError } from 'rxjs';
-import { FriendRequestDto } from '@app/dtos/userDtos/friend.request.dto';
+import { FriendRequestDto } from 'libs/dtos/userDtos/friend.request.dto';
 
 @Injectable()
 export class UserFriendService {

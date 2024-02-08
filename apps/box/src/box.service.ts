@@ -10,7 +10,7 @@ import * as bcrypt from 'bcrypt';
 import { generateRandomString } from './helpers/string.helper';
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { ClientProxyFactory, Transport } from '@nestjs/microservices';
-import { OpenBoxDto } from '@app/dtos/boxDtos/open.box.dto';
+import { OpenBoxDto } from 'libs/dtos/boxDtos/open.box.dto';
 import { Box } from '@app/database/entities/box.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { IsNull, Not, Repository } from 'typeorm';

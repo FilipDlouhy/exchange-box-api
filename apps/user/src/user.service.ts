@@ -1,9 +1,9 @@
-import { CreateUserDto } from '@app/dtos/userDtos/create.user.dto';
-import { ToggleFriendDto } from '@app/dtos/userDtos/toggle.friend.dto';
-import { UpdateUserDto } from '@app/dtos/userDtos/update.user.dto';
-import { UploadUserImageDto } from '@app/dtos/userDtos/upload.user.image.dto';
-import { UserDto } from '@app/dtos/userDtos/user.dto';
-import { friendStatusEnum } from '@app/dtos/userEnums/friend.enum';
+import { CreateUserDto } from 'libs/dtos/userDtos/create.user.dto';
+import { ToggleFriendDto } from 'libs/dtos/userDtos/toggle.friend.dto';
+import { UpdateUserDto } from 'libs/dtos/userDtos/update.user.dto';
+import { UploadUserImageDto } from 'libs/dtos/userDtos/upload.user.image.dto';
+import { UserDto } from 'libs/dtos/userDtos/user.dto';
+import { friendStatusEnum } from 'libs/dtos/userEnums/friend.enum';
 import {
   deleteFileFromFirebase,
   getImageUrlFromFirebase,
@@ -22,9 +22,9 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { User } from '@app/database/entities/user.entity';
 import { Repository } from 'typeorm';
 import { FriendRequest } from '@app/database/entities/friend.request.entity';
-import { UserProfileFriendDto } from '@app/dtos/userDtos/user.profile.friend.dto';
-import { UserProfileItemDto } from '@app/dtos/userDtos/user.profile.item.dto';
-import { UserProfileDto } from '@app/dtos/userDtos/user.profile.dto';
+import { UserProfileFriendDto } from 'libs/dtos/userDtos/user.profile.friend.dto';
+import { UserProfileItemDto } from 'libs/dtos/userDtos/user.profile.item.dto';
+import { UserProfileDto } from 'libs/dtos/userDtos/user.profile.dto';
 
 @Injectable()
 export class UserService {

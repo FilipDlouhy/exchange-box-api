@@ -1,21 +1,23 @@
 import { Controller, Inject, UsePipes, ValidationPipe } from '@nestjs/common';
 import { ExchangeService } from './exchange.service';
 import { MessagePattern, RpcException } from '@nestjs/microservices';
-import { CreateExchangeDto } from '@app/dtos/exchangeDtos/create.exchange.dto';
-import { ExchangeDto } from '@app/dtos/exchangeDtos/exchange.dto';
-import { UpdateExchangeDto } from '@app/dtos/exchangeDtos/update.exchange.dto';
-import { ExchangeWithUserDto } from '@app/dtos/exchangeDtos/exchange.with.users.dto';
-import { AddExchangeToFrontDto } from '@app/dtos/exchangeDtos/add.exchange.to.front..dto';
+import { CreateExchangeDto } from 'libs/dtos/exchangeDtos/create.exchange.dto';
+import { ExchangeDto } from 'libs/dtos/exchangeDtos/exchange.dto';
+import { UpdateExchangeDto } from 'libs/dtos/exchangeDtos/update.exchange.dto';
+import { ExchangeWithUserDto } from 'libs/dtos/exchangeDtos/exchange.with.users.dto';
+import { AddExchangeToFrontDto } from 'libs/dtos/exchangeDtos/add.exchange.to.front..dto';
 import { Exchange } from '@app/database/entities/exchange.entity';
-import { ChangeExchangeStatusDto } from '@app/dtos/exchangeDtos/change.exchange.status.dto';
+import { ChangeExchangeStatusDto } from 'libs/dtos/exchangeDtos/change.exchange.status.dto';
 import { CACHE_MANAGER, Cache } from '@nestjs/cache-manager';
 import { exchangeManagementCommands } from '@app/tcp/exchnageMessagePatterns/exchange.management.message.patterns';
 import { exchangeQueueManagementCommands } from '@app/tcp/exchnageMessagePatterns/exchnage.queue.message.patterns';
+import { ExchangeUtilsService } from './exchange.utils.service';
 
 @Controller()
 export class ExchangeController {
   constructor(
     private readonly exchangeService: ExchangeService,
+    private readonly exchangeUtilsService: ExchangeUtilsService,
     @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
   ) {}
 
@@ -84,7 +86,7 @@ export class ExchangeController {
         return cachedUserExchanges;
       }
 
-      const userExchanges = await this.exchangeService.getExchangesByUser(
+      const userExchanges = await this.exchangeUtilsService.getExchangesByUser(
         id,
         true,
       );
@@ -110,10 +112,8 @@ export class ExchangeController {
       if (cachedFriendExchanges) {
         return cachedFriendExchanges;
       }
-      const friendExchanges = await this.exchangeService.getExchangesByUser(
-        id,
-        false,
-      );
+      const friendExchanges =
+        await this.exchangeUtilsService.getExchangesByUser(id, false);
       await this.cacheManager.set(cacheKey, friendExchanges, 18000);
 
       return friendExchanges;
@@ -174,7 +174,7 @@ export class ExchangeController {
     addExchangeToTheFront: AddExchangeToFrontDto,
   ): Promise<Exchange> {
     try {
-      return await this.exchangeService.addExchangeToTheFront(
+      return await this.exchangeUtilsService.addExchangeToTheFront(
         addExchangeToTheFront,
       );
     } catch (error) {
@@ -192,7 +192,7 @@ export class ExchangeController {
   )
   async deleteExchangeFromFront({ boxId }: { boxId: number }) {
     try {
-      return await this.exchangeService.deleteExchangeFromFront(boxId);
+      return await this.exchangeUtilsService.deleteExchangeFromFront(boxId);
     } catch (error) {
       throw new RpcException(error.message);
     }

@@ -2,10 +2,10 @@ import { Controller, Inject, UsePipes, ValidationPipe } from '@nestjs/common';
 import { CenterService } from './center.service';
 import { MessagePattern, RpcException } from '@nestjs/microservices';
 import { centerMessagePatterns } from '@app/tcp/centerMessagePatterns/center.message.patterns';
-import { CenterDto } from '@app/dtos/centerDtos/center.dto';
-import { CenterWithFrontDto } from '@app/dtos/centerDtos/center.with.front.dto';
-import { UpdateCenterDto } from '@app/dtos/centerDtos/update.center.dto';
-import { GetCenterDto } from '@app/dtos/centerDtos/get.center.dto';
+import { CenterDto } from 'libs/dtos/centerDtos/center.dto';
+import { CenterWithFrontDto } from 'libs/dtos/centerDtos/center.with.front.dto';
+import { UpdateCenterDto } from 'libs/dtos/centerDtos/update.center.dto';
+import { GetCenterDto } from 'libs/dtos/centerDtos/get.center.dto';
 import { CACHE_MANAGER, Cache } from '@nestjs/cache-manager';
 
 @Controller()

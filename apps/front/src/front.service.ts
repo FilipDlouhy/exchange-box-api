@@ -1,5 +1,5 @@
 import { Front } from '@app/database/entities/front.entity';
-import { DeleteExchangeFromFrontDto } from '@app/dtos/exchangeDtos/delete.exchange.from.front.dto';
+import { DeleteExchangeFromFrontDto } from 'libs/dtos/exchangeDtos/delete.exchange.from.front.dto';
 import {
   ConflictException,
   Injectable,

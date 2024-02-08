@@ -1,7 +1,7 @@
 import { Controller } from '@nestjs/common';
 import { FrontService } from './front.service';
 import { MessagePattern, RpcException } from '@nestjs/microservices';
-import { DeleteExchangeFromFrontDto } from '@app/dtos/exchangeDtos/delete.exchange.from.front.dto';
+import { DeleteExchangeFromFrontDto } from 'libs/dtos/exchangeDtos/delete.exchange.from.front.dto';
 import { Front } from '@app/database/entities/front.entity';
 import { frontManagementCommands } from '@app/tcp/frontMessagePatterns/front.management.message.patterns';
 import { taskManagementCommands } from '@app/tcp/frontMessagePatterns/front.task.management.message.patterns';
