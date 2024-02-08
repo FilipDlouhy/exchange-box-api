@@ -10,7 +10,6 @@ import {
   updateFileInFirebase,
   uploadFileToFirebase,
 } from '@app/database';
-import { userMessagePatterns } from '@app/tcp';
 import { Injectable } from '@nestjs/common';
 import { ClientProxyFactory, Transport } from '@nestjs/microservices';
 import { UploadItemImageDto } from '@app/dtos/itemDtos/upload.item.image.dto';
@@ -18,6 +17,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { Item } from '@app/database/entities/item.entity';
 import { User } from '@app/database/entities/user.entity';
+import { friendManagementCommands } from '@app/tcp/userMessagePatterns/friend.management.nessage.patterns';
+import { profileManagementCommands } from '@app/tcp/userMessagePatterns/user.profile.message.patterns';
 
 @Injectable()
 export class ItemService {
@@ -48,7 +49,7 @@ export class ItemService {
       const { friend, user }: { friend: User; user: User } =
         await this.userClient
           .send(
-            { cmd: userMessagePatterns.getUserWithFriend.cmd },
+            { cmd: friendManagementCommands.getUserWithFriend.cmd },
             {
               userId: createItemDto.userId,
               friendId: createItemDto.friendId,
@@ -219,7 +220,7 @@ export class ItemService {
       if (item.friend.id !== updateItemDto.friendId) {
         const newFriend = await this.userClient
           .send(
-            { cmd: userMessagePatterns.getUserForItemUpdate.cmd },
+            { cmd: profileManagementCommands.getUserForItemUpdate.cmd },
             {
               friendId: updateItemDto.friendId,
             },

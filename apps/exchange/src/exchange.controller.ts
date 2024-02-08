@@ -1,6 +1,5 @@
 import { Controller, Inject, UsePipes, ValidationPipe } from '@nestjs/common';
 import { ExchangeService } from './exchange.service';
-import { exchangeessagePatterns } from '@app/tcp/exchange.message.patterns';
 import { MessagePattern, RpcException } from '@nestjs/microservices';
 import { CreateExchangeDto } from '@app/dtos/exchangeDtos/create.exchange.dto';
 import { ExchangeDto } from '@app/dtos/exchangeDtos/exchange.dto';
@@ -10,6 +9,8 @@ import { AddExchangeToFrontDto } from '@app/dtos/exchangeDtos/add.exchange.to.fr
 import { Exchange } from '@app/database/entities/exchange.entity';
 import { ChangeExchangeStatusDto } from '@app/dtos/exchangeDtos/change.exchange.status.dto';
 import { CACHE_MANAGER, Cache } from '@nestjs/cache-manager';
+import { exchangeManagementCommands } from '@app/tcp/exchnageMessagePatterns/exchange.management.message.patterns';
+import { exchangeQueueManagementCommands } from '@app/tcp/exchnageMessagePatterns/exchnage.queue.message.patterns';
 
 @Controller()
 export class ExchangeController {
@@ -18,7 +19,7 @@ export class ExchangeController {
     @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
   ) {}
 
-  @MessagePattern(exchangeessagePatterns.createExchange)
+  @MessagePattern(exchangeManagementCommands.createExchange)
   @UsePipes(
     new ValidationPipe({
       transform: true,
@@ -34,7 +35,7 @@ export class ExchangeController {
     }
   }
 
-  @MessagePattern(exchangeessagePatterns.deleteExchange)
+  @MessagePattern(exchangeManagementCommands.deleteExchange)
   @UsePipes(
     new ValidationPipe({
       transform: true,
@@ -50,7 +51,7 @@ export class ExchangeController {
     }
   }
 
-  @MessagePattern(exchangeessagePatterns.updateExchange)
+  @MessagePattern(exchangeManagementCommands.updateExchange)
   @UsePipes(
     new ValidationPipe({
       transform: true,
@@ -68,7 +69,7 @@ export class ExchangeController {
     }
   }
 
-  @MessagePattern(exchangeessagePatterns.getUserExchanges)
+  @MessagePattern(exchangeManagementCommands.getUserExchanges)
   async getUserExchanges({
     id,
   }: {
@@ -95,7 +96,7 @@ export class ExchangeController {
     }
   }
 
-  @MessagePattern(exchangeessagePatterns.getFriendExchanges)
+  @MessagePattern(exchangeManagementCommands.getFriendExchanges)
   async getFriendExchanges({
     id,
   }: {
@@ -121,7 +122,7 @@ export class ExchangeController {
     }
   }
 
-  @MessagePattern(exchangeessagePatterns.getFullExchange)
+  @MessagePattern(exchangeManagementCommands.getFullExchange)
   async getFullExchange({ id }: { id: number }) {
     try {
       const cacheKey = `fullExchange:${id}`;
@@ -141,7 +142,7 @@ export class ExchangeController {
     }
   }
 
-  @MessagePattern(exchangeessagePatterns.getAllExchanges)
+  @MessagePattern(exchangeManagementCommands.getAllExchanges)
   async getAllExchanges(): Promise<ExchangeWithUserDto[]> {
     try {
       const cacheKey = 'allExchanges';
@@ -161,7 +162,7 @@ export class ExchangeController {
     }
   }
 
-  @MessagePattern(exchangeessagePatterns.addExchangeToTheFront)
+  @MessagePattern(exchangeQueueManagementCommands.addExchangeToTheFront)
   @UsePipes(
     new ValidationPipe({
       transform: true,
@@ -181,7 +182,7 @@ export class ExchangeController {
     }
   }
 
-  @MessagePattern(exchangeessagePatterns.deleteExchangeFromFront)
+  @MessagePattern(exchangeQueueManagementCommands.deleteExchangeFromFront)
   @UsePipes(
     new ValidationPipe({
       transform: true,
@@ -197,7 +198,7 @@ export class ExchangeController {
     }
   }
 
-  @MessagePattern(exchangeessagePatterns.changeExchangeStatus)
+  @MessagePattern(exchangeQueueManagementCommands.changeExchangeStatus)
   @UsePipes(
     new ValidationPipe({
       transform: true,
@@ -214,7 +215,7 @@ export class ExchangeController {
       throw new RpcException(error.message);
     }
   }
-  @MessagePattern(exchangeessagePatterns.getBoxSize)
+  @MessagePattern(exchangeQueueManagementCommands.getBoxSize)
   async getBoxSize({ id }: { id: number }): Promise<string> {
     try {
       return await this.exchangeService.getBoxSize(id);

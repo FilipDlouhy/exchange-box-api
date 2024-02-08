@@ -1,16 +1,17 @@
-import { Controller, Inject, UsePipes, ValidationPipe } from '@nestjs/common';
+import { Controller } from '@nestjs/common';
 import { FrontService } from './front.service';
-import { frontMessagePatterns } from '@app/tcp/front.message.patterns';
 import { MessagePattern, RpcException } from '@nestjs/microservices';
 import { DeleteExchangeFromFrontDto } from '@app/dtos/exchangeDtos/delete.exchange.from.front.dto';
 import { Front } from '@app/database/entities/front.entity';
+import { frontManagementCommands } from '@app/tcp/frontMessagePatterns/front.management.message.patterns';
+import { taskManagementCommands } from '@app/tcp/frontMessagePatterns/front.task.management.message.patterns';
 
 @Controller()
 export class FrontController {
   constructor(private readonly frontService: FrontService) {}
 
   // Create a front entity associated with the specified center
-  @MessagePattern(frontMessagePatterns.createFront)
+  @MessagePattern(frontManagementCommands.createFront)
   async createFront(): Promise<Front> {
     try {
       return await this.frontService.createFront();
@@ -19,7 +20,7 @@ export class FrontController {
     }
   }
 
-  @MessagePattern(frontMessagePatterns.getFrontForTask)
+  @MessagePattern(taskManagementCommands.getFrontForTask)
   async getFrontForTask({
     size,
     frontId,
@@ -34,7 +35,7 @@ export class FrontController {
     }
   }
 
-  @MessagePattern(frontMessagePatterns.deleteTaskFromFront)
+  @MessagePattern(taskManagementCommands.deleteTaskFromFront)
   async deleteTaskFromFront(
     deleteExchnageFromFront: DeleteExchangeFromFrontDto,
   ): Promise<boolean> {

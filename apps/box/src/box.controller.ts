@@ -1,7 +1,7 @@
 import { Controller, UsePipes, ValidationPipe } from '@nestjs/common';
 import { BoxService } from './box.service';
 import { MessagePattern, RpcException } from '@nestjs/microservices';
-import { boxMessagePatterns } from '@app/tcp/box.message.patterns';
+import { boxMessagePatterns } from '@app/tcp/boxMessagePatterns/box.message.patterns';
 import { OpenBoxDto } from '@app/dtos/boxDtos/open.box.dto';
 
 @Controller()

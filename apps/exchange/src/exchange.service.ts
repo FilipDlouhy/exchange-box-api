@@ -1,18 +1,13 @@
 import { AddExchangeToFrontDto } from '@app/dtos/exchangeDtos/add.exchange.to.front..dto';
 import { ChangeExchangeStatusDto } from '@app/dtos/exchangeDtos/change.exchange.status.dto';
 import { CreateExchangeDto } from '@app/dtos/exchangeDtos/create.exchange.dto';
-import { DeleteExchangeDto } from '@app/dtos/exchangeDtos/delete.exchange.dto';
 import { ExchangeDto } from '@app/dtos/exchangeDtos/exchange.dto';
 import { ExchangeWithUserDto } from '@app/dtos/exchangeDtos/exchange.with.users.dto';
 import { UpdateExchangeDto } from '@app/dtos/exchangeDtos/update.exchange.dto';
-import { ItemDto } from '@app/dtos/itemDtos/item.dto';
 import { ItemSizeDto } from '@app/dtos/itemDtos/item.size.dto';
 import { boxSizes } from '@app/database/box.sizes';
 import { exchnageStatus } from '@app/dtos/exchange.status.dto';
-import { userMessagePatterns } from '@app/tcp';
-import { boxMessagePatterns } from '@app/tcp/box.message.patterns';
-import { frontMessagePatterns } from '@app/tcp/front.message.patterns';
-import { itemMessagePatterns } from '@app/tcp/item.messages.patterns';
+import { boxMessagePatterns } from '@app/tcp/boxMessagePatterns/box.message.patterns';
 import {
   BadRequestException,
   ConflictException,
@@ -23,10 +18,13 @@ import {
 import { ClientProxyFactory, Transport } from '@nestjs/microservices';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Exchange } from '@app/database/entities/exchange.entity';
-import { EntityManager, QueryFailedError, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import { Front } from '@app/database/entities/front.entity';
 import { User } from '@app/database/entities/user.entity';
 import { Item } from '@app/database/entities/item.entity';
+import { taskManagementCommands } from '@app/tcp/frontMessagePatterns/front.task.management.message.patterns';
+import { itemExchangeManagementCommands } from '@app/tcp/itemMessagePatterns/item.exchange.management.message.patterns';
+import { friendManagementCommands } from '@app/tcp/userMessagePatterns/friend.management.nessage.patterns';
 
 @Injectable()
 export class ExchangeService {
@@ -38,7 +36,6 @@ export class ExchangeService {
   constructor(
     @InjectRepository(Exchange)
     private readonly exchangeRepository: Repository<Exchange>,
-    private readonly entityManager: EntityManager,
   ) {
     this.userClient = ClientProxyFactory.create({
       transport: Transport.TCP,
@@ -406,7 +403,7 @@ export class ExchangeService {
       // Retrieve the front ID for the task
       const front: Front = await this.frontClient
         .send(
-          { cmd: frontMessagePatterns.getFrontForTask.cmd },
+          { cmd: taskManagementCommands.getFrontForTask.cmd },
           {
             size: addExchangeToTheFront.size,
             frontId: addExchangeToTheFront.frontId,
@@ -471,7 +468,7 @@ export class ExchangeService {
       // Retrieve the front ID for the task and attempt to delete the task from the front
       const wasExchangeDeleted: boolean = await this.frontClient
         .send(
-          { cmd: frontMessagePatterns.deleteTaskFromFront.cmd },
+          { cmd: taskManagementCommands.deleteTaskFromFront.cmd },
           {
             boxSize: exchange.boxSize,
             front: exchange.front.id,
@@ -572,7 +569,10 @@ export class ExchangeService {
     try {
       const itemSizes: ItemSizeDto[] = await this.itemClient
         .send(
-          { cmd: itemMessagePatterns.retrieveItemSizesAndCheckExchange.cmd },
+          {
+            cmd: itemExchangeManagementCommands
+              .retrieveItemSizesAndCheckExchange.cmd,
+          },
           { item_ids: itemIds, udpate: udpate },
         )
         .toPromise();
@@ -609,7 +609,7 @@ export class ExchangeService {
     // Fetch user and friend details
     const { user, friend }: { user: User; friend: User } = await this.userClient
       .send(
-        { cmd: userMessagePatterns.getUserWithFriend.cmd },
+        { cmd: friendManagementCommands.getUserWithFriend.cmd },
         {
           userId: userId,
           friendId: friendId,
@@ -620,7 +620,7 @@ export class ExchangeService {
     // Associate items with the exchange
     const items: Item[] = await this.itemClient
       .send(
-        { cmd: itemMessagePatterns.addExchangeToItems.cmd },
+        { cmd: itemExchangeManagementCommands.addExchangeToItems.cmd },
         { itemIds: itemIds, exchange: exchange },
       )
       .toPromise();

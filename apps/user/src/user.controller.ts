@@ -1,7 +1,6 @@
 import { Controller, Inject, UsePipes, ValidationPipe } from '@nestjs/common';
 import { UserService } from './user.service';
 import { MessagePattern, RpcException } from '@nestjs/microservices';
-import { userMessagePatterns } from '@app/tcp';
 import { CreateUserDto } from '@app/dtos/userDtos/create.user.dto';
 import { UserDto } from '@app/dtos/userDtos/user.dto';
 import { UpdateUserDto } from '@app/dtos/userDtos/update.user.dto';
@@ -11,7 +10,10 @@ import { User } from '@app/database/entities/user.entity';
 import { CACHE_MANAGER, Cache } from '@nestjs/cache-manager';
 import { FriendRequestDto } from '@app/dtos/userDtos/friend.request.dto';
 import { UserFriendService } from './user.friend.service';
-import { Query } from 'mysql2/typings/mysql/lib/protocol/sequences/Query';
+import { userManagementCommands } from '@app/tcp';
+import { friendManagementCommands } from '@app/tcp/userMessagePatterns/friend.management.nessage.patterns';
+import { userImageManagementCommands } from '@app/tcp/userMessagePatterns/user.image.management.message.patterns';
+import { profileManagementCommands } from '@app/tcp/userMessagePatterns/user.profile.message.patterns';
 
 @Controller()
 export class UserController {
@@ -21,7 +23,7 @@ export class UserController {
     @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
   ) {}
 
-  @MessagePattern(userMessagePatterns.createUser)
+  @MessagePattern(userManagementCommands.createUser)
   @UsePipes(
     new ValidationPipe({
       transform: true,
@@ -37,7 +39,7 @@ export class UserController {
     }
   }
 
-  @MessagePattern(userMessagePatterns.getUser)
+  @MessagePattern(userManagementCommands.getUser)
   async getUser({ id }: { id: number }): Promise<UserDto> {
     try {
       const cachedUser: UserDto = await this.cacheManager.get('getUser');
@@ -54,7 +56,7 @@ export class UserController {
     }
   }
 
-  @MessagePattern(userMessagePatterns.updateUser)
+  @MessagePattern(userManagementCommands.updateUser)
   @UsePipes(
     new ValidationPipe({
       transform: true,
@@ -70,7 +72,7 @@ export class UserController {
     }
   }
 
-  @MessagePattern(userMessagePatterns.getUsers)
+  @MessagePattern(userManagementCommands.getUsers)
   async getUsers(): Promise<UserDto[]> {
     try {
       const cachedUsers: UserDto[] = await this.cacheManager.get('getUsers');
@@ -89,7 +91,7 @@ export class UserController {
     }
   }
 
-  @MessagePattern(userMessagePatterns.deleteUser)
+  @MessagePattern(userManagementCommands.deleteUser)
   async deleteUser({ id }: { id: number }) {
     try {
       return await this.userService.deleteUser(id);
@@ -98,7 +100,7 @@ export class UserController {
     }
   }
 
-  @MessagePattern(userMessagePatterns.removeFriend)
+  @MessagePattern(friendManagementCommands.removeFriend)
   async removeFriend(toggleFriendDto: ToggleFriendDto) {
     try {
       const cacheKey = `getFriends:${toggleFriendDto.userId}`;
@@ -112,7 +114,7 @@ export class UserController {
     }
   }
 
-  @MessagePattern(userMessagePatterns.checkIfFriends)
+  @MessagePattern(friendManagementCommands.checkIfFriends)
   @UsePipes(
     new ValidationPipe({
       transform: true,
@@ -131,7 +133,7 @@ export class UserController {
     }
   }
 
-  @MessagePattern(userMessagePatterns.getUserWithFriend)
+  @MessagePattern(friendManagementCommands.getUserWithFriend)
   async getUserWithFriend(
     toggleFriendDto: ToggleFriendDto,
   ): Promise<{ user: User; friend: User }> {
@@ -145,7 +147,7 @@ export class UserController {
     }
   }
 
-  @MessagePattern(userMessagePatterns.uploadUserImage)
+  @MessagePattern(userImageManagementCommands.uploadUserImage)
   async uploadUserImage(uploadUserImageDto: UploadUserImageDto) {
     try {
       return this.userService.uploadUserImage(uploadUserImageDto, false);
@@ -154,7 +156,7 @@ export class UserController {
     }
   }
 
-  @MessagePattern(userMessagePatterns.updateUserImage)
+  @MessagePattern(userImageManagementCommands.updateUserImage)
   async updateUserImage(uploadUserImageDto: UploadUserImageDto) {
     try {
       return this.userService.uploadUserImage(uploadUserImageDto, true);
@@ -163,7 +165,7 @@ export class UserController {
     }
   }
 
-  @MessagePattern(userMessagePatterns.getUserImage)
+  @MessagePattern(userImageManagementCommands.getUserImage)
   async getUserImage({ id }: { id: number }): Promise<string> {
     try {
       const cacheKey = `userImage:${id}`;
@@ -182,7 +184,7 @@ export class UserController {
     }
   }
 
-  @MessagePattern(userMessagePatterns.deleteUserImage)
+  @MessagePattern(userImageManagementCommands.deleteUserImage)
   async deleteUserImage({ id }: { id: number }) {
     try {
       return this.userService.deleteUserImage(id);
@@ -191,7 +193,7 @@ export class UserController {
     }
   }
 
-  @MessagePattern(userMessagePatterns.getUserForItemUpdate)
+  @MessagePattern(profileManagementCommands.getUserForItemUpdate)
   async getUserForItemUpdate({ friendId }: { friendId: number }) {
     try {
       return this.userService.getUserForItemUpdate(friendId);
@@ -200,7 +202,7 @@ export class UserController {
     }
   }
 
-  @MessagePattern(userMessagePatterns.getUserByEmail)
+  @MessagePattern(userManagementCommands.getUserByEmail)
   async getUserByEmail({ userEmail }: { userEmail: string }): Promise<User> {
     try {
       return this.userService.getUserByEmail(userEmail);
@@ -209,7 +211,7 @@ export class UserController {
     }
   }
 
-  @MessagePattern(userMessagePatterns.getFriends)
+  @MessagePattern(friendManagementCommands.getFriends)
   async getFriends({ id, query }: { id: number; query }): Promise<UserDto[]> {
     const cacheKey = `getFriends:${id}`;
     const cachedFriends: UserDto[] = await this.cacheManager.get(cacheKey);
@@ -231,7 +233,7 @@ export class UserController {
     }
   }
 
-  @MessagePattern(userMessagePatterns.getNewFriends)
+  @MessagePattern(friendManagementCommands.getNewFriends)
   async getNewFriends({
     id,
     query,
@@ -259,7 +261,7 @@ export class UserController {
     }
   }
 
-  @MessagePattern(userMessagePatterns.getFriendRequests)
+  @MessagePattern(friendManagementCommands.getFriendRequests)
   async getFriendRequests({
     id,
     query,
@@ -288,7 +290,7 @@ export class UserController {
     }
   }
 
-  @MessagePattern(userMessagePatterns.createFriendRequest)
+  @MessagePattern(friendManagementCommands.createFriendRequest)
   @UsePipes(
     new ValidationPipe({
       transform: true,
@@ -306,7 +308,7 @@ export class UserController {
     }
   }
 
-  @MessagePattern(userMessagePatterns.acceptFriendRequest)
+  @MessagePattern(friendManagementCommands.acceptFriendRequest)
   @UsePipes(
     new ValidationPipe({
       transform: true,
@@ -325,7 +327,7 @@ export class UserController {
     }
   }
 
-  @MessagePattern(userMessagePatterns.denyFriendRequest)
+  @MessagePattern(friendManagementCommands.denyFriendRequest)
   @UsePipes(
     new ValidationPipe({
       transform: true,
@@ -344,7 +346,7 @@ export class UserController {
     }
   }
 
-  @MessagePattern(userMessagePatterns.getUserForProfile)
+  @MessagePattern(profileManagementCommands.getUserForProfile)
   @UsePipes(
     new ValidationPipe({
       transform: true,

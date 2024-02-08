@@ -10,11 +10,11 @@ import * as bcrypt from 'bcrypt';
 import { generateRandomString } from './helpers/string.helper';
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { ClientProxyFactory, Transport } from '@nestjs/microservices';
-import { exchangeessagePatterns } from '@app/tcp/exchange.message.patterns';
 import { OpenBoxDto } from '@app/dtos/boxDtos/open.box.dto';
 import { Box } from '@app/database/entities/box.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { IsNull, Not, Repository } from 'typeorm';
+import { exchangeQueueManagementCommands } from '@app/tcp/exchnageMessagePatterns/exchnage.queue.message.patterns';
 @Injectable()
 export class BoxService implements OnModuleInit {
   private readonly exchangeClient;
@@ -58,7 +58,10 @@ export class BoxService implements OnModuleInit {
         try {
           await this.exchangeClient
             .send(
-              { cmd: exchangeessagePatterns.deleteExchangeFromFront.cmd },
+              {
+                cmd: exchangeQueueManagementCommands.deleteExchangeFromFront
+                  .cmd,
+              },
               {
                 boxId: box.id,
               },
@@ -105,7 +108,10 @@ export class BoxService implements OnModuleInit {
           // Check if the box has items in it
           await this.exchangeClient
             .send(
-              { cmd: exchangeessagePatterns.deleteExchangeFromFront.cmd },
+              {
+                cmd: exchangeQueueManagementCommands.deleteExchangeFromFront
+                  .cmd,
+              },
               {
                 boxId: insertedBox.id,
               },
@@ -233,7 +239,7 @@ export class BoxService implements OnModuleInit {
 
         await this.exchangeClient
           .send(
-            { cmd: exchangeessagePatterns.changeExchangeStatus.cmd },
+            { cmd: exchangeQueueManagementCommands.changeExchangeStatus.cmd },
             {
               exchange_state: 'inBox',
               id: openBoxDto.id,

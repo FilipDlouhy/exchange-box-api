@@ -1,7 +1,7 @@
 import { Controller, UsePipes, ValidationPipe } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { MessagePattern, RpcException } from '@nestjs/microservices';
-import { authMessagePatterns } from '@app/tcp/auth.messages.patterns';
+import { authMessagePatterns } from '@app/tcp/authMessagePatterns/auth.messages.patterns';
 import { LoginUserDto } from '@app/dtos/userDtos/login.user.dto';
 
 @Controller()

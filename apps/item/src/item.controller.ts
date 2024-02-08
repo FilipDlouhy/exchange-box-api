@@ -2,7 +2,6 @@ import { Controller, Inject, UsePipes, ValidationPipe } from '@nestjs/common';
 import { ItemService } from './item.service';
 import { CreateItemDto } from '@app/dtos/itemDtos/create.item.dto';
 import { MessagePattern, RpcException } from '@nestjs/microservices';
-import { itemMessagePatterns } from '@app/tcp/item.messages.patterns';
 import { ItemDto } from '@app/dtos/itemDtos/item.dto';
 import { UpdateItemDto } from '@app/dtos/itemDtos/update.item.dto';
 import { ItemWithUsersDto } from '@app/dtos/itemDtos/item.with.users.dto';
@@ -10,6 +9,9 @@ import { ItemSizeDto } from '@app/dtos/itemDtos/item.size.dto';
 import { ToggleExchangeToItemDto } from '@app/dtos/itemDtos/toggle.exchange.id.dto';
 import { UploadItemImageDto } from '@app/dtos/itemDtos/upload.item.image.dto';
 import { CACHE_MANAGER, Cache } from '@nestjs/cache-manager';
+import { itemManagementCommands } from '@app/tcp/itemMessagePatterns/item.management.messages.patterns';
+import { itemExchangeManagementCommands } from '@app/tcp/itemMessagePatterns/item.exchange.management.message.patterns';
+import { itemImageManagementCommands } from '@app/tcp/itemMessagePatterns/item.image.management.message.patterns';
 
 @Controller()
 export class ItemController {
@@ -19,7 +21,7 @@ export class ItemController {
   ) {}
 
   // Create a new item using the provided DTO
-  @MessagePattern(itemMessagePatterns.createItem)
+  @MessagePattern(itemManagementCommands.createItem)
   @UsePipes(
     new ValidationPipe({
       transform: true,
@@ -36,7 +38,7 @@ export class ItemController {
   }
 
   // Retrieve all items
-  @MessagePattern(itemMessagePatterns.getAllItems)
+  @MessagePattern(itemManagementCommands.getAllItems)
   async getAllItems(): Promise<ItemDto[]> {
     try {
       const cacheKey = 'allItems';
@@ -57,7 +59,7 @@ export class ItemController {
   }
 
   // Retrieve items belonging to a specific user
-  @MessagePattern(itemMessagePatterns.getUserItems)
+  @MessagePattern(itemManagementCommands.getUserItems)
   async getUserItems({ id }: { id: number }): Promise<ItemDto[]> {
     try {
       const cacheKey = `userItems:${id}`;
@@ -78,7 +80,7 @@ export class ItemController {
   }
 
   // Retrieve forgotten items belonging to a specific user
-  @MessagePattern(itemMessagePatterns.getUserForgotenItems)
+  @MessagePattern(itemManagementCommands.getUserForgotenItems)
   async getUserForgotenItems({ id }: { id: number }): Promise<ItemDto[]> {
     try {
       const cacheKey = `userForgottenItems:${id}`;
@@ -100,7 +102,7 @@ export class ItemController {
   }
 
   // Delete an item based on its ID
-  @MessagePattern(itemMessagePatterns.deleteItem)
+  @MessagePattern(itemManagementCommands.deleteItem)
   async deleteItem({ id }: { id: number }) {
     try {
       return await this.itemService.deleteItem(id);
@@ -110,7 +112,7 @@ export class ItemController {
   }
 
   // Update an existing item using the provided DTO
-  @MessagePattern(itemMessagePatterns.updateItem)
+  @MessagePattern(itemManagementCommands.updateItem)
   @UsePipes(
     new ValidationPipe({
       transform: true,
@@ -127,7 +129,7 @@ export class ItemController {
   }
 
   // Retrieve an item based on its ID
-  @MessagePattern(itemMessagePatterns.getItem)
+  @MessagePattern(itemManagementCommands.getItem)
   async getItem({ id }: { id: number }): Promise<ItemWithUsersDto> {
     try {
       const cacheKey = `item:${id}`;
@@ -149,7 +151,9 @@ export class ItemController {
   }
 
   // Retrieve an item based on its ID
-  @MessagePattern(itemMessagePatterns.retrieveItemSizesAndCheckExchange)
+  @MessagePattern(
+    itemExchangeManagementCommands.retrieveItemSizesAndCheckExchange,
+  )
   async retrieveItemSizesAndCheckExchange({
     item_ids,
     udpate,
@@ -168,7 +172,7 @@ export class ItemController {
   }
 
   // Retrieve an item based on its ID
-  @MessagePattern(itemMessagePatterns.addExchangeToItems)
+  @MessagePattern(itemExchangeManagementCommands.addExchangeToItems)
   async addExchangeIdToItem(addExchangeIdToItemDto: ToggleExchangeToItemDto) {
     try {
       return await this.itemService.addExchangeToItems(addExchangeIdToItemDto);
@@ -177,7 +181,7 @@ export class ItemController {
     }
   }
 
-  @MessagePattern(itemMessagePatterns.deleteExchangeFromItems)
+  @MessagePattern(itemExchangeManagementCommands.deleteExchangeFromItems)
   @UsePipes(
     new ValidationPipe({
       transform: true,
@@ -197,7 +201,7 @@ export class ItemController {
     }
   }
 
-  @MessagePattern(itemMessagePatterns.uploadItemImage)
+  @MessagePattern(itemImageManagementCommands.uploadItemImage)
   async uploadUserImage(uploadUserImageDto: UploadItemImageDto) {
     try {
       return this.itemService.uploadItemImage(uploadUserImageDto, false);
@@ -206,7 +210,7 @@ export class ItemController {
     }
   }
 
-  @MessagePattern(itemMessagePatterns.updateItemImage)
+  @MessagePattern(itemImageManagementCommands.updateItemImage)
   async updateItemImage(uploadUserImageDto: UploadItemImageDto) {
     try {
       return this.itemService.uploadItemImage(uploadUserImageDto, true);
@@ -215,7 +219,7 @@ export class ItemController {
     }
   }
 
-  @MessagePattern(itemMessagePatterns.getItemImage)
+  @MessagePattern(itemImageManagementCommands.getItemImage)
   async getUserImage({ id }: { id: number }): Promise<string> {
     try {
       return this.itemService.getItemImage(id);
@@ -224,7 +228,7 @@ export class ItemController {
     }
   }
 
-  @MessagePattern(itemMessagePatterns.deleteItemImage)
+  @MessagePattern(itemImageManagementCommands.deleteItemImage)
   async deleteUserImage({ id }: { id: number }) {
     try {
       return this.itemService.deleteItemImage(id);

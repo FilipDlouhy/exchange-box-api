@@ -1,4 +1,4 @@
-export const exchangeessagePatterns = {
+export const exchangeManagementCommands = {
   createExchange: { cmd: 'createExchange' },
   deleteExchange: { cmd: 'deleteExchange' },
   updateExchange: { cmd: 'updateExchange' },
@@ -6,8 +6,4 @@ export const exchangeessagePatterns = {
   getFriendExchanges: { cmd: 'getFriendExchanges' },
   getAllExchanges: { cmd: 'getAllExchanges' },
   getFullExchange: { cmd: 'getFullExchange' },
-  addExchangeToTheFront: { cmd: 'addExchangeToTheFront' },
-  deleteExchangeFromFront: { cmd: 'deleteExchangeFromFront' },
-  changeExchangeStatus: { cmd: 'changeExchangeStatus' },
-  getBoxSize: { cmd: 'getBoxSize' },
 };

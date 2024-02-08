@@ -1,7 +1,7 @@
 import { Controller, Inject, UsePipes, ValidationPipe } from '@nestjs/common';
 import { CenterService } from './center.service';
 import { MessagePattern, RpcException } from '@nestjs/microservices';
-import { centerMessagePatterns } from '@app/tcp/center.message.patterns';
+import { centerMessagePatterns } from '@app/tcp/centerMessagePatterns/center.message.patterns';
 import { CenterDto } from '@app/dtos/centerDtos/center.dto';
 import { CenterWithFrontDto } from '@app/dtos/centerDtos/center.with.front.dto';
 import { UpdateCenterDto } from '@app/dtos/centerDtos/update.center.dto';

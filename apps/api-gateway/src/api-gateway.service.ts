@@ -1,5 +1,5 @@
 import { User } from '@app/database/entities/user.entity';
-import { authMessagePatterns } from '@app/tcp/auth.messages.patterns';
+import { authMessagePatterns } from '@app/tcp/authMessagePatterns/auth.messages.patterns';
 import {
   HttpException,
   HttpStatus,

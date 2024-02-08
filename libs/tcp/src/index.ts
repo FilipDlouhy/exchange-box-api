@@ -1,1 +1,1 @@
-export * from './user.message.patterns';
+export * from './userMessagePatterns/user.management.message.patterns';

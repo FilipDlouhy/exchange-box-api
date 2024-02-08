@@ -2,7 +2,6 @@ import { CenterDto } from '@app/dtos/centerDtos/center.dto';
 import { CenterWithFrontDto } from '@app/dtos/centerDtos/center.with.front.dto';
 import { CreateCenterDto } from '@app/dtos/centerDtos/create.center.dto';
 import { UpdateCenterDto } from '@app/dtos/centerDtos/update.center.dto';
-import { frontMessagePatterns } from '@app/tcp/front.message.patterns';
 import {
   Injectable,
   InternalServerErrorException,
@@ -16,6 +15,7 @@ import { FrontExchangeDto } from '@app/dtos/frontDtos/front.exchange.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Center } from '@app/database/entities/center.entity';
 import { Between, EntityManager, Repository } from 'typeorm';
+import { frontManagementCommands } from '@app/tcp/frontMessagePatterns/front.management.message.patterns';
 
 @Injectable()
 export class CenterService implements OnModuleInit {
@@ -25,7 +25,6 @@ export class CenterService implements OnModuleInit {
   constructor(
     @InjectRepository(Center)
     private readonly centerRepository: Repository<Center>,
-    private readonly entityManager: EntityManager,
   ) {
     this.frontClient = ClientProxyFactory.create({
       transport: Transport.TCP,
@@ -295,7 +294,7 @@ export class CenterService implements OnModuleInit {
   ): Promise<CenterDto> {
     try {
       const frontResponse = await this.frontClient
-        .send({ cmd: frontMessagePatterns.createFront.cmd }, {})
+        .send({ cmd: frontManagementCommands.createFront.cmd }, {})
         .toPromise();
 
       if (!frontResponse || !frontResponse.id) {

@@ -1,10 +1,7 @@
-export const frontMessagePatterns = {
+export const frontManagementCommands = {
   createFront: { cmd: 'createFront' },
   getFront: { cmd: 'getFront' },
   updateFront: { cmd: 'updateFront' },
   getFronts: { cmd: 'getFronts' },
   deleteFront: { cmd: 'deleteFront' },
-  getFrontForTask: { cmd: 'getFrontForTask' },
-  addTaskToFront: { cmd: 'addTaskToFront' },
-  deleteTaskFromFront: { cmd: 'deleteTaskFromFront' },
 };
