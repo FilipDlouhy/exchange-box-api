@@ -14,6 +14,7 @@ import { userManagementCommands } from '@app/tcp';
 import { friendManagementCommands } from '@app/tcp/userMessagePatterns/friend.management.nessage.patterns';
 import { userImageManagementCommands } from '@app/tcp/userMessagePatterns/user.image.management.message.patterns';
 import { profileManagementCommands } from '@app/tcp/userMessagePatterns/user.profile.message.patterns';
+import { ChangePasswordDto } from 'libs/dtos/userDtos/change.password.dto';
 
 @Controller()
 export class UserController {
@@ -358,6 +359,22 @@ export class UserController {
   async getUserForProfile(toggleFriendDto: ToggleFriendDto) {
     try {
       return this.userService.getUserForProfile(toggleFriendDto);
+    } catch (error) {
+      throw new RpcException(error.message);
+    }
+  }
+
+  @MessagePattern(userManagementCommands.changePassword)
+  @UsePipes(
+    new ValidationPipe({
+      transform: true,
+      whitelist: true,
+      forbidNonWhitelisted: true,
+    }),
+  )
+  async changePassword(changePasswordDto: ChangePasswordDto) {
+    try {
+      return this.userService.changePasswordDto(changePasswordDto);
     } catch (error) {
       throw new RpcException(error.message);
     }

@@ -13,6 +13,7 @@ import {
 import {
   BadRequestException,
   ConflictException,
+  HttpException,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
@@ -25,6 +26,7 @@ import { FriendRequest } from '@app/database/entities/friend.request.entity';
 import { UserProfileFriendDto } from 'libs/dtos/userDtos/user.profile.friend.dto';
 import { UserProfileItemDto } from 'libs/dtos/userDtos/user.profile.item.dto';
 import { UserProfileDto } from 'libs/dtos/userDtos/user.profile.dto';
+import { ChangePasswordDto } from 'libs/dtos/userDtos/change.password.dto';
 
 @Injectable()
 export class UserService {
@@ -449,5 +451,46 @@ export class UserService {
       console.error('Failed to retrieve user profile:', error);
       throw error;
     }
+  }
+
+  /**
+    Changes the user's password after validating the current password and ensuring it's different from the new one.
+    @param changePasswordDto - DTO containing email, current password, and new password.
+    @throws Error if user not found, current password invalid, or new password same as current.
+    @returns Promise resolved with no value upon successful password change.
+  */
+  async changePasswordDto(changePasswordDto: ChangePasswordDto) {
+    const user = await this.userRepository.findOne({
+      where: { email: changePasswordDto.email },
+    });
+
+    if (!user) {
+      throw new Error('User not found.');
+    }
+
+    const isPasswordValid = await bcrypt.compare(
+      changePasswordDto.password,
+      user.password,
+    );
+
+    if (!isPasswordValid) {
+      throw new Error('Invalid password.');
+    }
+
+    const isNewPasswordSameAsOld = await bcrypt.compare(
+      changePasswordDto.newPassword,
+      user.password,
+    );
+
+    if (isNewPasswordSameAsOld) {
+      throw new Error(
+        'New password must be different from the current password.',
+      );
+    }
+
+    const hashedPassword = await bcrypt.hash(changePasswordDto.newPassword, 10);
+    user.password = hashedPassword;
+
+    await this.userRepository.save(user);
   }
 }
