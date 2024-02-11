@@ -14,9 +14,6 @@ export class CurrentUserDto {
   @IsString()
   name: string;
 
-  @IsString()
-  password: string;
-
   @IsEmail()
   email: string;
 

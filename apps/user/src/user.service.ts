@@ -89,6 +89,7 @@ export class UserService {
           ),
       );
 
+      delete user.password;
       const currentUser = new CurrentUserDto(user);
 
       currentUser.friends = friends;
