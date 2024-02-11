@@ -202,7 +202,7 @@ export class ItemController {
   }
 
   @MessagePattern(itemImageManagementCommands.uploadItemImage)
-  async uploadUserImage(uploadUserImageDto: UploadItemImageDto) {
+  async uploadItemImage(uploadUserImageDto: UploadItemImageDto) {
     try {
       return this.itemService.uploadItemImage(uploadUserImageDto, false);
     } catch (error) {

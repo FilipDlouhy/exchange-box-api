@@ -174,6 +174,32 @@ export class UserController {
     }
   }
 
+  @MessagePattern(userImageManagementCommands.uploadUserImageBackground)
+  async uploadUserImageBackground(uploadUserImageDto: UploadUserImageDto) {
+    try {
+      return this.userService.uploadUserImage(
+        uploadUserImageDto,
+        false,
+        'Users',
+      );
+    } catch (error) {
+      throw new RpcException(error.message);
+    }
+  }
+
+  @MessagePattern(userImageManagementCommands.updateUserImageBackground)
+  async updateUserImageBackground(uploadUserImageDto: UploadUserImageDto) {
+    try {
+      return this.userService.uploadUserImage(
+        uploadUserImageDto,
+        true,
+        'Users',
+      );
+    } catch (error) {
+      throw new RpcException(error.message);
+    }
+  }
+
   @MessagePattern(userImageManagementCommands.getUserImage)
   async getUserImage({ id }: { id: number }): Promise<string> {
     try {

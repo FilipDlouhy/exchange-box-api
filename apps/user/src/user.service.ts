@@ -58,13 +58,16 @@ export class UserService {
   }
 
   /**
-   * Retrieves a single user based on the provided ID.
-   * Returns user details except for the password.
+   * Retrieves a single user profile based on the provided ID.
+   * Returns user details including friends, items, and exchanges.
    * @param {number} id - The unique identifier of the user to retrieve.
-   * @returns {Promise<UserDto>} - The DTO of the retrieved user.
+   * @returns {Promise<CurrentUserDto>} - The DTO representing the user profile.
+   * @throws {NotFoundException} If the user with the provided ID is not found.
+   * @throws {Error} If there is an error retrieving the user profile.
    */
   async getCurrentUserProfile(id: number): Promise<CurrentUserDto> {
     try {
+      // Attempt to find the user by ID including related entities
       const user = await this.userRepository.findOne({
         where: { id },
         relations: ['friends', 'items', 'exchanges'],
@@ -74,7 +77,23 @@ export class UserService {
         throw new NotFoundException(`User not found`);
       }
 
-      return new CurrentUserDto(user);
+      const friends = user.friends.map(
+        (friend) =>
+          new UserDto(
+            friend.name,
+            friend.email,
+            friend.id,
+            friend.telephone,
+            friend.address,
+            friend.imageUrl,
+          ),
+      );
+
+      const currentUser = new CurrentUserDto(user);
+
+      currentUser.friends = friends;
+
+      return currentUser;
     } catch (err) {
       console.error('Error retrieving user:', err);
       throw new Error('Error retrieving user');
