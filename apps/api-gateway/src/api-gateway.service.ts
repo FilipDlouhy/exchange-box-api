@@ -91,7 +91,7 @@ export class ApiGatewayService {
    * @returns The response from the targeted microservice.
    * @throws NotFoundException if the service is not found.
    */
-  async rerouteRequest(req: Request, file?: Express.Multer.File) {
+  async rerouteRequest(req: Request, files: Array<Express.Multer.File>) {
     try {
       if (
         req.path === '/auth/check-token' ||
@@ -142,11 +142,11 @@ export class ApiGatewayService {
 
       if (req.method === 'POST' || req.method === 'PUT') {
         if (req.body && Object.keys(req.body).length > 0) {
-          const response = file
+          const response = files
             ? await client
                 .send(
                   { cmd: this.kebabToCamel(requestUrl[1]) },
-                  { ...req.body, file },
+                  { ...req.body, images: files },
                 )
                 .toPromise()
             : await client
