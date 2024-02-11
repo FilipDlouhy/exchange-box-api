@@ -229,18 +229,19 @@ export class UserService {
   async uploadUserImage(
     uploadUserImageDto: UploadUserImageDto,
     update: boolean,
+    folderName: string,
   ) {
     try {
       const imageUrl = update
         ? await updateFileInFirebase(
             uploadUserImageDto.file,
             uploadUserImageDto.userId,
-            'Users',
+            folderName,
           )
         : await uploadFileToFirebase(
             uploadUserImageDto.file,
             uploadUserImageDto.userId,
-            'Users',
+            folderName,
           );
 
       const user = await this.userRepository.findOne({

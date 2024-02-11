@@ -151,7 +151,11 @@ export class UserController {
   @MessagePattern(userImageManagementCommands.uploadUserImage)
   async uploadUserImage(uploadUserImageDto: UploadUserImageDto) {
     try {
-      return this.userService.uploadUserImage(uploadUserImageDto, false);
+      return this.userService.uploadUserImage(
+        uploadUserImageDto,
+        false,
+        'Users',
+      );
     } catch (error) {
       throw new RpcException(error.message);
     }
@@ -160,7 +164,11 @@ export class UserController {
   @MessagePattern(userImageManagementCommands.updateUserImage)
   async updateUserImage(uploadUserImageDto: UploadUserImageDto) {
     try {
-      return this.userService.uploadUserImage(uploadUserImageDto, true);
+      return this.userService.uploadUserImage(
+        uploadUserImageDto,
+        true,
+        'Users',
+      );
     } catch (error) {
       throw new RpcException(error.message);
     }
