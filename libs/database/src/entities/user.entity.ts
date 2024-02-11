@@ -27,6 +27,9 @@ export class User {
   imageUrl: string;
 
   @Column({ nullable: true })
+  backgroundImageUrl: string;
+
+  @Column({ nullable: true })
   address: string | null;
 
   @Column({ nullable: true })

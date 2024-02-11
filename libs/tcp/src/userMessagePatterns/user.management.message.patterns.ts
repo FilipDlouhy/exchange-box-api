@@ -1,6 +1,6 @@
 export const userManagementCommands = {
   createUser: { cmd: 'createUser' },
-  getUser: { cmd: 'getUser' },
+  getCurrentUserProfile: { cmd: 'getCurrentUserProfile' },
   updateUser: { cmd: 'updateUser' },
   getUsers: { cmd: 'getUsers' },
   deleteUser: { cmd: 'deleteUser' },

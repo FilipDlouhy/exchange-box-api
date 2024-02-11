@@ -13,7 +13,6 @@ import {
 import {
   BadRequestException,
   ConflictException,
-  HttpException,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
@@ -27,6 +26,7 @@ import { UserProfileFriendDto } from 'libs/dtos/userDtos/user.profile.friend.dto
 import { UserProfileItemDto } from 'libs/dtos/userDtos/user.profile.item.dto';
 import { UserProfileDto } from 'libs/dtos/userDtos/user.profile.dto';
 import { ChangePasswordDto } from 'libs/dtos/userDtos/change.password.dto';
+import { CurrentUserDto } from 'libs/dtos/userDtos/current.user.dto';
 
 @Injectable()
 export class UserService {
@@ -63,17 +63,18 @@ export class UserService {
    * @param {number} id - The unique identifier of the user to retrieve.
    * @returns {Promise<UserDto>} - The DTO of the retrieved user.
    */
-  async getUser(id: number): Promise<UserDto> {
+  async getCurrentUserProfile(id: number): Promise<CurrentUserDto> {
     try {
       const user = await this.userRepository.findOne({
         where: { id },
+        relations: ['friends', 'items', 'exchanges'],
       });
 
       if (!user) {
         throw new NotFoundException(`User not found`);
       }
 
-      return new UserDto(user.name, user.email, user.id, user.imageUrl);
+      return new CurrentUserDto(user);
     } catch (err) {
       console.error('Error retrieving user:', err);
       throw new Error('Error retrieving user');
@@ -443,6 +444,7 @@ export class UserService {
         profileUserItems,
         profileUserFriends,
         profileUser.imageUrl,
+        profileUser.backgroundImageUrl,
         profileUser.address,
         profileUser.telephone,
         friendStatus,

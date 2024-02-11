@@ -15,6 +15,7 @@ import { friendManagementCommands } from '@app/tcp/userMessagePatterns/friend.ma
 import { userImageManagementCommands } from '@app/tcp/userMessagePatterns/user.image.management.message.patterns';
 import { profileManagementCommands } from '@app/tcp/userMessagePatterns/user.profile.message.patterns';
 import { ChangePasswordDto } from 'libs/dtos/userDtos/change.password.dto';
+import { CurrentUserDto } from 'libs/dtos/userDtos/current.user.dto';
 
 @Controller()
 export class UserController {
@@ -40,17 +41,16 @@ export class UserController {
     }
   }
 
-  @MessagePattern(userManagementCommands.getUser)
-  async getUser({ id }: { id: number }): Promise<UserDto> {
+  @MessagePattern(userManagementCommands.getCurrentUserProfile)
+  async getUser({ id }: { id: number }): Promise<CurrentUserDto> {
     try {
-      const cachedUser: UserDto = await this.cacheManager.get('getUser');
+      const cachedUser: CurrentUserDto = await this.cacheManager.get('getUser');
       if (cachedUser) {
         return cachedUser;
       }
 
-      const user = await this.userService.getUser(id);
-      await this.cacheManager.set('getUser', user, 18000);
-
+      const user = await this.userService.getCurrentUserProfile(id);
+      await this.cacheManager.set('getCurrentUserProfile', user, 18000);
       return user;
     } catch (error) {
       throw new RpcException(error.message);

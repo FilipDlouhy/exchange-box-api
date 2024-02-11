@@ -5,7 +5,6 @@ import {
   IsOptional,
   IsArray,
   ValidateNested,
-  IsBoolean, // Add IsBoolean decorator
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { UserProfileFriendDto } from './user.profile.friend.dto';
@@ -36,6 +35,10 @@ export class UserProfileDto {
   @IsOptional()
   imageURL: string | undefined;
 
+  @IsString()
+  @IsOptional()
+  backgroundImageUrl: string | undefined;
+
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => UserProfileFriendDto)
@@ -57,6 +60,7 @@ export class UserProfileDto {
     userItems: UserProfileItemDto[],
     userFriends: UserProfileFriendDto[],
     imageURL?: string,
+    backgroundImageUrl?: string,
     address?: string,
     telephone?: string,
     friendStatus?: number,
@@ -65,6 +69,7 @@ export class UserProfileDto {
     this.email = email;
     this.id = id;
     this.imageURL = imageURL;
+    this.backgroundImageUrl = backgroundImageUrl;
     this.address = address;
     this.telephone = telephone;
     this.userItems = userItems;
