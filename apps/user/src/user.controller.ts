@@ -3,7 +3,6 @@ import { UserService } from './user.service';
 import { MessagePattern, RpcException } from '@nestjs/microservices';
 import { CreateUserDto } from 'libs/dtos/userDtos/create.user.dto';
 import { UserDto } from 'libs/dtos/userDtos/user.dto';
-import { UpdateUserDto } from 'libs/dtos/userDtos/update.user.dto';
 import { ToggleFriendDto } from 'libs/dtos/userDtos/toggle.friend.dto';
 import { UploadUserImageDto } from 'libs/dtos/userDtos/upload.user.image.dto';
 import { User } from '@app/database/entities/user.entity';
@@ -16,6 +15,7 @@ import { userImageManagementCommands } from '@app/tcp/userMessagePatterns/user.i
 import { profileManagementCommands } from '@app/tcp/userMessagePatterns/user.profile.message.patterns';
 import { ChangePasswordDto } from 'libs/dtos/userDtos/change.password.dto';
 import { CurrentUserDto } from 'libs/dtos/userDtos/current.user.dto';
+import { UpdateCurrentUserDto } from 'libs/dtos/userDtos/update.current.user.dto';
 
 @Controller()
 export class UserController {
@@ -57,17 +57,10 @@ export class UserController {
     }
   }
 
-  @MessagePattern(userManagementCommands.updateUser)
-  @UsePipes(
-    new ValidationPipe({
-      transform: true,
-      whitelist: true,
-      forbidNonWhitelisted: true,
-    }),
-  )
-  async updateUser(UpdateUserDto: UpdateUserDto): Promise<UserDto> {
+  @MessagePattern(userManagementCommands.updateCurentUser)
+  async updateCurentUser(updateCurrentUserDto: UpdateCurrentUserDto) {
     try {
-      return await this.userService.updateUser(UpdateUserDto);
+      return await this.userService.updateCurentUser(updateCurrentUserDto);
     } catch (error) {
       throw new RpcException(error.message);
     }
@@ -142,58 +135,6 @@ export class UserController {
       return await this.userFriendService.getUserWithFriend(
         toggleFriendDto.userId,
         toggleFriendDto.friendId,
-      );
-    } catch (error) {
-      throw new RpcException(error.message);
-    }
-  }
-
-  @MessagePattern(userImageManagementCommands.uploadUserImage)
-  async uploadUserImage(uploadUserImageDto: UploadUserImageDto) {
-    try {
-      return this.userService.uploadUserImage(
-        uploadUserImageDto,
-        false,
-        'Users',
-      );
-    } catch (error) {
-      throw new RpcException(error.message);
-    }
-  }
-
-  @MessagePattern(userImageManagementCommands.updateUserImage)
-  async updateUserImage(uploadUserImageDto: UploadUserImageDto) {
-    try {
-      return this.userService.uploadUserImage(
-        uploadUserImageDto,
-        true,
-        'Users',
-      );
-    } catch (error) {
-      throw new RpcException(error.message);
-    }
-  }
-
-  @MessagePattern(userImageManagementCommands.uploadUserImageBackground)
-  async uploadUserImageBackground(uploadUserImageDto: UploadUserImageDto) {
-    try {
-      return this.userService.uploadUserImage(
-        uploadUserImageDto,
-        false,
-        'Users',
-      );
-    } catch (error) {
-      throw new RpcException(error.message);
-    }
-  }
-
-  @MessagePattern(userImageManagementCommands.updateUserImageBackground)
-  async updateUserImageBackground(uploadUserImageDto: UploadUserImageDto) {
-    try {
-      return this.userService.uploadUserImage(
-        uploadUserImageDto,
-        true,
-        'Users',
       );
     } catch (error) {
       throw new RpcException(error.message);

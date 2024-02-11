@@ -1,6 +1,6 @@
 import { CreateUserDto } from 'libs/dtos/userDtos/create.user.dto';
 import { ToggleFriendDto } from 'libs/dtos/userDtos/toggle.friend.dto';
-import { UpdateUserDto } from 'libs/dtos/userDtos/update.user.dto';
+
 import { UploadUserImageDto } from 'libs/dtos/userDtos/upload.user.image.dto';
 import { UserDto } from 'libs/dtos/userDtos/user.dto';
 import { friendStatusEnum } from 'libs/dtos/userEnums/friend.enum';
@@ -27,6 +27,7 @@ import { UserProfileItemDto } from 'libs/dtos/userDtos/user.profile.item.dto';
 import { UserProfileDto } from 'libs/dtos/userDtos/user.profile.dto';
 import { ChangePasswordDto } from 'libs/dtos/userDtos/change.password.dto';
 import { CurrentUserDto } from 'libs/dtos/userDtos/current.user.dto';
+import { UpdateCurrentUserDto } from 'libs/dtos/userDtos/update.current.user.dto';
 
 @Injectable()
 export class UserService {
@@ -122,46 +123,50 @@ export class UserService {
   }
 
   /**
-   * Updates a user in the 'user' table using the provided UpdateUserDto.
-   * Hashes the new password before updating it in the database.
-   * After the update, it retrieves and returns the updated user details, except for the password.
-   * @param {UpdateUserDto} updateUserDto - The DTO containing the updated user data.
-   * @returns {Promise<UserDto>} - The DTO of the updated user.
+   * Updates user details and handles image uploads inline, without separate DTO preparation.
+   * No explicit return, focuses on updating user and handling image uploads by type (background or profile).
+   *
+   * @param {UpdateCurrentUserDto} updateCurrentUserDto - The DTO containing the updated user data, including any new images.
    */
-  async updateUser(updateUserDto: UpdateUserDto): Promise<UserDto> {
-    try {
-      const hashedPassword = await bcrypt.hash(updateUserDto.password, 10);
+  async updateCurentUser(
+    updateCurrentUserDto: UpdateCurrentUserDto,
+  ): Promise<void> {
+    // Retrieve the user from the repository
+    const user = await this.userRepository.findOne({
+      where: { id: updateCurrentUserDto.id },
+    });
 
-      // Find the user first
-      const user = await this.userRepository.findOne({
-        where: { id: updateUserDto.id },
-      });
+    updateCurrentUserDto.images.forEach((image) => {
+      const isBackgroundImage = image.originalname
+        .toLocaleLowerCase()
+        .includes('background');
+      const uploadImageDto = new UploadUserImageDto();
+      uploadImageDto.file = image;
+      uploadImageDto.userId = updateCurrentUserDto.id.toString();
 
-      if (!user) {
-        throw new NotFoundException(
-          `User with ID ${updateUserDto.id} not found`,
-        );
-      }
+      const imageCategory = isBackgroundImage ? 'BackgroundImages' : 'Users';
+      const shouldReplace = isBackgroundImage
+        ? !!user.backgroundImageUrl
+        : !!user.imageUrl;
 
-      // Update user properties
-      user.name = updateUserDto.name;
-      user.email = updateUserDto.email;
-      user.password = hashedPassword;
+      this.uploadUserImage(
+        uploadImageDto,
+        shouldReplace,
+        imageCategory,
+        isBackgroundImage,
+      );
+    });
 
-      // Save the updated user
-      await this.userRepository.save(user);
+    // Update the user's basic information
+    Object.assign(user, {
+      name: updateCurrentUserDto.name,
+      telephone: updateCurrentUserDto.telephone,
+      address: updateCurrentUserDto.address,
+      email: updateCurrentUserDto.email,
+    });
 
-      // Return the updated user data (omit sensitive fields like password)
-      const updatedUser = new UserDto(user.name, user.email, user.id);
-      return updatedUser;
-    } catch (err) {
-      console.error('Error updating user:', err);
-      if (err instanceof NotFoundException) {
-        throw err;
-      } else {
-        throw new BadRequestException('Error updating user');
-      }
-    }
+    // Save the updated user details
+    await this.userRepository.save(user);
   }
 
   /**
@@ -246,10 +251,11 @@ export class UserService {
    * @throws - Propagates any errors that occur during file upload or update.
    *Errors may occur due to file upload issues, Firebase Storage operations, or database update operations.
    */
-  async uploadUserImage(
+  private async uploadUserImage(
     uploadUserImageDto: UploadUserImageDto,
     update: boolean,
     folderName: string,
+    isBackground: boolean,
   ) {
     try {
       const imageUrl = update
@@ -274,7 +280,12 @@ export class UserService {
         );
       }
 
-      user.imageUrl = imageUrl;
+      if (isBackground) {
+        user.backgroundImageUrl = imageUrl;
+      } else {
+        user.imageUrl = imageUrl;
+      }
+
       await this.userRepository.save(user);
     } catch (error) {
       console.error(`Error uploading user image: ${error.message}`);
