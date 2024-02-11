@@ -157,15 +157,15 @@ export class UserService {
       );
     });
 
-    // Update the user's basic information
     Object.assign(user, {
       name: updateCurrentUserDto.name,
       telephone: updateCurrentUserDto.telephone,
       address: updateCurrentUserDto.address,
       email: updateCurrentUserDto.email,
+      longitude: updateCurrentUserDto.longitude,
+      latitude: updateCurrentUserDto.latitude,
     });
 
-    // Save the updated user details
     await this.userRepository.save(user);
   }
 
