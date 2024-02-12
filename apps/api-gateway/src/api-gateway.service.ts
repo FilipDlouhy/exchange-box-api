@@ -25,6 +25,7 @@ export class ApiGatewayService {
   private exchangeClient: ClientProxy;
   private boxClient: ClientProxy;
   private chatClient: ClientProxy;
+  private notification: ClientProxy;
   private chatSupportClient: ClientProxy;
 
   constructor() {
@@ -39,6 +40,7 @@ export class ApiGatewayService {
     this.boxClient = this.createClient('box', 3008);
     this.chatClient = this.createClient('chat', 3009);
     this.chatClient = this.createClient('chatSupport', 3010);
+    this.notification = this.createClient('notification', 3011);
   }
 
   /**
@@ -131,6 +133,9 @@ export class ApiGatewayService {
           client = this.chatClient;
         case 'chatSupport':
           client = this.chatSupportClient;
+          break;
+        case 'notification':
+          client = this.notification;
           break;
         default:
           throw new NotFoundException('Service not found');
