@@ -4,7 +4,6 @@ import { MessagePattern, RpcException } from '@nestjs/microservices';
 import { CreateUserDto } from 'libs/dtos/userDtos/create.user.dto';
 import { UserDto } from 'libs/dtos/userDtos/user.dto';
 import { ToggleFriendDto } from 'libs/dtos/userDtos/toggle.friend.dto';
-import { UploadUserImageDto } from 'libs/dtos/userDtos/upload.user.image.dto';
 import { User } from '@app/database/entities/user.entity';
 import { CACHE_MANAGER, Cache } from '@nestjs/cache-manager';
 import { FriendRequestDto } from 'libs/dtos/userDtos/friend.request.dto';
