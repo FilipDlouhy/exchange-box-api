@@ -8,6 +8,7 @@ import {
 } from 'typeorm';
 import { Item } from './item.entity'; // Corrected the import statement
 import { Exchange } from './exchange.entity'; // Corrected the import statement
+import { Notification } from './notification.entity';
 
 @Entity()
 export class User {
@@ -50,6 +51,9 @@ export class User {
 
   @OneToMany(() => Exchange, (exchange) => exchange.user)
   exchanges: Exchange[];
+
+  @OneToMany(() => Notification, (notification) => notification.user)
+  notifications: Notification[];
 
   constructor(user: Partial<User>) {
     Object.assign(this, user);
