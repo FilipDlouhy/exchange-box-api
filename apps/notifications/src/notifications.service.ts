@@ -4,18 +4,33 @@ import {
   Injectable,
   InternalServerErrorException,
   NotFoundException,
+  OnModuleInit,
 } from '@nestjs/common';
+import { SchedulerRegistry } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { CreateNotificationDto } from 'libs/dtos/notificationDtos/create.notification.dto';
 import { NotificationDto } from 'libs/dtos/notificationDtos/notification.dto';
 import { Repository } from 'typeorm';
 
 @Injectable()
-export class NotificationsService {
+export class NotificationsService implements OnModuleInit {
   constructor(
     @InjectRepository(Notification)
     private readonly notificationRepository: Repository<Notification>,
+    private schedulerRegistry: SchedulerRegistry,
   ) {}
+
+  /**
+   * Initializes the module and schedules deletion of seen notifications.
+   */
+  async onModuleInit() {
+    const notifications = await this.notificationRepository.find({
+      where: { seen: true },
+    });
+    notifications.forEach((notification) =>
+      this.scheduleNotificationDeletion(notification.id),
+    );
+  }
 
   /**
    * Creates a new notification in the database based on the provided data.
@@ -124,26 +139,23 @@ export class NotificationsService {
   }
 
   /**
-   * Updates the 'seen' state of a notification to true by the provided ID.
+   * Marks a notification as seen and schedules its deletion.
    *
-   * @param {number} id - The ID of the notification to update.
-   * @throws {NotFoundException} - If the notification with the given ID is not found.
-   * @throws {InternalServerErrorException} - If an error occurs during the update operation.
-   * @returns {Promise<void>} - A promise that resolves once the update is successful.
+   * @param {number} id - ID of the notification to update.
+   * @throws {NotFoundException} If no notification is found.
+   * @throws {InternalServerErrorException} On update or deletion error.
    */
   async changeNotificationSeenState(id: number) {
     try {
       const notification = await this.notificationRepository.findOne({
-        where: { id: id },
+        where: { id },
       });
-
       if (!notification) {
         throw new NotFoundException(`Notification with ID ${id} not found`);
       }
-
       notification.seen = true;
-
       await this.notificationRepository.save(notification);
+      this.scheduleNotificationDeletion(id);
     } catch (err) {
       console.error(
         `Error updating notification seen state for ID ${id}:`,
@@ -157,5 +169,23 @@ export class NotificationsService {
         );
       }
     }
+  }
+
+  /**
+   * Schedules the deletion of a notification after a specified delay.
+   * @param notificationId The ID of the notification to delete.
+   */
+  private scheduleNotificationDeletion(notificationId: number) {
+    const deleteNotification = setTimeout(async () => {
+      try {
+        await this.deleteNotification(notificationId);
+      } catch (timeoutError) {
+        console.error('Error during timeout processing:', timeoutError);
+      }
+    }, 3600000);
+    this.schedulerRegistry.addTimeout(
+      `delete_notification_${notificationId}`,
+      deleteNotification,
+    );
   }
 }
