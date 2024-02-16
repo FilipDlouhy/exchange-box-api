@@ -12,15 +12,25 @@ import { Not, Repository } from 'typeorm';
 import { FriendRequest } from '@app/database/entities/friend.request.entity';
 import { NotFoundError } from 'rxjs';
 import { FriendRequestDto } from 'libs/dtos/userDtos/friend.request.dto';
+import { ClientProxyFactory, Transport } from '@nestjs/microservices';
 
 @Injectable()
 export class UserFriendService {
+  private readonly notificationClient;
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     @InjectRepository(FriendRequest)
     private readonly friendRequestRepository: Repository<FriendRequest>,
-  ) {}
+  ) {
+    this.notificationClient = ClientProxyFactory.create({
+      transport: Transport.TCP,
+      options: {
+        host: 'localhost',
+        port: 3011,
+      },
+    });
+  }
 
   /**
    * Retrieves either friends or non-friends users based on the input parameters.

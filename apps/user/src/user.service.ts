@@ -28,15 +28,26 @@ import { UserProfileDto } from 'libs/dtos/userDtos/user.profile.dto';
 import { ChangePasswordDto } from 'libs/dtos/userDtos/change.password.dto';
 import { CurrentUserDto } from 'libs/dtos/userDtos/current.user.dto';
 import { UpdateCurrentUserDto } from 'libs/dtos/userDtos/update.current.user.dto';
+import { notificationManagementCommands } from '@app/tcp/notificationMessagePatterns/notification.management.message.patterns';
+import { ClientProxyFactory, Transport } from '@nestjs/microservices';
 
 @Injectable()
 export class UserService {
+  private readonly notificationClient;
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     @InjectRepository(FriendRequest)
     private readonly friendRequestRepository: Repository<FriendRequest>,
-  ) {}
+  ) {
+    this.notificationClient = ClientProxyFactory.create({
+      transport: Transport.TCP,
+      options: {
+        host: 'localhost',
+        port: 3011,
+      },
+    });
+  }
 
   /**
    * Creates a new user in the 'user' table using the provided CreateUserDto.
@@ -526,5 +537,39 @@ export class UserService {
     user.password = hashedPassword;
 
     await this.userRepository.save(user);
+
+    await this.notificationClient
+      .send(
+        { cmd: notificationManagementCommands.createNotification.cmd },
+        {
+          userId: user.id,
+          nameOfTheService: 'user-service',
+          text: 'You have changed password',
+          initials: 'CHP',
+        },
+      )
+      .toPromise();
+  }
+
+  /**
+   * Fetches a user by their ID from the database.
+   * @param id - The ID of the user to fetch.
+   * @throws NotFoundException if the user is not found.
+   * @returns Promise<User> resolved with the User entity upon successful retrieval.
+   */
+  async getUserById(id: number): Promise<User> {
+    try {
+      const user = await this.userRepository.findOne({
+        where: { id: id },
+      });
+
+      if (!user) {
+        throw new NotFoundException(`User with ID ${id} not found`);
+      }
+
+      return user;
+    } catch (error) {
+      throw error;
+    }
   }
 }

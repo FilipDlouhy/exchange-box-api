@@ -56,6 +56,22 @@ export class UserController {
     }
   }
 
+  @MessagePattern(userManagementCommands.getUserById)
+  async getUserById({ id }: { id: number }): Promise<User> {
+    try {
+      const cachedUser: User = await this.cacheManager.get(`getUserById${id}`);
+      if (cachedUser) {
+        return cachedUser;
+      }
+
+      const user = await this.userService.getUserById(id);
+      await this.cacheManager.set(`getUserById${id}`, user, 18000);
+      return user;
+    } catch (error) {
+      throw new RpcException(error.message);
+    }
+  }
+
   @MessagePattern(userManagementCommands.updateCurentUser)
   async updateCurentUser(updateCurrentUserDto: UpdateCurrentUserDto) {
     try {

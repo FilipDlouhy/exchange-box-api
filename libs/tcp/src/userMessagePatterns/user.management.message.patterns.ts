@@ -6,4 +6,5 @@ export const userManagementCommands = {
   deleteUser: { cmd: 'deleteUser' },
   getUserByEmail: { cmd: 'getUserByEmail' },
   changePassword: { cmd: 'changePassword' },
+  getUserById: { cmd: 'getUserById' },
 };

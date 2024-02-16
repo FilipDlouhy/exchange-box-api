@@ -1,4 +1,6 @@
 import { Notification } from '@app/database/entities/notification.entity';
+import { User } from '@app/database/entities/user.entity';
+import { userManagementCommands } from '@app/tcp';
 import {
   BadRequestException,
   Injectable,
@@ -6,6 +8,7 @@ import {
   NotFoundException,
   OnModuleInit,
 } from '@nestjs/common';
+import { ClientProxyFactory, Transport } from '@nestjs/microservices';
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { CreateNotificationDto } from 'libs/dtos/notificationDtos/create.notification.dto';
@@ -14,11 +17,20 @@ import { Repository } from 'typeorm';
 
 @Injectable()
 export class NotificationsService implements OnModuleInit {
+  private readonly userClient;
   constructor(
     @InjectRepository(Notification)
     private readonly notificationRepository: Repository<Notification>,
     private schedulerRegistry: SchedulerRegistry,
-  ) {}
+  ) {
+    this.userClient = ClientProxyFactory.create({
+      transport: Transport.TCP,
+      options: {
+        host: 'localhost',
+        port: 3006,
+      },
+    });
+  }
 
   /**
    * Initializes the module and schedules deletion of seen notifications.
@@ -41,8 +53,21 @@ export class NotificationsService implements OnModuleInit {
    */
   async createNotification(createNotificationDto: CreateNotificationDto) {
     try {
-      await this.notificationRepository.save(createNotificationDto);
+      const user: User = await this.userClient
+        .send(
+          { cmd: userManagementCommands.getUserById.cmd },
+          {
+            userId: createNotificationDto.userId,
+          },
+        )
+        .toPromise();
+
+      const notification = new Notification(createNotificationDto);
+      notification.user = user;
+
+      await this.notificationRepository.save(notification);
     } catch (err) {
+      console.error(err); // It's a good practice to log the actual error
       throw new BadRequestException('Error creating notification');
     }
   }

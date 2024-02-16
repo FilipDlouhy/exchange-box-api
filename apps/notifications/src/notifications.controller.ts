@@ -9,11 +9,7 @@ export class NotificationsController {
   constructor(private readonly notificationsService: NotificationsService) {}
 
   @MessagePattern(notificationManagementCommands.createNotification)
-  async createNotification({
-    createNotificationDto,
-  }: {
-    createNotificationDto: CreateNotificationDto;
-  }) {
+  async createNotification(createNotificationDto: CreateNotificationDto) {
     try {
       return this.notificationsService.createNotification(
         createNotificationDto,
