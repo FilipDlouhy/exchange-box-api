@@ -13,6 +13,7 @@ import { FriendRequest } from '@app/database/entities/friend.request.entity';
 import { NotFoundError } from 'rxjs';
 import { FriendRequestDto } from 'libs/dtos/userDtos/friend.request.dto';
 import { ClientProxyFactory, Transport } from '@nestjs/microservices';
+import { sendNotification } from './user.helper';
 
 @Injectable()
 export class UserFriendService {
@@ -382,6 +383,7 @@ export class UserFriendService {
                   friendRequest.userId,
                   friendRequest.friendImageUrl,
                   friendRequest.userName,
+                  friendRequest.friendName,
                 );
               })
           : friendRequests.map((friendRequest) => {
@@ -392,6 +394,7 @@ export class UserFriendService {
                 friendRequest.userId,
                 friendRequest.friendImageUrl,
                 friendRequest.userName,
+                friendRequest.friendName,
               );
             });
 
@@ -436,6 +439,12 @@ export class UserFriendService {
         }
         const friend = await entityManager.findOne(User, {
           where: {
+            id: toggleFriendDto.friendId,
+          },
+        });
+
+        const user = await entityManager.findOne(User, {
+          where: {
             id: toggleFriendDto.userId,
           },
         });
@@ -445,7 +454,8 @@ export class UserFriendService {
         newFriendRequest.userId = toggleFriendDto.friendId;
         newFriendRequest.accepted = false;
         newFriendRequest.friendImageUrl = friend.imageUrl;
-        newFriendRequest.userName = friend.name;
+        newFriendRequest.userName = user.name;
+        newFriendRequest.friendName = friend.name;
 
         const expirationDate = new Date();
         expirationDate.setDate(expirationDate.getDate() + 7);
@@ -453,6 +463,20 @@ export class UserFriendService {
         newFriendRequest.createdAt = new Date();
 
         await entityManager.save(newFriendRequest);
+
+        sendNotification(this.notificationClient, {
+          userId: friend.id,
+          nameOfTheService: 'user-service',
+          text: `You sent friend request to ${user.name}`,
+          initials: 'FR',
+        });
+
+        sendNotification(this.notificationClient, {
+          userId: user.id,
+          nameOfTheService: 'user-service',
+          text: `You Recieved friend request to ${friend.name}`,
+          initials: 'FR',
+        });
       })
       .catch((error) => {
         console.error(
@@ -491,6 +515,13 @@ export class UserFriendService {
 
         if (isAcepted) {
           await this.addFriend(toggleFriendDto);
+
+          sendNotification(this.notificationClient, {
+            userId: friendRequest.friendId,
+            nameOfTheService: 'user-service',
+            text: `${friendRequest.userName} Acepted your friend request`,
+            initials: 'FR',
+          });
         }
 
         await entityManager.save(friendRequest);

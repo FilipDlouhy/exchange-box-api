@@ -28,8 +28,8 @@ import { UserProfileDto } from 'libs/dtos/userDtos/user.profile.dto';
 import { ChangePasswordDto } from 'libs/dtos/userDtos/change.password.dto';
 import { CurrentUserDto } from 'libs/dtos/userDtos/current.user.dto';
 import { UpdateCurrentUserDto } from 'libs/dtos/userDtos/update.current.user.dto';
-import { notificationManagementCommands } from '@app/tcp/notificationMessagePatterns/notification.management.message.patterns';
 import { ClientProxyFactory, Transport } from '@nestjs/microservices';
+import { sendNotification } from './user.helper';
 
 @Injectable()
 export class UserService {
@@ -538,17 +538,12 @@ export class UserService {
 
     await this.userRepository.save(user);
 
-    await this.notificationClient
-      .send(
-        { cmd: notificationManagementCommands.createNotification.cmd },
-        {
-          userId: user.id,
-          nameOfTheService: 'user-service',
-          text: 'You have changed password',
-          initials: 'CHP',
-        },
-      )
-      .toPromise();
+    sendNotification(this.notificationClient, {
+      userId: user.id,
+      nameOfTheService: 'user-service',
+      text: 'You have changed password',
+      initials: 'CHP',
+    });
   }
 
   /**

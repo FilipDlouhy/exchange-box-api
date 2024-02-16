@@ -17,7 +17,10 @@ export class FriendRequestDto {
   friendImageUrl: string;
 
   @IsString()
-  name: string;
+  userName: string;
+
+  @IsString()
+  friendName: string;
 
   constructor(
     id: string,
@@ -25,13 +28,15 @@ export class FriendRequestDto {
     friendId: number,
     userId: number,
     friendImageUrl: string,
-    name: string,
+    userName: string,
+    friendName: string,
   ) {
     this.id = id;
     this.createdAt = createdAt;
     this.friendId = friendId;
     this.userId = userId;
     this.friendImageUrl = friendImageUrl;
-    this.name = name;
+    this.userName = userName;
+    this.friendName = friendName;
   }
 }

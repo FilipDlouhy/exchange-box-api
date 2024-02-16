@@ -8,6 +8,9 @@ export class FriendRequest {
   @Column()
   userName: string;
 
+  @Column()
+  friendName: string;
+
   @Column({ type: 'timestamp' })
   createdAt: Date;
 
