@@ -12,4 +12,8 @@ export class CreateNotificationDto {
   @IsNotEmpty()
   @IsString()
   text: string;
+
+  @IsNotEmpty()
+  @IsString()
+  initials: string;
 }

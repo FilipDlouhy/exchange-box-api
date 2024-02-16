@@ -54,10 +54,16 @@ export class NotificationsService implements OnModuleInit {
    * @throws {Error} - If an error occurs during the retrieval.
    * @returns {Promise<NotificationDto[]>} - A promise that resolves to an array of DTO representations of the retrieved notifications.
    */
-  async getNotifications(id: number) {
+  async getNotifications(id: number, query: any = {}) {
     try {
+      const page = parseInt(query.page, 10) || 1;
+      const limit = parseInt(query.limit, 10) || 10;
+
       const notifications = await this.notificationRepository.find({
         where: { user: { id: id } },
+        relations: ['user'],
+        skip: (page - 1) * limit,
+        take: limit,
       });
 
       const notificationDtos = notifications.map((notification) => {
@@ -66,6 +72,8 @@ export class NotificationsService implements OnModuleInit {
           notification.createdAt,
           notification.user.id,
           notification.text,
+          notification.initials,
+          notification.seen,
         );
       });
 
@@ -101,6 +109,8 @@ export class NotificationsService implements OnModuleInit {
         notification.createdAt,
         notification.user.id,
         notification.text,
+        notification.initials,
+        notification.seen,
       );
     } catch (error) {
       console.error(
@@ -150,6 +160,7 @@ export class NotificationsService implements OnModuleInit {
       const notification = await this.notificationRepository.findOne({
         where: { id },
       });
+
       if (!notification) {
         throw new NotFoundException(`Notification with ID ${id} not found`);
       }
@@ -182,7 +193,7 @@ export class NotificationsService implements OnModuleInit {
       } catch (timeoutError) {
         console.error('Error during timeout processing:', timeoutError);
       }
-    }, 3600000);
+    }, 60000);
     this.schedulerRegistry.addTimeout(
       `delete_notification_${notificationId}`,
       deleteNotification,

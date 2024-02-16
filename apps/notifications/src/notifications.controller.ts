@@ -33,9 +33,9 @@ export class NotificationsController {
   }
 
   @MessagePattern(notificationManagementCommands.getNotifications)
-  async getNotifications({ id }: { id: number }) {
+  async getNotifications({ id, query }: { id: number; query: any }) {
     try {
-      return this.notificationsService.getNotifications(id);
+      return this.notificationsService.getNotifications(id, query);
     } catch (error) {
       throw new RpcException(error.message);
     }
@@ -45,6 +45,15 @@ export class NotificationsController {
   async deleteNotification({ id }: { id: number }) {
     try {
       return this.notificationsService.deleteNotification(id);
+    } catch (error) {
+      throw new RpcException(error.message);
+    }
+  }
+
+  @MessagePattern(notificationManagementCommands.changeNotificationSeenState)
+  async changeNotificationSeenState({ id }: { id: number }) {
+    try {
+      return this.notificationsService.changeNotificationSeenState(id);
     } catch (error) {
       throw new RpcException(error.message);
     }

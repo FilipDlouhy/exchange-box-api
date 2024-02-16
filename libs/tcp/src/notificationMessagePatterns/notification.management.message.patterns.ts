@@ -3,4 +3,5 @@ export const notificationManagementCommands = {
   getNotification: { cmd: 'getNotification' },
   getNotifications: { cmd: 'getNotifications' },
   deleteNotification: { cmd: 'deleteNotification' },
+  changeNotificationSeenState: { cmd: 'changeNotificationSeenState' },
 };

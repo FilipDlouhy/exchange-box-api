@@ -15,6 +15,9 @@ export class Notification {
   @Column()
   nameOfTheService: string;
 
+  @Column()
+  initials: string;
+
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   createdAt: Date;
 

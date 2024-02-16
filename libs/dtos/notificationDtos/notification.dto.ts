@@ -2,22 +2,23 @@ import {
   IsNotEmpty,
   IsString,
   IsInt,
-  IsOptional,
   IsDate,
+  IsBoolean,
 } from 'class-validator';
 
 export class NotificationDto {
-  @IsOptional()
   @IsNotEmpty()
   @IsInt()
   id: number;
 
-  @IsOptional()
   @IsNotEmpty()
   @IsString()
   text: string;
 
-  @IsOptional()
+  @IsNotEmpty()
+  @IsString()
+  initials: string;
+
   @IsNotEmpty()
   @IsInt()
   userId: number;
@@ -25,10 +26,22 @@ export class NotificationDto {
   @IsDate()
   createdAt: Date;
 
-  constructor(id: number, createdAt: Date, userId: number, text: string) {
+  @IsBoolean()
+  seen: boolean;
+
+  constructor(
+    id: number,
+    createdAt: Date,
+    userId: number,
+    text: string,
+    initials: string,
+    seen: boolean,
+  ) {
     this.id = id;
     this.createdAt = createdAt;
     this.userId = userId;
     this.text = text;
+    this.initials = initials;
+    this.seen = seen;
   }
 }
