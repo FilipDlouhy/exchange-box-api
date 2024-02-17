@@ -364,7 +364,7 @@ export class UserFriendService {
       const limit = parseInt(query.limit, 10) || 10;
 
       const friendRequests = await this.friendRequestRepository.find({
-        where: { friendId: id, accepted: null },
+        where: { userId: id, accepted: null },
         skip: (page - 1) * limit,
         take: limit,
       });
@@ -465,14 +465,14 @@ export class UserFriendService {
         await entityManager.save(newFriendRequest);
 
         sendNotification(this.notificationClient, {
-          userId: friend.id,
+          userId: friend.id.toString(),
           nameOfTheService: 'user-service',
           text: `You sent friend request to ${user.name}`,
           initials: 'FR',
         });
 
         sendNotification(this.notificationClient, {
-          userId: user.id,
+          userId: user.id.toString(),
           nameOfTheService: 'user-service',
           text: `You Recieved friend request to ${friend.name}`,
           initials: 'FR',
@@ -517,7 +517,7 @@ export class UserFriendService {
           await this.addFriend(toggleFriendDto);
 
           sendNotification(this.notificationClient, {
-            userId: friendRequest.friendId,
+            userId: friendRequest.friendId.toString(),
             nameOfTheService: 'user-service',
             text: `${friendRequest.userName} Acepted your friend request`,
             initials: 'FR',

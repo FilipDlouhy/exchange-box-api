@@ -539,7 +539,7 @@ export class UserService {
     await this.userRepository.save(user);
 
     sendNotification(this.notificationClient, {
-      userId: user.id,
+      userId: user.id.toString(),
       nameOfTheService: 'user-service',
       text: 'You have changed password',
       initials: 'CHP',
