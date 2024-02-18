@@ -1,6 +1,7 @@
 import { Notification } from '@app/database/entities/notification.entity';
 import { User } from '@app/database/entities/user.entity';
 import { userManagementCommands } from '@app/tcp';
+import { notificationEventsPatterns } from '@app/tcp/eventMessagePatterns/notification.events.message.patterns';
 import {
   BadRequestException,
   Injectable,
@@ -8,7 +9,12 @@ import {
   NotFoundException,
   OnModuleInit,
 } from '@nestjs/common';
-import { ClientProxyFactory, Transport } from '@nestjs/microservices';
+import {
+  ClientProxy,
+  ClientProxyFactory,
+  MicroserviceOptions,
+  Transport,
+} from '@nestjs/microservices';
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { CreateNotificationDto } from 'libs/dtos/notificationDtos/create.notification.dto';
@@ -18,6 +24,7 @@ import { Repository } from 'typeorm';
 @Injectable()
 export class NotificationsService implements OnModuleInit {
   private readonly userClient;
+  private client: ClientProxy;
   constructor(
     @InjectRepository(Notification)
     private readonly notificationRepository: Repository<Notification>,
@@ -30,6 +37,16 @@ export class NotificationsService implements OnModuleInit {
         port: 3006,
       },
     });
+
+    const microserviceOptions: MicroserviceOptions = {
+      transport: Transport.REDIS,
+      options: {
+        host: 'localhost',
+        port: 6379,
+      },
+    };
+
+    this.client = ClientProxyFactory.create(microserviceOptions);
   }
 
   /**
@@ -66,6 +83,14 @@ export class NotificationsService implements OnModuleInit {
       notification.user = user;
 
       await this.notificationRepository.save(notification);
+
+      const notificationCount = await this.notificationRepository.count({
+        where: { user: { id: user.id }, seen: false },
+      });
+
+      this.client.emit<any>(notificationEventsPatterns.newNotification, {
+        notificationCount,
+      });
     } catch (err) {
       console.error(err); // It's a good practice to log the actual error
       throw new BadRequestException('Error creating notification');
