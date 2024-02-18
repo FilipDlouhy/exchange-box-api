@@ -233,6 +233,24 @@ export class NotificationsService implements OnModuleInit {
   }
 
   /**
+   * Gets the number of unseen notifications for a specific user.
+   * @param id The ID of the user for whom to count the unseen notifications.
+   * @returns The count of unseen notifications.
+   */
+  async getNumberOfNotifications(id: number): Promise<number> {
+    try {
+      const notificationCount = await this.notificationRepository.count({
+        where: { user: { id }, seen: false },
+      });
+
+      return notificationCount;
+    } catch (error) {
+      console.error('Failed to get notification count:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Schedules the deletion of a notification after a specified delay.
    * @param notificationId The ID of the notification to delete.
    */

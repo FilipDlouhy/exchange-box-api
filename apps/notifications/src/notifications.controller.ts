@@ -54,4 +54,13 @@ export class NotificationsController {
       throw new RpcException(error.message);
     }
   }
+
+  @MessagePattern(notificationManagementCommands.getNumberOfNotifications)
+  async getNumberOfNotifications({ id }: { id: number }) {
+    try {
+      return this.notificationsService.getNumberOfNotifications(id);
+    } catch (error) {
+      throw new RpcException(error.message);
+    }
+  }
 }
