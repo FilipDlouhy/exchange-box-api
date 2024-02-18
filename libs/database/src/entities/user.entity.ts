@@ -36,10 +36,10 @@ export class User {
   @Column({ nullable: true })
   telephone: string | null;
 
-  @Column({ type: 'float', nullable: true })
+  @Column({ type: 'float', nullable: true, default: 20 })
   longitude: number | null;
 
-  @Column({ type: 'float', nullable: true })
+  @Column({ type: 'float', nullable: true, default: 20 })
   latitude: number | null;
 
   @ManyToMany(() => User, (user) => user.friends)
