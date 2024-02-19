@@ -1,5 +1,4 @@
 import { ToggleExchangeToItemDto } from 'libs/dtos/itemDtos/toggle.exchange.id.dto';
-import { CreateItemDto } from 'libs/dtos/itemDtos/create.item.dto';
 import { ItemDto } from 'libs/dtos/itemDtos/item.dto';
 import { ItemSizeDto } from 'libs/dtos/itemDtos/item.size.dto';
 import { ItemWithUsersDto } from 'libs/dtos/itemDtos/item.with.users.dto';
@@ -19,6 +18,7 @@ import { Item } from '@app/database/entities/item.entity';
 import { User } from '@app/database/entities/user.entity';
 import { friendManagementCommands } from '@app/tcp/userMessagePatterns/friend.management.nessage.patterns';
 import { profileManagementCommands } from '@app/tcp/userMessagePatterns/user.profile.message.patterns';
+import { CreateItemIntDto } from 'libs/dtos/itemDtos/create.item.int.dto';
 
 @Injectable()
 export class ItemService {
@@ -38,14 +38,15 @@ export class ItemService {
   }
 
   /**
-   * Asynchronously creates a new item in the 'item' table of the  database.
-   *
-   * @param createItemDto - An object containing the properties of the new item.
+   * Asynchronously creates a new item in the 'item' table of the database.
+   * This involves fetching the user and their friend from the user service,
+   * creating a new item entry with the provided details, and optionally
+   * uploading an image for the item if provided in the request.
+   * @param createItemDto - An object containing the properties for the new item.
    * @returns A promise resolving to an ItemDto representing the newly created item.
    */
-  async createItem(createItemDto: CreateItemDto): Promise<ItemDto> {
+  async createItem(createItemDto: CreateItemIntDto) {
     try {
-      // Check if users are friends
       const { friend, user }: { friend: User; user: User } =
         await this.userClient
           .send(
@@ -57,31 +58,26 @@ export class ItemService {
           )
           .toPromise();
 
-      // Create a new Item instance
       const newItem = this.itemRepository.create({
         user: user,
         friend: friend,
-        height: createItemDto.heightInCm,
-        length: createItemDto.lengthInCm,
+        height: createItemDto.height,
+        length: createItemDto.length,
         name: createItemDto.name,
-        weight: createItemDto.weightInGrams,
-        width: createItemDto.widthInCm,
+        weight: createItemDto.weight,
+        width: createItemDto.width,
       });
 
-      // Save the new item in the database
-      const savedItem = await this.itemRepository.save(newItem);
+      await this.itemRepository.save(newItem);
 
-      // Create and return the new ItemDto
-      return new ItemDto(
-        savedItem.name,
-        savedItem.user.id,
-        savedItem.friend.id,
-        savedItem.weight,
-        savedItem.id,
-        savedItem.length,
-        savedItem.width,
-        savedItem.height,
-      );
+      if (createItemDto.images) {
+        const uplaodImageDto = new UploadItemImageDto();
+
+        uplaodImageDto.file = createItemDto.images[0];
+        uplaodImageDto.itemId = newItem.id.toString();
+
+        await this.uploadItemImage(uplaodImageDto, false);
+      }
     } catch (error) {
       console.error('Error creating item:', error);
       throw error;
@@ -405,8 +401,6 @@ export class ItemService {
     update: boolean,
   ) {
     try {
-      // Find the Item entity by its ID
-
       const item = await this.itemRepository.findOneBy({
         id: parseInt(uploadItemImageDto.itemId),
       });
@@ -415,7 +409,6 @@ export class ItemService {
         throw new Error('Item not found.');
       }
 
-      // Update the image_url property
       item.imageUrl = update
         ? await updateFileInFirebase(
             uploadItemImageDto.file,
@@ -428,9 +421,6 @@ export class ItemService {
             'Items',
           );
 
-      // Set the updated_at property
-
-      // Save the updated Item entity
       await this.itemRepository.save(item);
     } catch (error) {
       // Handle or rethrow the error appropriately
@@ -450,7 +440,6 @@ export class ItemService {
     try {
       return await getImageUrlFromFirebase(id.toString(), 'Items');
     } catch (error) {
-      // Handle or rethrow the error appropriately
       console.error('Error getting item image URL:', error);
       throw error;
     }
@@ -468,7 +457,6 @@ export class ItemService {
 
       await this.itemRepository.update(id, { imageUrl: null });
     } catch (error) {
-      // Handle or rethrow the error appropriately
       console.error('Error deleting item image:', error);
       throw error;
     }

@@ -12,6 +12,7 @@ import { CACHE_MANAGER, Cache } from '@nestjs/cache-manager';
 import { itemManagementCommands } from '@app/tcp/itemMessagePatterns/item.management.messages.patterns';
 import { itemExchangeManagementCommands } from '@app/tcp/itemMessagePatterns/item.exchange.management.message.patterns';
 import { itemImageManagementCommands } from '@app/tcp/itemMessagePatterns/item.image.management.message.patterns';
+import { transformCreateItemToIntDto } from './Helpers/item.helpets';
 
 @Controller()
 export class ItemController {
@@ -22,11 +23,11 @@ export class ItemController {
 
   // Create a new item using the provided DTO
   @MessagePattern(itemManagementCommands.createItem)
-  async createItem(createItemDto: any): Promise<ItemDto> {
+  async createItem(createItemDto: CreateItemDto) {
     try {
-      console.log(createItemDto);
-      return;
-      return await this.itemService.createItem(createItemDto);
+      await this.itemService.createItem(
+        transformCreateItemToIntDto(createItemDto),
+      );
     } catch (error) {
       throw new RpcException(error.message);
     }

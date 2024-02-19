@@ -1,17 +1,17 @@
 import { IsNotEmpty, IsString } from 'class-validator';
 
-export class CreateItemDto {
+export class CreateItemIntDto {
   @IsString()
   @IsNotEmpty()
-  length: string = '0';
+  length: number = 0;
 
   @IsString()
   @IsNotEmpty()
-  width: string = '0';
+  width: number = 0;
 
   @IsString()
   @IsNotEmpty()
-  height: string = '0';
+  height: number = 0;
 
   @IsString()
   @IsNotEmpty()
@@ -19,15 +19,15 @@ export class CreateItemDto {
 
   @IsString()
   @IsNotEmpty()
-  userId: string = '0';
+  userId: number = 0;
 
   @IsString()
   @IsNotEmpty()
-  friendId: string = '0';
+  friendId: number = 0;
 
   @IsString()
   @IsNotEmpty()
-  weight: string = '0';
+  weight: number = 0;
 
   images?: any;
 }
