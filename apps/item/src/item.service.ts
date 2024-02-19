@@ -103,6 +103,7 @@ export class ItemService {
         (item) =>
           new ItemDto(
             item.name,
+            item.friend.name,
             item.user.id,
             item.friend.id,
             item.weight,
@@ -131,10 +132,9 @@ export class ItemService {
     try {
       const items = await this.itemRepository.find({
         where: forgotten
-          ? { user: { id: userId } }
-          : { friend: { id: userId } },
+          ? { friend: { id: userId } }
+          : { user: { id: userId } },
         relations: ['user', 'friend'],
-        select: ['id'],
       });
 
       // Convert each Item entity to ItemDto
@@ -142,6 +142,7 @@ export class ItemService {
         (item) =>
           new ItemDto(
             item.name,
+            item.friend.name,
             item.user.id,
             item.friend.id,
             item.weight,
@@ -149,6 +150,7 @@ export class ItemService {
             item.length,
             item.width,
             item.height,
+            item.imageUrl,
           ),
       );
 
@@ -238,6 +240,7 @@ export class ItemService {
       // Create and return the updated ItemDto
       const updatedItemDto = new ItemDto(
         updatedItemEntity.name,
+        updatedItemEntity.friend.name,
         updatedItemEntity.user.id,
         updatedItemEntity.friend.id,
         updatedItemEntity.weight,
@@ -275,6 +278,7 @@ export class ItemService {
 
       const itemDto = new ItemDto(
         item.name,
+        item.friend.name,
         item.user.id,
         item.friend.id,
         item.weight,

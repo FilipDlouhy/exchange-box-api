@@ -3,19 +3,23 @@ import { IsInt, IsString, IsNotEmpty, IsOptional } from 'class-validator';
 export class ItemDto {
   @IsInt()
   @IsOptional()
-  lengthInCm?: number;
+  length?: number;
 
   @IsInt()
   @IsOptional()
-  widthInCm?: number;
+  width?: number;
 
   @IsInt()
   @IsOptional()
-  heightInCm?: number;
+  height?: number;
 
   @IsString()
   @IsNotEmpty()
   name: string;
+
+  @IsString()
+  @IsNotEmpty()
+  ownerName: string;
 
   @IsInt()
   userId: number;
@@ -35,23 +39,25 @@ export class ItemDto {
 
   constructor(
     name: string,
+    ownerName: string,
     userId: number,
     friendId: number,
     weightInGrams: number,
     id: number,
-    lengthInCm?: number,
-    widthInCm?: number,
-    heightInCm?: number,
+    length?: number,
+    width?: number,
+    height?: number,
     imageURL?: string,
   ) {
     this.name = name;
+    this.ownerName = ownerName;
     this.userId = userId;
     this.friendId = friendId;
     this.weightInGrams = weightInGrams;
     this.id = id;
-    this.lengthInCm = lengthInCm;
-    this.widthInCm = widthInCm;
-    this.heightInCm = heightInCm;
+    this.length = length;
+    this.width = width;
+    this.height = height;
     this.imageURL = imageURL;
   }
 }
