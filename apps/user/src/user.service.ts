@@ -30,6 +30,7 @@ import { CurrentUserDto } from 'libs/dtos/userDtos/current.user.dto';
 import { UpdateCurrentUserDto } from 'libs/dtos/userDtos/update.current.user.dto';
 import { ClientProxyFactory, Transport } from '@nestjs/microservices';
 import { sendNotification } from './user.helper';
+import { CreateItemUserDto } from 'libs/dtos/userDtos/create.item.user.dto';
 
 @Injectable()
 export class UserService {
@@ -564,6 +565,34 @@ export class UserService {
 
       return user;
     } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Fetches friends of a specific user by the user's ID, transforming each friend into a CreateItemUserDto.
+   * @param id - The unique identifier of the user whose friends are to be fetched.
+   * @throws Error - Throws an error if the user is not found or if there's a failure in retrieving data.
+   * @returns A Promise resolved with an array of CreateItemUserDto, each representing a friend of the user.
+   */
+  async getFriendsForItemCreation(id: number): Promise<CreateItemUserDto[]> {
+    try {
+      const user = await this.userRepository.findOne({
+        where: { id },
+        relations: ['friends'],
+      });
+
+      if (!user) {
+        throw new Error('User not found');
+      }
+
+      const createItemUserDtos = user.friends.map(
+        (friend) => new CreateItemUserDto(friend),
+      );
+
+      return createItemUserDtos;
+    } catch (error) {
+      console.error('Failed to get friends for item creation:', error);
       throw error;
     }
   }

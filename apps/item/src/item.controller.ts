@@ -22,15 +22,10 @@ export class ItemController {
 
   // Create a new item using the provided DTO
   @MessagePattern(itemManagementCommands.createItem)
-  @UsePipes(
-    new ValidationPipe({
-      transform: true,
-      whitelist: true,
-      forbidNonWhitelisted: true,
-    }),
-  )
-  async createItem(createItemDto: CreateItemDto): Promise<ItemDto> {
+  async createItem(createItemDto: any): Promise<ItemDto> {
     try {
+      console.log(createItemDto);
+      return;
       return await this.itemService.createItem(createItemDto);
     } catch (error) {
       throw new RpcException(error.message);

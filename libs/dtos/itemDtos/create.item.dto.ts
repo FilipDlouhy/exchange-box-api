@@ -28,4 +28,6 @@ export class CreateItemDto {
   @IsInt()
   @IsNotEmpty()
   weightInGrams: number = 0;
+
+  file: any;
 }
