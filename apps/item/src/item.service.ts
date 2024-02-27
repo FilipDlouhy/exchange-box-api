@@ -18,10 +18,12 @@ import { User } from '@app/database/entities/user.entity';
 import { friendManagementCommands } from '@app/tcp/userMessagePatterns/friend.management.nessage.patterns';
 import { profileManagementCommands } from '@app/tcp/userMessagePatterns/user.profile.message.patterns';
 import { CreateItemIntDto } from 'libs/dtos/itemDtos/create.item.int.dto';
+import { sendNotification } from '@app/tcp/notifications/notification.helper';
 
 @Injectable()
 export class ItemService {
   private readonly userClient;
+  private readonly notificationClient;
 
   constructor(
     @InjectRepository(Item)
@@ -32,6 +34,14 @@ export class ItemService {
       options: {
         host: 'localhost',
         port: 3006,
+      },
+    });
+
+    this.notificationClient = ClientProxyFactory.create({
+      transport: Transport.TCP,
+      options: {
+        host: 'localhost',
+        port: 3011,
       },
     });
   }
@@ -79,6 +89,20 @@ export class ItemService {
 
         return newItem.id;
       }
+
+      sendNotification(this.notificationClient, {
+        userId: user.id.toString(),
+        nameOfTheService: 'item-service',
+        text: `You created item with owner ${friend.name}`,
+        initials: 'IC',
+      });
+
+      sendNotification(this.notificationClient, {
+        userId: friend.id.toString(),
+        nameOfTheService: 'item-service',
+        text: `Your friend ${user.name} has created item named ${newItem.name}`,
+        initials: 'IC',
+      });
     } catch (error) {
       console.error('Error creating item:', error);
       throw error;

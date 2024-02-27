@@ -29,7 +29,7 @@ import { ChangePasswordDto } from 'libs/dtos/userDtos/change.password.dto';
 import { CurrentUserDto } from 'libs/dtos/userDtos/current.user.dto';
 import { UpdateCurrentUserDto } from 'libs/dtos/userDtos/update.current.user.dto';
 import { ClientProxyFactory, Transport } from '@nestjs/microservices';
-import { sendNotification } from './user.helper';
+import { sendNotification } from '../../../libs/tcp/src/notifications/notification.helper';
 import { CreateItemUserDto } from 'libs/dtos/userDtos/create.item.user.dto';
 
 @Injectable()

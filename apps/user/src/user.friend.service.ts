@@ -13,7 +13,7 @@ import { FriendRequest } from '@app/database/entities/friend.request.entity';
 import { NotFoundError } from 'rxjs';
 import { FriendRequestDto } from 'libs/dtos/userDtos/friend.request.dto';
 import { ClientProxyFactory, Transport } from '@nestjs/microservices';
-import { sendNotification } from './user.helper';
+import { sendNotification } from '../../../libs/tcp/src/notifications/notification.helper';
 
 @Injectable()
 export class UserFriendService {
