@@ -278,7 +278,7 @@ export class UserFriendService {
           userName: Like(`%${query.search}%`),
           friendName: Like(`%${query.search}%`),
         },
-        skip: (page - 1) * limit,
+        skip: page,
         take: limit,
       });
 
@@ -472,7 +472,7 @@ export class UserFriendService {
           id: Not(id),
           name: Like(`%${query.search}%`),
         },
-        skip: (page - 1) * limit,
+        skip: page,
         take: limit,
       });
 

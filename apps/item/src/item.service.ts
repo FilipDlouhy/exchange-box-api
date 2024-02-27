@@ -161,14 +161,17 @@ export class ItemService {
     try {
       const page = parseInt(query.page, 10) || 1;
       const limit = parseInt(query.limit, 10) || 10;
+
       const items = await this.itemRepository.find({
         where: forgotten
           ? { friend: { id: userId }, name: Like(`%${query.search}%`) }
           : { user: { id: userId }, name: Like(`%${query.search}%`) },
         relations: ['user', 'friend'],
-        skip: (page - 1) * limit,
+        skip: page,
         take: limit,
       });
+
+      console.log(items);
 
       // Convert each Item entity to ItemDto
       const itemDtos = items.map(

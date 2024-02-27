@@ -65,11 +65,11 @@ export class ItemController {
       const cacheKey = `userItems_${id}`;
       const cachedUserItems: ItemDto[] = await this.cacheManager.get(cacheKey);
 
-      if (cachedUserItems) {
+      if (cachedUserItems && query == null) {
         return cachedUserItems;
       }
 
-      const userItems = await this.itemService.getUserItems(id, true, query);
+      const userItems = await this.itemService.getUserItems(id, false, query);
 
       await this.cacheManager.set(cacheKey, userItems, 18000);
 
@@ -99,7 +99,7 @@ export class ItemController {
 
       const userForgottenItems = await this.itemService.getUserItems(
         id,
-        false,
+        true,
         query,
       );
 
