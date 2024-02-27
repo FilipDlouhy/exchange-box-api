@@ -23,9 +23,9 @@ export class ItemController {
 
   // Create a new item using the provided DTO
   @MessagePattern(itemManagementCommands.createItem)
-  async createItem(createItemDto: CreateItemDto) {
+  async createItem(createItemDto: CreateItemDto): Promise<number> {
     try {
-      await this.itemService.createItem(
+      return await this.itemService.createItem(
         transformCreateItemToIntDto(createItemDto),
       );
     } catch (error) {
@@ -140,11 +140,10 @@ export class ItemController {
 
   // Retrieve an item based on its ID
   @MessagePattern(itemManagementCommands.getItem)
-  async getItem({ id }: { id: number }): Promise<ItemWithUsersDto> {
+  async getItem({ id }: { id: number }): Promise<ItemDto> {
     try {
       const cacheKey = `item:${id}`;
-      const cachedItem: ItemWithUsersDto =
-        await this.cacheManager.get(cacheKey);
+      const cachedItem: ItemDto = await this.cacheManager.get(cacheKey);
 
       if (cachedItem) {
         return cachedItem;
@@ -160,7 +159,6 @@ export class ItemController {
     }
   }
 
-  // Retrieve an item based on its ID
   @MessagePattern(
     itemExchangeManagementCommands.retrieveItemSizesAndCheckExchange,
   )

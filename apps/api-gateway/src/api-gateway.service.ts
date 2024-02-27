@@ -174,7 +174,10 @@ export class ApiGatewayService {
           .toPromise();
 
         if (userId) {
-          const reqBody = { id: userId, query: req.query };
+          const reqBody = {
+            id: requestUrl[2] ? requestUrl[2] : userId,
+            query: req.query,
+          };
 
           const response = await client
             .send({ cmd: this.kebabToCamel(requestUrl[1]) }, reqBody)

@@ -1,7 +1,6 @@
 import { ToggleExchangeToItemDto } from 'libs/dtos/itemDtos/toggle.exchange.id.dto';
 import { ItemDto } from 'libs/dtos/itemDtos/item.dto';
 import { ItemSizeDto } from 'libs/dtos/itemDtos/item.size.dto';
-import { ItemWithUsersDto } from 'libs/dtos/itemDtos/item.with.users.dto';
 import { UpdateItemDto } from 'libs/dtos/itemDtos/update.item.dto';
 import {
   deleteFileFromFirebase,
@@ -45,7 +44,7 @@ export class ItemService {
    * @param createItemDto - An object containing the properties for the new item.
    * @returns A promise resolving to an ItemDto representing the newly created item.
    */
-  async createItem(createItemDto: CreateItemIntDto) {
+  async createItem(createItemDto: CreateItemIntDto): Promise<number> {
     try {
       const { friend, user }: { friend: User; user: User } =
         await this.userClient
@@ -77,6 +76,8 @@ export class ItemService {
         uplaodImageDto.itemId = newItem.id.toString();
 
         await this.uploadItemImage(uplaodImageDto, false);
+
+        return newItem.id;
       }
     } catch (error) {
       console.error('Error creating item:', error);
@@ -136,7 +137,6 @@ export class ItemService {
     try {
       const page = parseInt(query.page, 10) || 1;
       const limit = parseInt(query.limit, 10) || 10;
-      console.log(query);
       const items = await this.itemRepository.find({
         where: forgotten
           ? { friend: { id: userId }, name: Like(`%${query.search}%`) }
@@ -273,12 +273,11 @@ export class ItemService {
    * @returns A promise resolving to an ItemWithUsersDto object, which includes the item data
    * along with associated user and friend information.
    */
-  async getItem(itemId: number): Promise<ItemWithUsersDto> {
+  async getItem(itemId: number): Promise<ItemDto> {
     try {
-      // Fetch the item with user and friend relations
       const item = await this.itemRepository.findOne({
         where: { id: itemId },
-        relations: ['user', 'friend'], // Replace with the actual relation names in your Item entity
+        relations: ['user', 'friend'],
       });
 
       if (!item) {
@@ -295,15 +294,10 @@ export class ItemService {
         item.length,
         item.width,
         item.height,
+        item.imageUrl,
       );
 
-      const itemWithUsersDto = new ItemWithUsersDto(
-        itemDto,
-        item.user,
-        item.friend,
-      );
-
-      return itemWithUsersDto;
+      return itemDto;
     } catch (e) {
       console.error('Error in fetching item or user data:', e);
       throw new Error('Error processing item retrieval');
