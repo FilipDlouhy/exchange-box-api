@@ -33,7 +33,6 @@ export class ItemController {
     }
   }
 
-  // Retrieve all items
   @MessagePattern(itemManagementCommands.getAllItems)
   async getAllItems(): Promise<ItemDto[]> {
     try {
@@ -54,11 +53,10 @@ export class ItemController {
     }
   }
 
-  // Retrieve items belonging to a specific user
   @MessagePattern(itemManagementCommands.getUserItems)
   async getUserItems({ id }: { id: number }): Promise<ItemDto[]> {
     try {
-      const cacheKey = `userItems:${id}`;
+      const cacheKey = `userItems_${id}`;
       const cachedUserItems: ItemDto[] = await this.cacheManager.get(cacheKey);
 
       if (cachedUserItems) {
@@ -79,7 +77,7 @@ export class ItemController {
   @MessagePattern(itemManagementCommands.getUserForgotenItems)
   async getUserForgotenItems({ id }: { id: number }): Promise<ItemDto[]> {
     try {
-      const cacheKey = `userForgottenItems:${id}`;
+      const cacheKey = `userForgottenItems_${id}`;
       const cachedUserForgottenItems: ItemDto[] =
         await this.cacheManager.get(cacheKey);
 
