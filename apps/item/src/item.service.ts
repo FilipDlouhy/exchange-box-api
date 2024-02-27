@@ -13,7 +13,7 @@ import { Injectable } from '@nestjs/common';
 import { ClientProxyFactory, Transport } from '@nestjs/microservices';
 import { UploadItemImageDto } from 'libs/dtos/itemDtos/upload.item.image.dto';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { In, Like, Repository } from 'typeorm';
 import { Item } from '@app/database/entities/item.entity';
 import { User } from '@app/database/entities/user.entity';
 import { friendManagementCommands } from '@app/tcp/userMessagePatterns/friend.management.nessage.patterns';
@@ -128,13 +128,22 @@ export class ItemService {
    * @param forgoten - A boolean indicating whether to retrieve forgotten items.
    * @returns A promise resolving to an array of ItemDto representing the user's items.
    */
-  async getUserItems(userId: number, forgotten: boolean): Promise<ItemDto[]> {
+  async getUserItems(
+    userId: number,
+    forgotten: boolean,
+    query: any = {},
+  ): Promise<ItemDto[]> {
     try {
+      const page = parseInt(query.page, 10) || 1;
+      const limit = parseInt(query.limit, 10) || 10;
+      console.log(query);
       const items = await this.itemRepository.find({
         where: forgotten
-          ? { friend: { id: userId } }
-          : { user: { id: userId } },
+          ? { friend: { id: userId }, name: Like(`%${query.search}%`) }
+          : { user: { id: userId }, name: Like(`%${query.search}%`) },
         relations: ['user', 'friend'],
+        skip: (page - 1) * limit,
+        take: limit,
       });
 
       // Convert each Item entity to ItemDto

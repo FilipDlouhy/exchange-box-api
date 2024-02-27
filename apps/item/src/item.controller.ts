@@ -54,7 +54,13 @@ export class ItemController {
   }
 
   @MessagePattern(itemManagementCommands.getUserItems)
-  async getUserItems({ id }: { id: number }): Promise<ItemDto[]> {
+  async getUserItems({
+    id,
+    query,
+  }: {
+    id: number;
+    query: any;
+  }): Promise<ItemDto[]> {
     try {
       const cacheKey = `userItems_${id}`;
       const cachedUserItems: ItemDto[] = await this.cacheManager.get(cacheKey);
@@ -63,7 +69,7 @@ export class ItemController {
         return cachedUserItems;
       }
 
-      const userItems = await this.itemService.getUserItems(id, true);
+      const userItems = await this.itemService.getUserItems(id, true, query);
 
       await this.cacheManager.set(cacheKey, userItems, 18000);
 
@@ -75,17 +81,27 @@ export class ItemController {
 
   // Retrieve forgotten items belonging to a specific user
   @MessagePattern(itemManagementCommands.getUserForgotenItems)
-  async getUserForgotenItems({ id }: { id: number }): Promise<ItemDto[]> {
+  async getUserForgotenItems({
+    id,
+    query,
+  }: {
+    id: number;
+    query: any;
+  }): Promise<ItemDto[]> {
     try {
       const cacheKey = `userForgottenItems_${id}`;
       const cachedUserForgottenItems: ItemDto[] =
         await this.cacheManager.get(cacheKey);
 
-      if (cachedUserForgottenItems) {
+      if (cachedUserForgottenItems && query == null) {
         return cachedUserForgottenItems;
       }
 
-      const userForgottenItems = await this.itemService.getUserItems(id, false);
+      const userForgottenItems = await this.itemService.getUserItems(
+        id,
+        false,
+        query,
+      );
 
       await this.cacheManager.set(cacheKey, userForgottenItems, 18000);
 
