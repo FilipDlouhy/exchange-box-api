@@ -207,7 +207,7 @@ export class ItemService {
       // Find the item by itemId
       const item = await this.itemRepository.findOne({
         where: { id: itemId },
-        relations: { exchange: true },
+        relations: { exchange: true, user: true },
       });
 
       // Check if the item exists and if it is part of an exchange
@@ -218,6 +218,12 @@ export class ItemService {
         throw new Error('Item is part of an exchange and cannot be deleted.');
       }
 
+      sendNotification(this.notificationClient, {
+        userId: item.user.id.toString(),
+        nameOfTheService: 'item-service',
+        text: `Item named ${item.name} has been deleted from your repository`,
+        initials: 'IC',
+      });
       const deleteResult = await this.itemRepository.delete(itemId);
 
       // Check if the item was successfully deleted
