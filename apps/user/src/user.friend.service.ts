@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from '@app/database/entities/user.entity';
-import { Not, Repository } from 'typeorm';
+import { Like, Not, Repository } from 'typeorm';
 import { FriendRequest } from '@app/database/entities/friend.request.entity';
 import { NotFoundError } from 'rxjs';
 import { FriendRequestDto } from 'libs/dtos/userDtos/friend.request.dto';
@@ -34,7 +34,12 @@ export class UserFriendService {
   }
 
   /**
-   * Public method to fetch friends or non-friends based on parameters.
+   * Retrieves either the friends or non-friend users of the provided user based on the specified condition.
+   * @param {number} id - The ID of the user for whom friends or non-friends are being retrieved.
+   * @param {boolean} isFriends - A boolean indicating whether to retrieve friends (true) or non-friends (false).
+   * @param {any} query - The optional search query object.
+   * @returns {Promise<UserDto[]>} - A promise that resolves to an array of UserDto objects representing friends or non-friends.
+   * @throws {NotFoundException | InternalServerErrorException} - If there's an error fetching users.
    */
   async getFriendsOrNonFriends(
     id: number,
@@ -42,26 +47,23 @@ export class UserFriendService {
     query: any = {},
   ): Promise<UserDto[]> {
     try {
-      const user = await this.findUserWithFriendsById(id);
-      if (!user) throw new NotFoundException('User not found');
+      const user = await this.fetchUserAndValidate(id);
+      const page = parseInt(query.page, 10) || 1;
+      const limit = parseInt(query.limit, 10) || 10;
 
-      return isFriends
-        ? this.getFriendUsers(user, query)
-        : this.getNonFriendUsers(id, query);
-    } catch (error) {
-      console.error('Error fetching users:', error);
-      throw new InternalServerErrorException('Error retrieving users');
+      if (!isFriends) {
+        return await this.getNonFriendUsers(id, query, page, limit);
+      } else {
+        return this.getFriendDtos(user, query, page, limit);
+      }
+    } catch (err) {
+      console.error('Error fetching users:', err);
+      if (err instanceof NotFoundException) {
+        throw err;
+      } else {
+        throw new InternalServerErrorException('Error retrieving users');
+      }
     }
-  }
-
-  /**
-   * Finds a user by ID and loads their friends.
-   */
-  private async findUserWithFriendsById(id: number): Promise<User | undefined> {
-    return this.userRepository.findOne({
-      where: { id },
-      relations: ['friends'],
-    });
   }
 
   /**
@@ -270,39 +272,27 @@ export class UserFriendService {
       const limit = parseInt(query.limit, 10) || 10;
 
       const friendRequests = await this.friendRequestRepository.find({
-        where: { userId: id, accepted: null },
+        where: {
+          userId: id,
+          accepted: null,
+          userName: Like(`%${query.search}%`),
+          friendName: Like(`%${query.search}%`),
+        },
         skip: (page - 1) * limit,
         take: limit,
       });
 
-      const friendRequestDtos =
-        query.search && query.search.length > 0
-          ? friendRequests
-              .filter((friendRequest) =>
-                friendRequest.userName.includes(query.search),
-              )
-              .map((friendRequest) => {
-                return new FriendRequestDto(
-                  friendRequest.id.toString(),
-                  friendRequest.createdAt,
-                  friendRequest.friendId,
-                  friendRequest.userId,
-                  friendRequest.friendImageUrl,
-                  friendRequest.userName,
-                  friendRequest.friendName,
-                );
-              })
-          : friendRequests.map((friendRequest) => {
-              return new FriendRequestDto(
-                friendRequest.id.toString(),
-                friendRequest.createdAt,
-                friendRequest.friendId,
-                friendRequest.userId,
-                friendRequest.friendImageUrl,
-                friendRequest.userName,
-                friendRequest.friendName,
-              );
-            });
+      const friendRequestDtos = friendRequests.map((friendRequest) => {
+        return new FriendRequestDto(
+          friendRequest.id.toString(),
+          friendRequest.createdAt,
+          friendRequest.friendId,
+          friendRequest.userId,
+          friendRequest.friendImageUrl,
+          friendRequest.userName,
+          friendRequest.friendName,
+        );
+      });
 
       return friendRequestDtos;
     } catch (error) {
@@ -445,60 +435,112 @@ export class UserFriendService {
   }
 
   /**
-   * Fetches friends for the given user.
-   *
-   * @param user - The user for whom friends are fetched.
-   * @param query - The query object containing parameters for filtering and pagination.
-   * @returns A Promise that resolves to an array of UserDto objects representing friends of the user.
+   * Fetches a user with the provided ID along with their friends and validates its existence.
+   * @param {number} id - The ID of the user to fetch and validate.
+   * @returns {Promise<User>} - A promise that resolves to the fetched user if found.
+   * @throws {NotFoundException} - If the user with the provided ID is not found.
    */
-  private async getFriendUsers(user: User, query: any): Promise<UserDto[]> {
-    const friends = user.friends;
-    return this.filterAndMapUsers(friends, query);
-  }
-
-  /**
-   * Fetches non-friend users for the given user ID.
-   *
-   * @param id - The ID of the user for whom non-friend users are fetched.
-   * @param query - The query object containing parameters for filtering and pagination.
-   * @returns A Promise that resolves to an array of UserDto objects representing non-friend users.
-   */
-  private async getNonFriendUsers(id: number, query: any): Promise<UserDto[]> {
-    const nonFriends = await this.userRepository.find({
-      where: { id: Not(id) },
+  private async fetchUserAndValidate(id: number): Promise<User> {
+    const user = await this.userRepository.findOne({
+      where: { id: id },
+      relations: ['friends'],
     });
-    return this.filterAndMapUsers(nonFriends, query);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    return user;
   }
 
   /**
-   * Filters users based on a query and maps them to UserDto.
-   *
-   * @param users - The array of users to filter and map.
-   * @param query - The query object containing search parameters.
-   * @returns An array of UserDto objects representing filtered and mapped users.
+   * Retrieves a list of non-friend users based on the provided user ID, search query, pagination parameters.
+   * @param {number} id - The ID of the user for whom non-friend users are being retrieved.
+   * @param {any} query - The search query object.
+   * @param {number} page - The page number for pagination.
+   * @param {number} limit - The maximum number of non-friend users to retrieve per page.
+   * @returns {Promise<UserDto[]>} - A promise that resolves to an array of UserDto objects representing non-friend users.
+   * @throws {Error} - If there's an error during the retrieval process.
    */
-  private filterAndMapUsers(users: User[], query: any): UserDto[] {
-    const page = parseInt(query.page, 10) || 1;
-    const limit = parseInt(query.limit, 10) || 10;
-    const startIndex = (page - 1) * limit;
+  private async getNonFriendUsers(
+    id: number,
+    query: any,
+    page: number,
+    limit: number,
+  ): Promise<UserDto[]> {
+    try {
+      const allUsers = await this.userRepository.find({
+        where: {
+          id: Not(id),
+          name: Like(`%${query.search}%`),
+        },
+        skip: (page - 1) * limit,
+        take: limit,
+      });
 
-    let filteredUsers = users;
-    if (query.search) {
-      filteredUsers = users.filter((user) => user.name.includes(query.search));
-    }
+      const friendRequests = await this.friendRequestRepository.find();
+      const friendRequestIds = friendRequests.map((request) =>
+        request.friendId === id ? request.userId : request.friendId,
+      );
 
-    return filteredUsers
-      .slice(startIndex, startIndex + limit)
-      .map(
-        (user) =>
+      const friendIds = (await this.fetchUserAndValidate(id)).friends.map(
+        (user) => user.id,
+      );
+
+      const nonFriendUsers = allUsers.filter(
+        (u) => !friendIds.includes(u.id) && !friendRequestIds.includes(u.id),
+      );
+
+      return nonFriendUsers.map(
+        (u) =>
           new UserDto(
-            user.name,
-            user.email,
-            user.id,
-            user.telephone,
-            user.address,
-            user.imageUrl,
+            u.name,
+            u.email,
+            u.id,
+            u.telephone,
+            u.address,
+            u.imageUrl,
           ),
       );
+    } catch (error) {
+      throw new InternalServerErrorException(
+        'Error when finding new possible friends.',
+      );
+    }
+  }
+  /**
+   * Retrieves a list of friend DTOs based on the provided user, search query, pagination parameters.
+   * @param {User} user - The user whose friends are being retrieved.
+   * @param {any} query - The search query object.
+   * @param {number} page - The page number for pagination.
+   * @param {number} limit - The maximum number of friends to retrieve per page.
+   * @returns {UserDto[]} - An array of UserDto objects representing the user's friends.
+   */
+  private getFriendDtos(
+    user: User,
+    query: any,
+    page: number,
+    limit: number,
+  ): UserDto[] {
+    const totalFriends = user.friends.length;
+    const startIndex = (page - 1) * limit;
+    if (startIndex >= totalFriends) {
+      return [];
+    }
+
+    const friendDtos = user.friends
+      .filter((friend) => !query.search || friend.name.includes(query.search))
+      .slice(startIndex, startIndex + limit)
+      .map(
+        (friend) =>
+          new UserDto(
+            friend.name,
+            friend.email,
+            friend.id,
+            friend.telephone,
+            friend.address,
+            friend.imageUrl,
+          ),
+      );
+
+    return friendDtos;
   }
 }
