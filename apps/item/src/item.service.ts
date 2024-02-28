@@ -18,6 +18,7 @@ import { friendManagementCommands } from '@app/tcp/userMessagePatterns/friend.ma
 import { profileManagementCommands } from '@app/tcp/userMessagePatterns/user.profile.message.patterns';
 import { sendNotification } from '@app/tcp/notifications/notification.helper';
 import { CreateUpdateItemIntDto } from 'libs/dtos/itemDtos/create.udpate.item.int.dto';
+import { toItemDto } from './Helpers/item.helpers';
 
 @Injectable()
 export class ItemService {
@@ -114,17 +115,7 @@ export class ItemService {
         where: { id: newItem.id },
       });
 
-      return new ItemDto(
-        savedItem.name,
-        savedItem.friend.name,
-        savedItem.user.id,
-        savedItem.friend.id,
-        savedItem.weight,
-        savedItem.id,
-        savedItem.length,
-        savedItem.width,
-        savedItem.height,
-      );
+      return toItemDto(savedItem);
     } catch (error) {
       await queryRunner.rollbackTransaction();
       console.error('Error creating item:', error);
@@ -148,20 +139,9 @@ export class ItemService {
         .select(['item.id', 'user.id', 'friend.id'])
         .getMany();
       // Convert each Item entity to ItemDto
-      const itemDtos = items.map(
-        (item) =>
-          new ItemDto(
-            item.name,
-            item.friend.name,
-            item.user.id,
-            item.friend.id,
-            item.weight,
-            item.id,
-            item.length,
-            item.width,
-            item.height,
-          ),
-      );
+      const itemDtos = items.map((item) => {
+        return toItemDto(item);
+      });
 
       return itemDtos;
     } catch (error) {
@@ -196,21 +176,9 @@ export class ItemService {
       });
 
       // Convert each Item entity to ItemDto
-      const itemDtos = items.map(
-        (item) =>
-          new ItemDto(
-            item.name,
-            item.friend.name,
-            item.user.id,
-            item.friend.id,
-            item.weight,
-            item.id,
-            item.length,
-            item.width,
-            item.height,
-            item.imageUrl,
-          ),
-      );
+      const itemDtos = items.map((item) => {
+        return toItemDto(item);
+      });
 
       return itemDtos;
     } catch (error) {
@@ -311,18 +279,7 @@ export class ItemService {
       await queryRunner.manager.save(item);
       await queryRunner.commitTransaction();
 
-      const updatedItemDto = new ItemDto(
-        item.name,
-        item.friend.name,
-        item.user.id,
-        item.friend.id,
-        item.weight,
-        item.id,
-        item.length,
-        item.width,
-        item.height,
-        item.imageUrl,
-      );
+      const updatedItemDto = toItemDto(item);
 
       return updatedItemDto;
     } catch (error) {
@@ -353,18 +310,7 @@ export class ItemService {
         throw new Error(`Item not found.`);
       }
 
-      const itemDto = new ItemDto(
-        item.name,
-        item.friend.name,
-        item.user.id,
-        item.friend.id,
-        item.weight,
-        item.id,
-        item.length,
-        item.width,
-        item.height,
-        item.imageUrl,
-      );
+      const itemDto = toItemDto(item);
 
       return itemDto;
     } catch (e) {

@@ -1,5 +1,7 @@
 import { CreateUpdateItemDto } from 'libs/dtos/itemDtos/create.update.item.dto';
 import { CreateUpdateItemIntDto } from 'libs/dtos/itemDtos/create.udpate.item.int.dto';
+import { ItemDto } from 'libs/dtos/itemDtos/item.dto';
+import { Item } from '@app/database/entities/item.entity';
 
 export function transformCreateItemToIntDto(
   createUpdateItemDto: CreateUpdateItemDto,
@@ -20,4 +22,19 @@ export function transformCreateItemToIntDto(
   }
 
   return intDto;
+}
+
+export function toItemDto(item: Item): ItemDto {
+  return new ItemDto(
+    item.name,
+    item.friend.name,
+    item.user.id,
+    item.friend.id,
+    item.weight,
+    item.id,
+    item.length,
+    item.width,
+    item.height,
+    item.imageUrl,
+  );
 }
