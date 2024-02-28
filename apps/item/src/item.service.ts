@@ -1,7 +1,6 @@
 import { ToggleExchangeToItemDto } from 'libs/dtos/itemDtos/toggle.exchange.id.dto';
 import { ItemDto } from 'libs/dtos/itemDtos/item.dto';
 import { ItemSizeDto } from 'libs/dtos/itemDtos/item.size.dto';
-import { UpdateItemDto } from 'libs/dtos/itemDtos/update.item.dto';
 import {
   deleteFileFromFirebase,
   getImageUrlFromFirebase,
@@ -17,8 +16,8 @@ import { Item } from '@app/database/entities/item.entity';
 import { User } from '@app/database/entities/user.entity';
 import { friendManagementCommands } from '@app/tcp/userMessagePatterns/friend.management.nessage.patterns';
 import { profileManagementCommands } from '@app/tcp/userMessagePatterns/user.profile.message.patterns';
-import { CreateItemIntDto } from 'libs/dtos/itemDtos/create.item.int.dto';
 import { sendNotification } from '@app/tcp/notifications/notification.helper';
+import { CreateUpdateItemIntDto } from 'libs/dtos/itemDtos/create.udpate.item.int.dto';
 
 @Injectable()
 export class ItemService {
@@ -51,43 +50,50 @@ export class ItemService {
    * This involves fetching the user and their friend from the user service,
    * creating a new item entry with the provided details, and optionally
    * uploading an image for the item if provided in the request.
-   * @param createItemDto - An object containing the properties for the new item.
+   * @param createUpdateItemDto - An object containing the properties for the new item.
    * @returns A promise resolving to an ItemDto representing the newly created item.
    */
-  async createItem(createItemDto: CreateItemIntDto): Promise<number> {
+  async createItem(
+    createUpdateItemDto: CreateUpdateItemIntDto,
+  ): Promise<ItemDto> {
+    const queryRunner =
+      this.itemRepository.manager.connection.createQueryRunner();
+
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
     try {
       const { friend, user }: { friend: User; user: User } =
         await this.userClient
           .send(
             { cmd: friendManagementCommands.getUserWithFriend.cmd },
             {
-              userId: createItemDto.userId,
-              friendId: createItemDto.friendId,
+              userId: createUpdateItemDto.userId,
+              friendId: createUpdateItemDto.friendId,
             },
           )
           .toPromise();
 
-      const newItem = this.itemRepository.create({
+      const newItem = queryRunner.manager.create(Item, {
         user: user,
         friend: friend,
-        height: createItemDto.height,
-        length: createItemDto.length,
-        name: createItemDto.name,
-        weight: createItemDto.weight,
-        width: createItemDto.width,
+        height: createUpdateItemDto.height,
+        length: createUpdateItemDto.length,
+        name: createUpdateItemDto.name,
+        weight: createUpdateItemDto.weight,
+        width: createUpdateItemDto.width,
       });
 
-      await this.itemRepository.save(newItem);
+      await queryRunner.manager.save(newItem);
 
-      if (createItemDto.images) {
-        const uplaodImageDto = new UploadItemImageDto();
+      await queryRunner.commitTransaction();
 
-        uplaodImageDto.file = createItemDto.images[0];
-        uplaodImageDto.itemId = newItem.id.toString();
+      if (createUpdateItemDto.images) {
+        const uploadImageDto = new UploadItemImageDto();
+        uploadImageDto.file = createUpdateItemDto.images[0];
+        uploadImageDto.itemId = newItem.id.toString();
 
-        await this.uploadItemImage(uplaodImageDto, false);
-
-        return newItem.id;
+        await this.uploadItemImage(uploadImageDto, false);
       }
 
       sendNotification(this.notificationClient, {
@@ -103,12 +109,30 @@ export class ItemService {
         text: `Your friend ${user.name} has created item named ${newItem.name}`,
         initials: 'IC',
       });
+
+      const savedItem = await this.itemRepository.findOne({
+        where: { id: newItem.id },
+      });
+
+      return new ItemDto(
+        savedItem.name,
+        savedItem.friend.name,
+        savedItem.user.id,
+        savedItem.friend.id,
+        savedItem.weight,
+        savedItem.id,
+        savedItem.length,
+        savedItem.width,
+        savedItem.height,
+      );
     } catch (error) {
+      await queryRunner.rollbackTransaction();
       console.error('Error creating item:', error);
       throw error;
+    } finally {
+      await queryRunner.release();
     }
   }
-
   /**
    * Asynchronously retrieves all items from the 'item' table in the  database.
    *
@@ -170,8 +194,6 @@ export class ItemService {
         skip: page,
         take: limit,
       });
-
-      console.log(items);
 
       // Convert each Item entity to ItemDto
       const itemDtos = items.map(
@@ -240,17 +262,23 @@ export class ItemService {
   }
 
   /**
-   * Asynchronously updates an item in the 'item' table of the  database.
+   * Updates an item's details and optionally its image in the database.
+   * It first updates item details within a transaction. If an image is provided,
+   * it updates the image after the transaction completes.
    *
-   * @param updateItemDto - An object with updated item properties.
-   * @returns A promise resolving to an ItemDto representing the updated item.
+   * @param updateItemDto Object containing item updates.
+   * @returns Updated item details as ItemDto.
    */
-  async updateItem(updateItemDto: UpdateItemDto): Promise<ItemDto> {
+  async updateItem(updateItemDto: CreateUpdateItemIntDto): Promise<ItemDto> {
+    const queryRunner =
+      this.itemRepository.manager.connection.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
     try {
-      // Find the item by its ID
-      const item = await this.itemRepository.findOne({
+      const item = await queryRunner.manager.findOne(Item, {
         where: { id: updateItemDto.id },
-        relations: ['friend'],
+        relations: ['friend', 'user'],
       });
 
       if (!item) {
@@ -261,40 +289,48 @@ export class ItemService {
         const newFriend = await this.userClient
           .send(
             { cmd: profileManagementCommands.getUserForItemUpdate.cmd },
-            {
-              friendId: updateItemDto.friendId,
-            },
+            { friendId: updateItemDto.friendId },
           )
           .toPromise();
         item.friend = newFriend;
       }
 
-      // Update item properties
-      item.height = updateItemDto.heightInCm;
-      item.length = updateItemDto.lengthInCm;
+      if (updateItemDto.images) {
+        const uploadImageDto = new UploadItemImageDto();
+        uploadImageDto.file = updateItemDto.images[0];
+        uploadImageDto.itemId = item.id.toString();
+        await this.uploadItemImage(uploadImageDto, true);
+      }
+
+      item.height = updateItemDto.height;
+      item.length = updateItemDto.length;
       item.name = updateItemDto.name;
-      item.weight = updateItemDto.weightInGrams;
-      item.width = updateItemDto.widthInCm;
+      item.weight = updateItemDto.weight;
+      item.width = updateItemDto.width;
 
-      // Save the updated item
-      const updatedItemEntity = await this.itemRepository.save(item);
+      await queryRunner.manager.save(item);
+      await queryRunner.commitTransaction();
 
-      // Create and return the updated ItemDto
       const updatedItemDto = new ItemDto(
-        updatedItemEntity.name,
-        updatedItemEntity.friend.name,
-        updatedItemEntity.user.id,
-        updatedItemEntity.friend.id,
-        updatedItemEntity.weight,
-        updatedItemEntity.id,
-        updatedItemEntity.length,
-        updatedItemEntity.width,
-        updatedItemEntity.height,
+        item.name,
+        item.friend.name,
+        item.user.id,
+        item.friend.id,
+        item.weight,
+        item.id,
+        item.length,
+        item.width,
+        item.height,
+        item.imageUrl,
       );
+
       return updatedItemDto;
-    } catch (e) {
-      console.error('Error updating item:', e);
-      throw e;
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      console.error('Error updating item:', error);
+      throw error;
+    } finally {
+      await queryRunner.release();
     }
   }
 

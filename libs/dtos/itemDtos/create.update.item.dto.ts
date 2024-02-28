@@ -1,6 +1,6 @@
-import { IsNotEmpty, IsString } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
-export class CreateItemDto {
+export class CreateUpdateItemDto {
   @IsString()
   @IsNotEmpty()
   length: string = '0';
@@ -28,6 +28,9 @@ export class CreateItemDto {
   @IsString()
   @IsNotEmpty()
   weight: string = '0';
+
+  @IsString()
+  id?: string = '0';
 
   images?: any;
 }

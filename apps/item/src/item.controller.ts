@@ -1,10 +1,8 @@
 import { Controller, Inject, UsePipes, ValidationPipe } from '@nestjs/common';
 import { ItemService } from './item.service';
-import { CreateItemDto } from 'libs/dtos/itemDtos/create.item.dto';
+import { CreateUpdateItemDto } from 'libs/dtos/itemDtos/create.update.item.dto';
 import { MessagePattern, RpcException } from '@nestjs/microservices';
 import { ItemDto } from 'libs/dtos/itemDtos/item.dto';
-import { UpdateItemDto } from 'libs/dtos/itemDtos/update.item.dto';
-import { ItemWithUsersDto } from 'libs/dtos/itemDtos/item.with.users.dto';
 import { ItemSizeDto } from 'libs/dtos/itemDtos/item.size.dto';
 import { ToggleExchangeToItemDto } from 'libs/dtos/itemDtos/toggle.exchange.id.dto';
 import { UploadItemImageDto } from 'libs/dtos/itemDtos/upload.item.image.dto';
@@ -12,7 +10,7 @@ import { CACHE_MANAGER, Cache } from '@nestjs/cache-manager';
 import { itemManagementCommands } from '@app/tcp/itemMessagePatterns/item.management.messages.patterns';
 import { itemExchangeManagementCommands } from '@app/tcp/itemMessagePatterns/item.exchange.management.message.patterns';
 import { itemImageManagementCommands } from '@app/tcp/itemMessagePatterns/item.image.management.message.patterns';
-import { transformCreateItemToIntDto } from './Helpers/item.helpets';
+import { transformCreateItemToIntDto } from './Helpers/item.helpers';
 
 @Controller()
 export class ItemController {
@@ -23,10 +21,10 @@ export class ItemController {
 
   // Create a new item using the provided DTO
   @MessagePattern(itemManagementCommands.createItem)
-  async createItem(createItemDto: CreateItemDto): Promise<number> {
+  async createItem(createUpdateItemDto: CreateUpdateItemDto): Promise<ItemDto> {
     try {
       return await this.itemService.createItem(
-        transformCreateItemToIntDto(createItemDto),
+        transformCreateItemToIntDto(createUpdateItemDto),
       );
     } catch (error) {
       throw new RpcException(error.message);
@@ -123,16 +121,11 @@ export class ItemController {
 
   // Update an existing item using the provided DTO
   @MessagePattern(itemManagementCommands.updateItem)
-  @UsePipes(
-    new ValidationPipe({
-      transform: true,
-      whitelist: true,
-      forbidNonWhitelisted: true,
-    }),
-  )
-  async updateItem(updateItemDto: UpdateItemDto): Promise<ItemDto> {
+  async updateItem(updateItemDto: CreateUpdateItemDto): Promise<ItemDto> {
     try {
-      return await this.itemService.updateItem(updateItemDto);
+      return await this.itemService.updateItem(
+        transformCreateItemToIntDto(updateItemDto),
+      );
     } catch (error) {
       throw new RpcException(error.message);
     }
