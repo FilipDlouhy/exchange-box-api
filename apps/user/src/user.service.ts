@@ -90,17 +90,9 @@ export class UserService {
         throw new NotFoundException(`User not found`);
       }
 
-      const friends = user.friends.map(
-        (friend) =>
-          new UserDto(
-            friend.name,
-            friend.email,
-            friend.id,
-            friend.telephone,
-            friend.address,
-            friend.imageUrl,
-          ),
-      );
+      const friends = user.friends.map((friend) => {
+        return this.toUserDto(friend);
+      });
 
       delete user.password;
       const currentUser = new CurrentUserDto(user);
@@ -204,17 +196,9 @@ export class UserService {
         throw new NotFoundException('No users found');
       }
 
-      const userDtos: UserDto[] = users.map(
-        (user) =>
-          new UserDto(
-            user.name,
-            user.email,
-            user.id,
-            user.telephone,
-            user.address,
-            user.imageUrl,
-          ),
-      );
+      const userDtos: UserDto[] = users.map((user) => {
+        return this.toUserDto(user);
+      });
 
       return userDtos;
     } catch (err) {
@@ -595,5 +579,16 @@ export class UserService {
       console.error('Failed to get friends for item creation:', error);
       throw error;
     }
+  }
+
+  private toUserDto(user: User): UserDto {
+    return new UserDto(
+      user.name,
+      user.email,
+      user.id,
+      user.telephone,
+      user.address,
+      user.imageUrl,
+    );
   }
 }
