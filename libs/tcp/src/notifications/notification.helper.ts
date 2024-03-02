@@ -1,4 +1,4 @@
-import { notificationManagementCommands } from '@app/tcp/notificationMessagePatterns/notification.management.message.patterns';
+import { notificationManagementCommands } from '../notificationMessagePatterns/notification.management.message.patterns';
 
 /**
  * Sends a notification with dynamic arguments and allows passing a notification client.

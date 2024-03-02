@@ -7,9 +7,9 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { User } from '@app/database/entities/user.entity';
+import { User } from '../../../libs/database/src/entities/user.entity';
 import { Like, Not, Repository } from 'typeorm';
-import { FriendRequest } from '@app/database/entities/friend.request.entity';
+import { FriendRequest } from '../../../libs/database/src/entities/friend.request.entity';
 import { NotFoundError } from 'rxjs';
 import { FriendRequestDto } from 'libs/dtos/userDtos/friend.request.dto';
 import { ClientProxyFactory, Transport } from '@nestjs/microservices';

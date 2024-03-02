@@ -9,7 +9,7 @@ import {
   getImageUrlFromFirebase,
   updateFileInFirebase,
   uploadFileToFirebase,
-} from '@app/database';
+} from '../../../libs/database/src/firabase-storage';
 import {
   BadRequestException,
   ConflictException,
@@ -19,9 +19,9 @@ import {
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { InjectRepository } from '@nestjs/typeorm';
-import { User } from '@app/database/entities/user.entity';
+import { User } from '../../../libs/database/src/entities/user.entity';
 import { Repository } from 'typeorm';
-import { FriendRequest } from '@app/database/entities/friend.request.entity';
+import { FriendRequest } from '../../../libs/database/src/entities/friend.request.entity';
 import { UserProfileFriendDto } from 'libs/dtos/userDtos/user.profile.friend.dto';
 import { UserProfileItemDto } from 'libs/dtos/userDtos/user.profile.item.dto';
 import { UserProfileDto } from 'libs/dtos/userDtos/user.profile.dto';
