@@ -6,17 +6,17 @@ import {
   getImageUrlFromFirebase,
   updateFileInFirebase,
   uploadFileToFirebase,
-} from '@app/database';
+} from '../../../libs/database/src/firabase-storage';
 import { Injectable } from '@nestjs/common';
 import { ClientProxyFactory, Transport } from '@nestjs/microservices';
 import { UploadItemImageDto } from 'libs/dtos/itemDtos/upload.item.image.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Like, Repository } from 'typeorm';
-import { Item } from '@app/database/entities/item.entity';
-import { User } from '@app/database/entities/user.entity';
-import { friendManagementCommands } from '@app/tcp/userMessagePatterns/friend.management.nessage.patterns';
-import { profileManagementCommands } from '@app/tcp/userMessagePatterns/user.profile.message.patterns';
-import { sendNotification } from '@app/tcp/notifications/notification.helper';
+import { Item } from '../../../libs/database/src/entities/item.entity';
+import { User } from '../../../libs/database/src/entities/user.entity';
+import { friendManagementCommands } from '../../../libs/tcp/src/userMessagePatterns/friend.management.nessage.patterns';
+import { profileManagementCommands } from '../../../libs/tcp/src/userMessagePatterns/user.profile.message.patterns';
+import { sendNotification } from '../../../libs/tcp/src/notifications/notification.helper';
 import { CreateUpdateItemIntDto } from 'libs/dtos/itemDtos/create.udpate.item.int.dto';
 import { toItemDto } from './Helpers/item.helpers';
 

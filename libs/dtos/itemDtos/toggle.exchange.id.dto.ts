@@ -1,4 +1,4 @@
-import { Exchange } from '@app/database/entities/exchange.entity';
+import { Exchange } from '../../database/src/entities/exchange.entity';
 import { ArrayNotEmpty, IsInt, IsNotEmpty } from 'class-validator';
 
 export class ToggleExchangeToItemDto {

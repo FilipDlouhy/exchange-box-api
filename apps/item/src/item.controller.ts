@@ -7,9 +7,9 @@ import { ItemSizeDto } from 'libs/dtos/itemDtos/item.size.dto';
 import { ToggleExchangeToItemDto } from 'libs/dtos/itemDtos/toggle.exchange.id.dto';
 import { UploadItemImageDto } from 'libs/dtos/itemDtos/upload.item.image.dto';
 import { CACHE_MANAGER, Cache } from '@nestjs/cache-manager';
-import { itemManagementCommands } from '@app/tcp/itemMessagePatterns/item.management.messages.patterns';
-import { itemExchangeManagementCommands } from '@app/tcp/itemMessagePatterns/item.exchange.management.message.patterns';
-import { itemImageManagementCommands } from '@app/tcp/itemMessagePatterns/item.image.management.message.patterns';
+import { itemManagementCommands } from '../../../libs/tcp/src/itemMessagePatterns/item.management.messages.patterns';
+import { itemExchangeManagementCommands } from '../../../libs/tcp/src/itemMessagePatterns/item.exchange.management.message.patterns';
+import { itemImageManagementCommands } from '../../../libs/tcp/src/itemMessagePatterns/item.image.management.message.patterns';
 import { transformCreateItemToIntDto } from './Helpers/item.helpers';
 
 @Controller()
