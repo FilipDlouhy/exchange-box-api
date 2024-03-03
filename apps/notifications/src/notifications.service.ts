@@ -1,7 +1,7 @@
-import { Notification } from '@app/database/entities/notification.entity';
-import { User } from '@app/database/entities/user.entity';
-import { userManagementCommands } from '@app/tcp';
-import { notificationEventsPatterns } from '@app/tcp/eventMessagePatterns/notification.events.message.patterns';
+import { Notification } from '../../../libs/database/src/entities/notification.entity';
+import { User } from '../../../libs/database/src/entities/user.entity';
+import { userManagementCommands } from '../../../libs/tcp/src/userMessagePatterns/user.management.message.patterns';
+import { notificationEventsPatterns } from '../../../libs/tcp/src/eventMessagePatterns/notification.events.message.patterns';
 import {
   BadRequestException,
   Injectable,

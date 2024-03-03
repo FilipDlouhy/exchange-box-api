@@ -1,6 +1,6 @@
 import { Controller } from '@nestjs/common';
 import { NotificationsService } from './notifications.service';
-import { notificationManagementCommands } from '@app/tcp/notificationMessagePatterns/notification.management.message.patterns';
+import { notificationManagementCommands } from '../../../libs/tcp/src/notificationMessagePatterns/notification.management.message.patterns';
 import { MessagePattern, RpcException } from '@nestjs/microservices';
 import { CreateNotificationDto } from 'libs/dtos/notificationDtos/create.notification.dto';
 
