@@ -92,8 +92,10 @@ export class NotificationsService implements OnModuleInit {
         notificationCount,
       });
     } catch (err) {
-      console.error(err); // It's a good practice to log the actual error
-      throw new BadRequestException('Error creating notification');
+      console.error(err);
+      throw new BadRequestException(
+        `Error creating notification: ${err.message}`,
+      );
     }
   }
 
