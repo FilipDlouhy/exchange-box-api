@@ -6,8 +6,8 @@ import { Repository } from 'typeorm';
 import { CreateUpdateItemDto } from 'libs/dtos/itemDtos/create.update.item.dto';
 import { ItemDto } from 'libs/dtos/itemDtos/item.dto';
 import { RpcException } from '@nestjs/microservices';
-import { UploadItemImageDto } from 'libs/dtos/itemDtos/upload.item.image.dto';
 import { ItemSizeDto } from 'libs/dtos/itemDtos/item.size.dto';
+import { ItemSimpleDto } from 'libs/dtos/itemDtos/item.simple.dto';
 
 describe('ItemController', () => {
   let controller: ItemController;
@@ -482,6 +482,87 @@ describe('ItemController', () => {
           udpate: update,
         }),
       ).rejects.toThrowError(new RpcException(errorMessage));
+    });
+  });
+
+  describe('getUserItemSimple', () => {
+    const cacheKey = `userSimpleItems:1`;
+
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+
+    it('should return cached simplified item representations if available', async () => {
+      const userId = 1;
+      const expectedSimpleItems: ItemSimpleDto[] = [
+        {
+          id: 1,
+          name: 'Cached Sample Item 1',
+          length: 100,
+          width: 50,
+          height: 30,
+          weightInGrams: 200,
+        },
+      ];
+
+      jest.spyOn(cacheManager, 'get').mockResolvedValue(expectedSimpleItems);
+
+      jest.spyOn(itemService, 'getUserItemSimple').mockResolvedValue([]);
+
+      await expect(
+        controller.getUserItemSimple({ id: userId }),
+      ).resolves.toEqual(expectedSimpleItems);
+      expect(cacheManager.get).toHaveBeenCalledWith(cacheKey);
+      expect(itemService.getUserItemSimple).not.toHaveBeenCalled();
+    });
+
+    it('should fetch simplified item representations from service and cache them if not cached', async () => {
+      const userId = 1;
+      const expectedSimpleItems: ItemSimpleDto[] = [
+        {
+          id: 2,
+          name: 'Sample Item 2',
+          length: 90,
+          width: 45,
+          height: 25,
+          weightInGrams: 150,
+        },
+      ];
+
+      jest.spyOn(cacheManager, 'get').mockResolvedValue(null);
+
+      jest
+        .spyOn(itemService, 'getUserItemSimple')
+        .mockResolvedValue(expectedSimpleItems);
+
+      await expect(
+        controller.getUserItemSimple({ id: userId }),
+      ).resolves.toEqual(expectedSimpleItems);
+
+      expect(cacheManager.set).toHaveBeenCalledWith(
+        cacheKey,
+        expectedSimpleItems,
+        18000,
+      );
+      expect(cacheManager.get).toHaveBeenCalledWith(cacheKey);
+    });
+
+    it('should throw an exception if the service method throws an error', async () => {
+      const userId = 1;
+      const errorMessage = 'Error fetching simplified items';
+
+      jest.spyOn(cacheManager, 'get').mockResolvedValue(null);
+
+      jest
+        .spyOn(itemService, 'getUserItemSimple')
+        .mockRejectedValue(new Error(errorMessage));
+
+      await expect(
+        controller.getUserItemSimple({ id: userId }),
+      ).rejects.toThrowError(new RpcException(errorMessage));
+
+      expect(cacheManager.get).toHaveBeenCalledWith(cacheKey);
+      expect(cacheManager.set).not.toHaveBeenCalled();
     });
   });
 });

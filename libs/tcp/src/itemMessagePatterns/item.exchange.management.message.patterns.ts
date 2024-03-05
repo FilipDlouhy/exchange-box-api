@@ -5,4 +5,5 @@ export const itemExchangeManagementCommands = {
   addExchangeToItems: { cmd: 'addExchangeToItems' },
   deleteExchangeFromItems: { cmd: 'deleteExchangeFromItems' },
   getItemsForIdsExchange: { cmd: 'getItemsForIdsExchange' },
+  getUserItemSimple: { cmd: 'getUserItemSimple' },
 };

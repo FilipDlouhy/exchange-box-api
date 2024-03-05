@@ -1,10 +1,15 @@
 import { CreateUpdateItemIntDto } from 'libs/dtos/itemDtos/create.udpate.item.int.dto';
-import { toItemDto, transformCreateItemToIntDto } from './item.helpers';
+import {
+  toItemDto,
+  toItemSimpleDto,
+  transformCreateItemToIntDto,
+} from './item.helpers';
 import { CreateUpdateItemDto } from 'libs/dtos/itemDtos/create.update.item.dto';
 import { Item } from '../../../../libs/database/src/entities/item.entity';
 import { User } from '../../../../libs/database/src/entities/user.entity';
 import { ItemDto } from '../../../../libs/dtos/itemDtos/item.dto';
 import { Exchange } from '../../../../libs/database/src/entities/exchange.entity';
+import { ItemSimpleDto } from 'libs/dtos/itemDtos/item.simple.dto';
 
 describe('transformCreateItemToIntDto', () => {
   it('should correctly transform and parse all string fields to integers', () => {
@@ -110,5 +115,52 @@ describe('toItemDto', () => {
 
     const result = toItemDto(item);
     expect(result).toEqual(expected);
+  });
+
+  describe('toItemSimpleDto', () => {
+    it('should correctly transform an Item entity to ItemSimpleDto', () => {
+      const user = new User({
+        id: 1,
+        name: 'User 1',
+        email: 'user1@example.com',
+        password: 'password1',
+      });
+
+      const friend = new User({
+        id: 2,
+        name: 'User 2',
+        email: 'user2@example.com',
+        password: 'password2',
+      });
+
+      user.friends = [friend];
+      friend.friends = [user];
+
+      const item: Item = {
+        id: 1,
+        name: 'Test Item',
+        user: user,
+        friend: friend,
+        weight: 5,
+        length: 10,
+        width: 20,
+        height: 15,
+        imageUrl: 'itemImage.jpg',
+        exchange: new Exchange(),
+      };
+
+      const expected = new ItemSimpleDto(
+        item.name,
+        item.weight,
+        item.id,
+        item.length,
+        item.width,
+        item.height,
+      );
+
+      const result = toItemSimpleDto(item);
+
+      expect(result).toEqual(expected);
+    });
   });
 });

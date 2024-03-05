@@ -11,6 +11,7 @@ import { itemManagementCommands } from '../../../libs/tcp/src/itemMessagePattern
 import { itemExchangeManagementCommands } from '../../../libs/tcp/src/itemMessagePatterns/item.exchange.management.message.patterns';
 import { itemImageManagementCommands } from '../../../libs/tcp/src/itemMessagePatterns/item.image.management.message.patterns';
 import { transformCreateItemToIntDto } from './Helpers/item.helpers';
+import { ItemSimpleDto } from 'libs/dtos/itemDtos/item.simple.dto';
 
 @Controller()
 export class ItemController {
@@ -230,9 +231,30 @@ export class ItemController {
   }
 
   @MessagePattern(itemImageManagementCommands.deleteItemImage)
-  async deleteUserImage({ id }: { id: number }) {
+  async deleteItemImage({ id }: { id: number }) {
     try {
       return this.itemService.deleteItemImage(id);
+    } catch (error) {
+      throw new RpcException(error.message);
+    }
+  }
+
+  @MessagePattern(itemExchangeManagementCommands.getUserItemSimple)
+  async getUserItemSimple({ id }: { id: number }): Promise<ItemSimpleDto[]> {
+    try {
+      const cacheKey = `userSimpleItems:${id}`;
+
+      const cachedItems: ItemSimpleDto[] =
+        await this.cacheManager.get(cacheKey);
+
+      if (cachedItems) {
+        return cachedItems;
+      }
+
+      const items = await this.itemService.getUserItemSimple(id);
+
+      await this.cacheManager.set(cacheKey, items, 18000);
+      return items;
     } catch (error) {
       throw new RpcException(error.message);
     }

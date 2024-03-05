@@ -18,7 +18,8 @@ import { friendManagementCommands } from '../../../libs/tcp/src/userMessagePatte
 import { profileManagementCommands } from '../../../libs/tcp/src/userMessagePatterns/user.profile.message.patterns';
 import { sendNotification } from '../../../libs/tcp/src/notifications/notification.helper';
 import { CreateUpdateItemIntDto } from 'libs/dtos/itemDtos/create.udpate.item.int.dto';
-import { toItemDto } from './Helpers/item.helpers';
+import { toItemDto, toItemSimpleDto } from './Helpers/item.helpers';
+import { ItemSimpleDto } from 'libs/dtos/itemDtos/item.simple.dto';
 
 @Injectable()
 export class ItemService {
@@ -168,22 +169,47 @@ export class ItemService {
 
       const items = await this.itemRepository.find({
         where: forgotten
-          ? { friend: { id: userId }, name: Like(`%${query.search}%`) }
+          ? { friend: { id: 2 }, name: Like(`%${query.search}%`) }
           : { user: { id: userId }, name: Like(`%${query.search}%`) },
         relations: ['user', 'friend'],
         skip: page,
         take: limit,
       });
 
-      // Convert each Item entity to ItemDto
       const itemDtos = items.map((item) => {
         return toItemDto(item);
       });
-
       return itemDtos;
     } catch (error) {
       console.error('Error fetching user items:', error);
       throw new Error('Failed to retrieve user items');
+    }
+  }
+
+  /**
+   * Deletes an item from the database.
+   *
+   * @param item_id - The ID of the item to delete.
+   * @returns A boolean indicating if the deletion was successful.
+   * @throws Error if the item is part of an exchange.
+   */
+  async getUserItemSimple(userId: number): Promise<ItemSimpleDto[]> {
+    try {
+      const items = await this.itemRepository.find({
+        where: {
+          friend: {
+            id: userId,
+          },
+        },
+      });
+
+      const itemSimpleDtos = items.map((item) => toItemSimpleDto(item));
+
+      return itemSimpleDtos;
+    } catch (error) {
+      console.error('Error fetching simplified items:', error);
+
+      throw new Error('Failed to fetch simplified items');
     }
   }
 

@@ -176,7 +176,7 @@ export class ApiGatewayService {
 
         if (userId) {
           const reqBody = {
-            id: requestUrl[2] ? requestUrl[2] : userId,
+            id: requestUrl[2] ? parseInt(requestUrl[2]) : userId,
             query: req.query,
           };
 
