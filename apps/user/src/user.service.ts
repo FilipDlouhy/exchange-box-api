@@ -31,6 +31,7 @@ import { UpdateCurrentUserDto } from 'libs/dtos/userDtos/update.current.user.dto
 import { ClientProxyFactory, Transport } from '@nestjs/microservices';
 import { sendNotification } from '../../../libs/tcp/src/notifications/notification.helper';
 import { CreateItemUserDto } from 'libs/dtos/userDtos/create.item.user.dto';
+import { FriendSimpleDto } from 'libs/dtos/userDtos/friend.simple.dto';
 
 @Injectable()
 export class UserService {
@@ -208,6 +209,34 @@ export class UserService {
       } else {
         throw new InternalServerErrorException('Error retrieving users');
       }
+    }
+  }
+
+  /**
+   * Retrieves a simplified list of friends for a given user by their ID.
+   * @param {Object} param - An object parameter.
+   * @param {number} param.id - The ID of the user whose friends are to be retrieved.
+   * @returns {Promise<FriendSimpleDto[]>} A promise that resolves to an array of FriendSimpleDto.
+   */
+  async getUsersFriendsSimple(id: number): Promise<FriendSimpleDto[]> {
+    try {
+      const user = await this.userRepository.findOne({
+        where: { id: id },
+        relations: ['friends'],
+      });
+
+      if (!user) {
+        throw new Error(`User with id ${id} not found.`);
+      }
+
+      const simpleFriendsDtos = user.friends.map((friend) => {
+        return new FriendSimpleDto(friend.id, friend.name);
+      });
+
+      return simpleFriendsDtos;
+    } catch (err) {
+      console.error('Failed to get user friends:', err);
+      throw err;
     }
   }
 

@@ -380,4 +380,13 @@ export class UserController {
       throw new RpcException(error.message);
     }
   }
+
+  @MessagePattern(friendManagementCommands.getUsersFriendsSimple)
+  async getUsersFriendsSimple({ id }: { id: number }) {
+    try {
+      return this.userService.getUsersFriendsSimple(id);
+    } catch (error) {
+      throw new RpcException(error.message);
+    }
+  }
 }

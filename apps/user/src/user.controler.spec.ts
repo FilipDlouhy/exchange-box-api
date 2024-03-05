@@ -36,6 +36,7 @@ describe('UserController', () => {
     changePasswordDto: jest.fn(),
     getFriendsForItemCreation: jest.fn(),
     getUserByEmail: jest.fn(),
+    getUsersFriendsSimple: jest.fn(),
   };
 
   const mockUserFriendService = {
@@ -754,6 +755,36 @@ describe('UserController', () => {
 
       await expect(
         controller.getFriendsForItemCreation({ id }),
+      ).rejects.toThrow(Error);
+    });
+  });
+
+  describe('getUsersFriendsSimple', () => {
+    it('should return a list of user friends when given a valid user id', async () => {
+      const userId = 1;
+      const mockFriends = [
+        { id: 2, name: 'Alice' },
+        { id: 3, name: 'Bob' },
+      ];
+      mockUserService.getUsersFriendsSimple.mockResolvedValue(mockFriends);
+
+      const result = await controller.getUsersFriendsSimple({ id: userId });
+
+      expect(mockUserService.getUsersFriendsSimple).toHaveBeenCalledWith(
+        userId,
+      );
+      expect(result).toEqual(mockFriends);
+    });
+
+    it('should throw an RpcException when the userService throws an error', async () => {
+      const userId = 1;
+      const errorMessage = 'Service failed';
+      mockUserService.getUsersFriendsSimple.mockRejectedValue(
+        new Error(errorMessage),
+      );
+
+      await expect(
+        controller.getUsersFriendsSimple({ id: userId }),
       ).rejects.toThrow(Error);
     });
   });

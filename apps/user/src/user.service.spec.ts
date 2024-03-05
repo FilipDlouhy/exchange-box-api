@@ -370,4 +370,56 @@ describe('UserService', () => {
       );
     });
   });
+
+  describe('getUsersFriendsSimple', () => {
+    it('should return a simplified list of friends for an existing user', async () => {
+      const userId = 1;
+      const mockFriends = [
+        { id: 2, name: 'Alice' },
+        { id: 3, name: 'Bob' },
+      ];
+      userRepository.findOne.mockResolvedValue({
+        id: userId,
+        friends: mockFriends,
+      });
+
+      const result = await userService.getUsersFriendsSimple(userId);
+
+      expect(userRepository.findOne).toHaveBeenCalledWith({
+        where: { id: userId },
+        relations: ['friends'],
+      });
+      expect(result).toHaveLength(mockFriends.length);
+      result.forEach((friendDto, index) => {
+        expect(friendDto.friendId).toEqual(mockFriends[index].id);
+        expect(friendDto.friendName).toEqual(mockFriends[index].name);
+      });
+    });
+
+    it('should throw an error if the user does not exist', async () => {
+      const userId = 999;
+      userRepository.findOne.mockResolvedValue(null);
+
+      await expect(userService.getUsersFriendsSimple(userId)).rejects.toThrow(
+        `User with id ${userId} not found.`,
+      );
+    });
+
+    it('should handle and log other errors properly', async () => {
+      const userId = 1;
+      const error = new Error('Unexpected error');
+      userRepository.findOne.mockRejectedValue(error);
+      console.error = jest.fn();
+
+      // Act & Assert
+      await expect(
+        userService.getUsersFriendsSimple(userId),
+      ).rejects.toThrowError(error);
+
+      expect(console.error).toHaveBeenCalledWith(
+        'Failed to get user friends:',
+        error,
+      );
+    });
+  });
 });

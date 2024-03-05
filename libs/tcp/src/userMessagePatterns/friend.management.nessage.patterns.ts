@@ -10,4 +10,5 @@ export const friendManagementCommands = {
   acceptFriendRequest: { cmd: 'acceptFriendRequest' },
   getFriendsForItemCreation: { cmd: 'getFriendsForItemCreation' },
   denyFriendRequest: { cmd: 'denyFriendRequest' },
+  getUsersFriendsSimple: { cmd: 'getUsersFriendsSimple' },
 };

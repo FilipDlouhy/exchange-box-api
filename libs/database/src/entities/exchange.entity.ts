@@ -36,11 +36,11 @@ export class Exchange {
   @OneToMany(() => Item, (item) => item.exchange)
   items: Item[];
 
-  @ManyToOne(() => User, { cascade: true }) // Changed to ManyToOne
+  @ManyToOne(() => User, { cascade: true })
   @JoinColumn()
   friend: User;
 
-  @ManyToOne(() => User, { cascade: true }) // Changed to ManyToOne
+  @ManyToOne(() => User, { cascade: true })
   @JoinColumn()
   user: User;
 
@@ -49,6 +49,9 @@ export class Exchange {
 
   @Column()
   boxSize: string;
+
+  @Column()
+  name: string;
 
   @Column()
   exchangeState: string;
