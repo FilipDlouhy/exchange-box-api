@@ -22,12 +22,13 @@ import { Item } from '@app/database/entities/item.entity';
 import { itemExchangeManagementCommands } from '@app/tcp/itemMessagePatterns/item.exchange.management.message.patterns';
 import { friendManagementCommands } from '@app/tcp/userMessagePatterns/friend.management.nessage.patterns';
 import { ExchangeUtilsService } from './exchange.utils.service';
+import { sendNotification } from '@app/tcp/notifications/notification.helper';
 
 @Injectable()
 export class ExchangeService {
   private readonly userClient;
   private readonly itemClient;
-
+  private readonly notificationClient;
   constructor(
     @InjectRepository(Exchange)
     private readonly exchangeRepository: Repository<Exchange>,
@@ -46,6 +47,14 @@ export class ExchangeService {
       options: {
         host: 'localhost',
         port: 3004,
+      },
+    });
+
+    this.notificationClient = ClientProxyFactory.create({
+      transport: Transport.TCP,
+      options: {
+        host: 'localhost',
+        port: 3011,
       },
     });
   }
@@ -98,6 +107,22 @@ export class ExchangeService {
           exchange,
           createExchangeDto.centerId,
         );
+
+      sendNotification(this.notificationClient, {
+        userId: user.id.toString(),
+        nameOfTheService: 'item-service',
+        text: `You have created an exhcange with ${friend.name} you have two hours to put items into the box`,
+        initials: 'IC',
+      });
+
+      sendNotification(this.notificationClient, {
+        userId: friend.id.toString(),
+        nameOfTheService: 'item-service',
+        text: `Your friend ${
+          user.name
+        } has created exchnage with pick up date ${exchange.pickUpDate.toLocaleString()}`,
+        initials: 'IC',
+      });
 
       return new ExchangeDto(
         updatedExchange.user.id,
