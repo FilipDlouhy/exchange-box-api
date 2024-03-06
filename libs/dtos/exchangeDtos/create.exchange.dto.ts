@@ -1,4 +1,11 @@
-import { IsInt, IsNotEmpty, ArrayNotEmpty } from 'class-validator';
+import {
+  IsInt,
+  IsNotEmpty,
+  ArrayNotEmpty,
+  IsString,
+  IsNumber,
+  IsDate,
+} from 'class-validator';
 
 export class CreateExchangeDto {
   @IsNotEmpty()
@@ -9,9 +16,23 @@ export class CreateExchangeDto {
   @IsInt()
   public pickUpPersonId: number;
 
+  @IsString()
   @IsNotEmpty()
   public boxSize: string;
 
+  @IsString()
+  @IsNotEmpty()
+  public name: string;
+
+  @IsString({ each: true })
   @ArrayNotEmpty()
   public itemIds: number[];
+
+  @IsNumber()
+  @IsNotEmpty()
+  public centerId: number;
+
+  @IsDate()
+  @IsNotEmpty()
+  public pickUpDate: Date;
 }

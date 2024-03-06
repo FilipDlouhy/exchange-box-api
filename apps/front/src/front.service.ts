@@ -60,7 +60,7 @@ export class FrontService {
    * @returns The ID of the front.
    * @throws Error if the data fetch fails or if the center is full for the specified size.
    */
-  async getFrontForTask(size: string, frontId: number): Promise<Front> {
+  async addTaskToFront(size: string, frontId: number) {
     try {
       // Using the repository to find the front with the given center ID
       const front = await this.frontRepository.findOne({
@@ -100,12 +100,9 @@ export class FrontService {
 
       front[`numberOf${size}Boxes`] += 1;
 
-      const updatedFront = await this.frontRepository.save(front);
-
-      // Return the updated front
-      return updatedFront;
+      await this.frontRepository.save(front);
     } catch (error) {
-      console.error('Error in getFrontForTask function:', error);
+      console.error('Error in addTaskToFront function:', error);
       throw error;
     }
   }

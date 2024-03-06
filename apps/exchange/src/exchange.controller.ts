@@ -22,13 +22,6 @@ export class ExchangeController {
   ) {}
 
   @MessagePattern(exchangeManagementCommands.createExchange)
-  @UsePipes(
-    new ValidationPipe({
-      transform: true,
-      whitelist: true,
-      forbidNonWhitelisted: true,
-    }),
-  )
   async createExchange(createExchangeDto: CreateExchangeDto) {
     try {
       return await this.exchangeService.createExchange(createExchangeDto);
@@ -157,26 +150,6 @@ export class ExchangeController {
       await this.cacheManager.set(cacheKey, allExchanges, 18000);
 
       return allExchanges;
-    } catch (error) {
-      throw new RpcException(error.message);
-    }
-  }
-
-  @MessagePattern(exchangeQueueManagementCommands.addExchangeToTheFront)
-  @UsePipes(
-    new ValidationPipe({
-      transform: true,
-      whitelist: true,
-      forbidNonWhitelisted: true,
-    }),
-  )
-  async addExchangeToTheFront(
-    addExchangeToTheFront: AddExchangeToFrontDto,
-  ): Promise<Exchange> {
-    try {
-      return await this.exchangeUtilsService.addExchangeToTheFront(
-        addExchangeToTheFront,
-      );
     } catch (error) {
       throw new RpcException(error.message);
     }

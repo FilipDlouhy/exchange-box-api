@@ -11,13 +11,15 @@ import { ClientProxyFactory, Transport } from '@nestjs/microservices';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Exchange } from '@app/database/entities/exchange.entity';
 import { Repository } from 'typeorm';
-import { Front } from '@app/database/entities/front.entity';
 import { taskManagementCommands } from '@app/tcp/frontMessagePatterns/front.task.management.message.patterns';
+import { centerMessagePatterns } from '@app/tcp/centerMessagePatterns/center.message.patterns';
+import { Front } from '@app/database';
 
 @Injectable()
 export class ExchangeUtilsService {
   private readonly frontClient;
   private readonly boxClient;
+  private readonly centerCilent;
 
   constructor(
     @InjectRepository(Exchange)
@@ -28,6 +30,13 @@ export class ExchangeUtilsService {
       options: {
         host: 'localhost',
         port: 3003,
+      },
+    });
+    this.centerCilent = ClientProxyFactory.create({
+      transport: Transport.TCP,
+      options: {
+        host: 'localhost',
+        port: 3002,
       },
     });
 
@@ -108,71 +117,49 @@ export class ExchangeUtilsService {
   }
 
   /**
-   * Adds an exchange to the front, updating exchange and front data.
-   *
-   * @param addExchangeToTheFront - DTO with exchange details.
-   * @returns Updated exchange DTO.
-   * @throws Error on failure or if the exchange already has a front.
+   * Adds an exchange to the front of a queue based on the center ID, assigns a box, and updates the exchange status.
+   * @param exchange The exchange entity that is being processed.
+   * @param centerId The ID of the center where the exchange will take place.
+   * @returns The updated exchange with a reserved status, front, and box information.
    */
-  async addExchangeToTheFront(
-    addExchangeToTheFront: AddExchangeToFrontDto,
-  ): Promise<Exchange> {
-    try {
-      const exchange = await this.exchangeRepository.findOneBy({
-        id: addExchangeToTheFront.id,
-      });
+  async addExchangeToTheFront(exchange: Exchange, centerId: number) {
+    const front: Front = await this.centerCilent
+      .send(
+        { cmd: centerMessagePatterns.getCenterByCoordinates.cmd },
+        { centerId: centerId },
+      )
+      .toPromise();
 
-      if (!exchange) {
-        throw new NotFoundException(
-          `Exchange with ID ${addExchangeToTheFront.id} not found`,
-        );
-      }
-
-      // Retrieve the front ID for the task
-      const front: Front = await this.frontClient
-        .send(
-          { cmd: taskManagementCommands.getFrontForTask.cmd },
-          {
-            size: addExchangeToTheFront.size,
-            frontId: addExchangeToTheFront.frontId,
-          },
-        )
-        .toPromise();
-
-      if (!front) {
-        throw new NotFoundException(
-          `Front with ID ${addExchangeToTheFront.frontId} not found`,
-        );
-      }
-
-      const box = await this.boxClient
-        .send({ cmd: boxMessagePatterns.createBox.cmd }, { exchange })
-        .toPromise();
-
-      if (!box) {
-        throw new NotFoundException('Failed to create a box for the exchange');
-      }
-
-      // Update the exchange with the new front ID and other details
-
-      exchange.exchangeState = exchnageStatus.reserved;
-      exchange.pickUpDate = new Date(addExchangeToTheFront.pickUpDate);
-      exchange.front = front;
-      exchange.box = box;
-
-      const updatedExchange = await this.exchangeRepository.save(exchange);
-
-      return updatedExchange;
-    } catch (error) {
-      console.error('Error in adding exchange to the front:', error);
-
-      // Check if it's a NotFoundException and re-throw with a specific message
-      if (error instanceof NotFoundException) {
-        throw error;
-      }
-
-      throw new Error('Failed to add exchange to the front.');
+    if (!front) {
+      throw new NotFoundException(`Front not found`);
     }
+
+    await this.frontClient
+      .send(
+        { cmd: taskManagementCommands.addTaskToFront.cmd },
+        {
+          size: exchange.boxSize,
+          frontId: front.id,
+        },
+      )
+      .toPromise();
+
+    const box = await this.boxClient
+      .send({ cmd: boxMessagePatterns.createBox.cmd }, { exchange })
+      .toPromise();
+
+    if (!box) {
+      throw new NotFoundException('Failed to create a box for the exchange');
+    }
+
+    exchange.exchangeState = exchnageStatus.reserved;
+
+    exchange.front = front;
+    exchange.box = box;
+
+    const updatedExchange = await this.exchangeRepository.save(exchange);
+
+    return updatedExchange;
   }
 
   /**

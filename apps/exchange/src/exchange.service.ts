@@ -21,6 +21,7 @@ import { User } from '@app/database/entities/user.entity';
 import { Item } from '@app/database/entities/item.entity';
 import { itemExchangeManagementCommands } from '@app/tcp/itemMessagePatterns/item.exchange.management.message.patterns';
 import { friendManagementCommands } from '@app/tcp/userMessagePatterns/friend.management.nessage.patterns';
+import { ExchangeUtilsService } from './exchange.utils.service';
 
 @Injectable()
 export class ExchangeService {
@@ -30,6 +31,7 @@ export class ExchangeService {
   constructor(
     @InjectRepository(Exchange)
     private readonly exchangeRepository: Repository<Exchange>,
+    private readonly exchangeUtilsService: ExchangeUtilsService,
   ) {
     this.userClient = ClientProxyFactory.create({
       transport: Transport.TCP,
@@ -49,11 +51,9 @@ export class ExchangeService {
   }
 
   /**
-   * Asynchronous function to create a new exchange.
-   * It handles the process of validating item sizes, creating the exchange record, and updating item details.
-   *
-   * @param createExchangeDto DTO containing information needed for creating the exchange.
-   * @returns ExchangeDto Returns a data transfer object representing the newly created exchange.
+   * Creates a new exchange between users for item pickup, ensuring all business rules are met.
+   * @param createExchangeDto The data transfer object containing details necessary to create an exchange.
+   * @returns A promise that resolves to an ExchangeDto containing details of the created exchange.
    */
   async createExchange(
     createExchangeDto: CreateExchangeDto,
@@ -91,15 +91,20 @@ export class ExchangeService {
       exchange.items = items;
       exchange.user = user;
       exchange.friend = friend;
-
-      const savedExchange = await this.exchangeRepository.save(exchange);
+      exchange.name = createExchangeDto.name;
+      exchange.pickUpDate = new Date(createExchangeDto.pickUpDate);
+      const updatedExchange =
+        await this.exchangeUtilsService.addExchangeToTheFront(
+          exchange,
+          createExchangeDto.centerId,
+        );
 
       return new ExchangeDto(
-        savedExchange.user.id,
-        savedExchange.friend.id,
-        savedExchange.boxSize,
-        savedExchange.items,
-        savedExchange.id,
+        updatedExchange.user.id,
+        updatedExchange.friend.id,
+        updatedExchange.boxSize,
+        updatedExchange.items,
+        updatedExchange.id,
       );
     } catch (error) {
       if (
@@ -373,6 +378,7 @@ export class ExchangeService {
           { item_ids: itemIds, udpate: udpate },
         )
         .toPromise();
+
       const boxSize = boxSizes[boxSizeKey];
 
       const { heightToCompare, widthToCompare, lengthToCompare } =

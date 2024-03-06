@@ -14,8 +14,9 @@ import { GetCenterDto } from 'libs/dtos/centerDtos/get.center.dto';
 import { FrontExchangeDto } from 'libs/dtos/frontDtos/front.exchange.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Center } from '@app/database/entities/center.entity';
-import { Between, EntityManager, Repository } from 'typeorm';
+import { Between, Repository } from 'typeorm';
 import { frontManagementCommands } from '@app/tcp/frontMessagePatterns/front.management.message.patterns';
+import { Front } from '@app/database';
 
 @Injectable()
 export class CenterService implements OnModuleInit {
@@ -281,6 +282,17 @@ export class CenterService implements OnModuleInit {
         'Failed to fetch centers for exchange',
       );
     }
+  }
+
+  async getCenterByCoordinates(centerId: number): Promise<Front> {
+    const center = await this.centerRepository.findOne({
+      where: {
+        id: centerId,
+      },
+      relations: ['front'],
+    });
+
+    return center.front;
   }
 
   /**

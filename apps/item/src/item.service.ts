@@ -200,6 +200,7 @@ export class ItemService {
           friend: {
             id: userId,
           },
+          exchange: null,
         },
       });
 

@@ -20,16 +20,10 @@ export class FrontController {
     }
   }
 
-  @MessagePattern(taskManagementCommands.getFrontForTask)
-  async getFrontForTask({
-    size,
-    frontId,
-  }: {
-    size: string;
-    frontId: number;
-  }): Promise<Front> {
+  @MessagePattern(taskManagementCommands.addTaskToFront)
+  async addTaskToFront({ size, frontId }: { size: string; frontId: number }) {
     try {
-      return await this.frontService.getFrontForTask(size, frontId);
+      await this.frontService.addTaskToFront(size, frontId);
     } catch (error) {
       throw new RpcException(error.message);
     }

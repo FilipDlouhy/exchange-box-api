@@ -7,6 +7,7 @@ import { CenterWithFrontDto } from 'libs/dtos/centerDtos/center.with.front.dto';
 import { UpdateCenterDto } from 'libs/dtos/centerDtos/update.center.dto';
 import { GetCenterDto } from 'libs/dtos/centerDtos/get.center.dto';
 import { CACHE_MANAGER, Cache } from '@nestjs/cache-manager';
+import { Front } from '@app/database';
 
 @Controller()
 export class CenterController {
@@ -97,6 +98,19 @@ export class CenterController {
   ): Promise<CenterWithFrontDto[]> {
     try {
       return await this.centerService.getCenterForExchange(getCenterDto);
+    } catch (error) {
+      throw new RpcException(error.message);
+    }
+  }
+
+  @MessagePattern(centerMessagePatterns.getCenterByCoordinates)
+  async getCenterByCoordinates({
+    centerId,
+  }: {
+    centerId: number;
+  }): Promise<Front> {
+    try {
+      return await this.centerService.getCenterByCoordinates(centerId);
     } catch (error) {
       throw new RpcException(error.message);
     }
