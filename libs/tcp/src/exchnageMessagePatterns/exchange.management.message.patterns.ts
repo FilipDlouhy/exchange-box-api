@@ -3,7 +3,6 @@ export const exchangeManagementCommands = {
   deleteExchange: { cmd: 'deleteExchange' },
   updateExchange: { cmd: 'updateExchange' },
   getUserExchanges: { cmd: 'getUserExchanges' },
-  getFriendExchanges: { cmd: 'getFriendExchanges' },
   getAllExchanges: { cmd: 'getAllExchanges' },
   getFullExchange: { cmd: 'getFullExchange' },
 };

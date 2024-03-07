@@ -23,6 +23,7 @@ import { itemExchangeManagementCommands } from '@app/tcp/itemMessagePatterns/ite
 import { friendManagementCommands } from '@app/tcp/userMessagePatterns/friend.management.nessage.patterns';
 import { ExchangeUtilsService } from './exchange.utils.service';
 import { sendNotification } from '@app/tcp/notifications/notification.helper';
+import { ExchangeSimpleDto } from 'libs/dtos/exchangeDtos/exchange.simple.dto';
 
 @Injectable()
 export class ExchangeService {
@@ -66,7 +67,7 @@ export class ExchangeService {
    */
   async createExchange(
     createExchangeDto: CreateExchangeDto,
-  ): Promise<ExchangeDto> {
+  ): Promise<ExchangeSimpleDto> {
     try {
       if (createExchangeDto.creatorId === createExchangeDto.pickUpPersonId) {
         throw new ConflictException(
@@ -124,12 +125,15 @@ export class ExchangeService {
         initials: 'IC',
       });
 
-      return new ExchangeDto(
+      return new ExchangeSimpleDto(
         updatedExchange.user.id,
         updatedExchange.friend.id,
-        updatedExchange.boxSize,
-        updatedExchange.items,
+        updatedExchange.items.length,
         updatedExchange.id,
+        updatedExchange.pickUpDate,
+        updatedExchange.friend.imageUrl,
+        updatedExchange.friend.name,
+        updatedExchange.name,
       );
     } catch (error) {
       if (

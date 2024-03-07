@@ -14,6 +14,7 @@ import { Repository } from 'typeorm';
 import { taskManagementCommands } from '@app/tcp/frontMessagePatterns/front.task.management.message.patterns';
 import { centerMessagePatterns } from '@app/tcp/centerMessagePatterns/center.message.patterns';
 import { Front } from '@app/database';
+import { ExchangeSimpleDto } from 'libs/dtos/exchangeDtos/exchange.simple.dto';
 
 @Injectable()
 export class ExchangeUtilsService {
@@ -57,42 +58,25 @@ export class ExchangeUtilsService {
    * @returns An array of ExchangeWithUserDto objects associated with the user.
    */
 
-  async getExchangesByUser(
-    userId: number,
-    isNotFriend: boolean,
-  ): Promise<ExchangeWithUserDto[]> {
+  async getExchangesByUser(userId: number): Promise<ExchangeSimpleDto[]> {
     try {
-      let exchanges: Exchange[] = [];
+      const exchanges = await this.exchangeRepository.find({
+        where: [{ user: { id: userId } }, { friend: { id: userId } }],
+        relations: ['user', 'friend', 'items'],
+      });
 
-      if (isNotFriend) {
-        // Find exchanges where the user is the creator and include relations
-        exchanges = await this.exchangeRepository.find({
-          where: {
-            user: { id: userId },
-          },
-          relations: ['user', 'friend', 'items'],
-        });
-      } else {
-        // Find exchanges where the user is the pick-up person and include relations
-        exchanges = await this.exchangeRepository.find({
-          where: {
-            friend: { id: userId },
-          },
-          relations: ['user', 'friend', 'items'],
-        });
-      }
+      const usersExchanges: ExchangeSimpleDto[] = [];
 
-      // Initialize the array to store the results
-      const usersExchanges: ExchangeWithUserDto[] = [];
-
-      // Loop through each exchange and load related user data
       for (const exchange of exchanges) {
-        const userExchange = new ExchangeWithUserDto(
-          exchange.user,
-          exchange.friend,
-          exchange.boxSize,
+        const userExchange = new ExchangeSimpleDto(
+          exchange.user.id,
+          exchange.friend.id,
+          exchange.items.length,
           exchange.id,
-          exchange.items,
+          exchange.pickUpDate,
+          exchange.friend.imageUrl,
+          exchange.friend.name,
+          exchange.name,
         );
         usersExchanges.push(userExchange);
       }
@@ -104,7 +88,6 @@ export class ExchangeUtilsService {
         error,
       );
 
-      // Rethrow specific errors as NestJS exceptions for better handling
       if (
         error instanceof NotFoundException ||
         error instanceof BadRequestException
