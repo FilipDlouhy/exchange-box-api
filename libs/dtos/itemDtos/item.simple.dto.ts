@@ -1,4 +1,5 @@
 import { IsInt, IsString, IsNotEmpty } from 'class-validator';
+
 export class ItemSimpleDto {
   @IsInt()
   length: number;
@@ -19,6 +20,9 @@ export class ItemSimpleDto {
   @IsInt()
   id: number;
 
+  @IsString()
+  imageUrl?: string;
+
   constructor(
     name: string,
     weightInGrams: number,
@@ -26,6 +30,7 @@ export class ItemSimpleDto {
     length?: number,
     width?: number,
     height?: number,
+    imageUrl?: string,
   ) {
     this.name = name;
     this.weightInGrams = weightInGrams;
@@ -33,5 +38,6 @@ export class ItemSimpleDto {
     this.length = length;
     this.width = width;
     this.height = height;
+    this.imageUrl = imageUrl;
   }
 }

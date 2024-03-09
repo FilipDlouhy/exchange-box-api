@@ -296,6 +296,37 @@ export class CenterService implements OnModuleInit {
   }
 
   /**
+   * Fetches center coordinates based on a given front ID.
+   * @param {number} frontId - The ID of the front to find the center coordinates for.
+   * @returns {Promise<{long: number; lat: number}>} Coordinates of the center.
+   * @throws {Error} Throws an error if the center is not found.
+   */
+  async getCenterCoordinatsWithFrontId(
+    frontId: number,
+  ): Promise<{ long: number; lat: number }> {
+    try {
+      const center = await this.centerRepository
+        .createQueryBuilder('center')
+        .innerJoin('center.front', 'front')
+        .select(['center.latitude', 'center.longitude'])
+        .where('front.id = :frontId', { frontId })
+        .getOne();
+
+      if (!center) {
+        throw new Error('Center not found');
+      }
+
+      return { long: center.longitude, lat: center.latitude };
+    } catch (error) {
+      console.error(
+        `Failed to fetch center coordinates for front ID: ${frontId}`,
+        error,
+      );
+      throw new Error('Failed to retrieve center coordinates');
+    }
+  }
+
+  /**
    * Creates a new center in the database and initializes its associated front.
    *
    * @param {CreateCenterDto} createCenterDto - The DTO containing information for creating a new center.

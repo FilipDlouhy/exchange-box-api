@@ -5,4 +5,6 @@ export const centerMessagePatterns = {
   deleteCenter: { cmd: 'deleteCenter' },
   getCenterForExchange: { cmd: 'getCenterForExchange' },
   getCenterByCoordinates: { cmd: 'getCenterByCoordinates' },
+  getCenterCoordinats: { cmd: 'getCenterCoordinats' },
+  getCenterCoordinatsWithFrontId: { cmd: 'getCenterCoordinatsWithFrontId' },
 };

@@ -115,4 +115,20 @@ export class CenterController {
       throw new RpcException(error.message);
     }
   }
+
+  @MessagePattern(centerMessagePatterns.getCenterCoordinatsWithFrontId)
+  async getCenterCoordinatsWithFrontId({
+    frontId,
+  }: {
+    frontId: number;
+  }): Promise<{
+    long: number;
+    lat: number;
+  }> {
+    try {
+      return await this.centerService.getCenterCoordinatsWithFrontId(frontId);
+    } catch (error) {
+      throw new RpcException(error.message);
+    }
+  }
 }

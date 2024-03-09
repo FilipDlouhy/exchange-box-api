@@ -11,6 +11,7 @@ import { exchangeManagementCommands } from '@app/tcp/exchnageMessagePatterns/exc
 import { exchangeQueueManagementCommands } from '@app/tcp/exchnageMessagePatterns/exchnage.queue.message.patterns';
 import { ExchangeUtilsService } from './exchange.utils.service';
 import { ExchangeSimpleDto } from 'libs/dtos/exchangeDtos/exchange.simple.dto';
+import { FullExchangeDto } from 'libs/dtos/exchangeDtos/full.exchange.dto';
 
 @Controller()
 export class ExchangeController {
@@ -87,16 +88,26 @@ export class ExchangeController {
   }
 
   @MessagePattern(exchangeManagementCommands.getFullExchange)
-  async getFullExchange({ id }: { id: number }) {
+  async getFullExchange({
+    id,
+    userId,
+  }: {
+    id: number;
+    userId: number;
+  }): Promise<FullExchangeDto> {
     try {
-      const cacheKey = `fullExchange:${id}`;
-      const cachedFullExchange: any = await this.cacheManager.get(cacheKey);
+      const cacheKey = `fullExchange:${id}:${userId}`;
+      const cachedFullExchange: FullExchangeDto =
+        await this.cacheManager.get(cacheKey);
 
       if (cachedFullExchange) {
         return cachedFullExchange;
       }
 
-      const fullExchange = await this.exchangeService.getFullExchange(id);
+      const fullExchange = await this.exchangeService.getFullExchange(
+        id,
+        userId,
+      );
 
       await this.cacheManager.set(cacheKey, fullExchange, 18000);
 

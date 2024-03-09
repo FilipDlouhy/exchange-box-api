@@ -24,12 +24,18 @@ import { friendManagementCommands } from '@app/tcp/userMessagePatterns/friend.ma
 import { ExchangeUtilsService } from './exchange.utils.service';
 import { sendNotification } from '@app/tcp/notifications/notification.helper';
 import { ExchangeSimpleDto } from 'libs/dtos/exchangeDtos/exchange.simple.dto';
+import { taskManagementCommands } from '@app/tcp/frontMessagePatterns/front.task.management.message.patterns';
+import { centerMessagePatterns } from '@app/tcp/centerMessagePatterns/center.message.patterns';
+import { FullExchangeDto } from 'libs/dtos/exchangeDtos/full.exchange.dto';
+import { ExchangeUserDto } from 'libs/dtos/exchangeDtos/exchange.user.dto';
+import { ItemSimpleDto } from 'libs/dtos/itemDtos/item.simple.dto';
 
 @Injectable()
 export class ExchangeService {
   private readonly userClient;
   private readonly itemClient;
   private readonly notificationClient;
+  private readonly centerClient;
   constructor(
     @InjectRepository(Exchange)
     private readonly exchangeRepository: Repository<Exchange>,
@@ -40,6 +46,14 @@ export class ExchangeService {
       options: {
         host: 'localhost',
         port: 3006,
+      },
+    });
+
+    this.centerClient = ClientProxyFactory.create({
+      transport: Transport.TCP,
+      options: {
+        host: 'localhost',
+        port: 3002,
       },
     });
 
@@ -213,7 +227,7 @@ export class ExchangeService {
         throw new NotFoundException('Exchange not found.');
       }
 
-      const { friend, items, user } = await this.getItemsAndUsers(
+      const { friend, items } = await this.getItemsAndUsers(
         exchange,
         updateExchangeDto.pickUpPersonId,
         exchange.user.id,
@@ -288,39 +302,75 @@ export class ExchangeService {
   }
 
   /**
-   * Retrieves the full details of an exchange by its ID.
-   * This includes the details of the exchange, users involved, and the items in the exchange.
-   *
-   * @param id - The ID of the exchange.
-   * @returns A FullExchangeDto object containing detailed information about the exchange.
+   * Updates exchange status. Fetches and updates pick-up date and box size.
+   * @param {ChangeExchangeStatusDto} changeExchangeStatus - Contains update info.
+   * @param {number} changeExchangeStatus.id - Exchange ID.
+   * @param {string} changeExchangeStatus.exchange_state - New exchange state.
    */
-  async getFullExchange(id: number): Promise<Exchange> {
+  async getFullExchange(id: number, userId: number): Promise<FullExchangeDto> {
+    let exchange;
     try {
-      // Find the exchange by ID with relations
-      const exchange = await this.exchangeRepository.findOne({
+      exchange = await this.exchangeRepository.findOne({
         where: { id },
-        relations: ['user', 'friend', 'items', 'box'],
+        relations: ['user', 'friend', 'items', 'front'],
       });
-
       if (!exchange) {
         throw new NotFoundException(`Exchange with ID ${id} not found`);
       }
-
-      return exchange;
     } catch (error) {
-      // Log and handle errors that occur during the retrieval
-      console.error(
-        'Failed to retrieve full exchange details for ID:',
-        id,
-        error,
+      console.error('Failed to retrieve exchange from database:', id, error);
+      throw new Error('Database retrieval failed');
+    }
+
+    try {
+      const { long, lat } = await this.centerClient
+        .send(
+          { cmd: centerMessagePatterns.getCenterCoordinatsWithFrontId.cmd },
+          { frontId: exchange.front.id },
+        )
+        .toPromise();
+
+      const items = exchange.items.map(
+        (item) =>
+          new ItemSimpleDto(
+            item.name,
+            item.weight,
+            item.id,
+            item.length,
+            item.weight,
+            item.height,
+            item.imageUrl,
+          ),
       );
 
-      // Check if it's a TypeORM NotFoundException and re-throw with a specific message
-      if (error instanceof NotFoundException) {
-        throw error;
-      }
-
-      throw new Error('Failed to retrieve exchange details.');
+      return new FullExchangeDto(
+        exchange.id,
+        exchange.createdAt,
+        exchange.updatedAt,
+        exchange.pickUpDate,
+        exchange.price,
+        exchange.timeElapsedSincePickUpDate,
+        items,
+        exchange.user.id === userId
+          ? new ExchangeUserDto(
+              exchange.friend.name,
+              exchange.friend.id,
+              exchange.friend.imageUrl,
+            )
+          : new ExchangeUserDto(
+              exchange.user.name,
+              exchange.user.id,
+              exchange.user.imageUrl,
+            ),
+        exchange.boxSize,
+        exchange.name,
+        exchange.exchangeState,
+        lat,
+        long,
+      );
+    } catch (error) {
+      console.error('Failed to process exchange details:', id, error);
+      throw new Error('Processing exchange details failed.');
     }
   }
 
