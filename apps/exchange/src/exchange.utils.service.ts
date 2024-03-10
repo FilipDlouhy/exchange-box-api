@@ -1,5 +1,3 @@
-import { AddExchangeToFrontDto } from 'libs/dtos/exchangeDtos/add.exchange.to.front..dto';
-import { ExchangeWithUserDto } from 'libs/dtos/exchangeDtos/exchange.with.users.dto';
 import { exchnageStatus } from 'libs/dtos/exchange.status.dto';
 import { boxMessagePatterns } from '@app/tcp/boxMessagePatterns/box.message.patterns';
 import {
@@ -77,6 +75,7 @@ export class ExchangeUtilsService {
           exchange.friend.imageUrl,
           exchange.friend.name,
           exchange.name,
+          exchange.exchangeState,
         );
         usersExchanges.push(userExchange);
       }

@@ -39,6 +39,10 @@ export class ExchangeSimpleDto {
   @IsDate()
   public pickUpDate: Date | null;
 
+  @IsNotEmpty()
+  @IsString()
+  public exchangeState: string;
+
   constructor(
     creatorId: number,
     pickUpPersonId: number,
@@ -48,6 +52,7 @@ export class ExchangeSimpleDto {
     friendImgUrl: string,
     friendName: string,
     exchangeNBame: string,
+    exchangeState: string,
   ) {
     this.creatorId = creatorId;
     this.pickUpPersonId = pickUpPersonId;
@@ -57,5 +62,6 @@ export class ExchangeSimpleDto {
     this.friendName = friendName;
     this.exchangeNBame = exchangeNBame;
     this.pickUpDate = pickUpDate;
+    this.exchangeState = exchangeState;
   }
 }
