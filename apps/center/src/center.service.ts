@@ -17,6 +17,7 @@ import { Center } from '@app/database/entities/center.entity';
 import { Between, Repository } from 'typeorm';
 import { frontManagementCommands } from '@app/tcp/frontMessagePatterns/front.management.message.patterns';
 import { Front } from '@app/database';
+import { FrontDto } from 'libs/dtos/frontDtos/front.dto';
 
 @Injectable()
 export class CenterService implements OnModuleInit {
@@ -178,7 +179,8 @@ export class CenterService implements OnModuleInit {
     try {
       // Fetch all centers from the database using TypeORM
       const centers = await this.centerRepository.find({
-        select: ['id', 'latitude', 'longitude'], // Select specific fields
+        select: ['id', 'latitude', 'longitude'],
+        relations: ['front'],
       });
 
       // Map the centers to DTOs if necessary
@@ -188,6 +190,7 @@ export class CenterService implements OnModuleInit {
             center.longitude,
             center.latitude,
             center.id.toString(),
+            new FrontDto(center.front),
           ),
       );
 
