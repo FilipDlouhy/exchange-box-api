@@ -58,12 +58,6 @@ export class ItemService {
   async createItem(
     createUpdateItemDto: CreateUpdateItemIntDto,
   ): Promise<ItemDto> {
-    const queryRunner =
-      this.itemRepository.manager.connection.createQueryRunner();
-
-    await queryRunner.connect();
-    await queryRunner.startTransaction();
-
     try {
       const { friend, user }: { friend: User; user: User } =
         await this.userClient
@@ -76,7 +70,7 @@ export class ItemService {
           )
           .toPromise();
 
-      const newItem = queryRunner.manager.create(Item, {
+      const newItem = this.itemRepository.create({
         user: user,
         friend: friend,
         height: createUpdateItemDto.height,
@@ -86,9 +80,7 @@ export class ItemService {
         width: createUpdateItemDto.width,
       });
 
-      await queryRunner.manager.save(newItem);
-
-      await queryRunner.commitTransaction();
+      await this.itemRepository.save(newItem);
 
       if (createUpdateItemDto.images) {
         const uploadImageDto = new UploadItemImageDto();
@@ -108,23 +100,22 @@ export class ItemService {
       sendNotification(this.notificationClient, {
         userId: friend.id.toString(),
         nameOfTheService: 'item-service',
-        text: `Your friend ${user.name} has created item named ${newItem.name}`,
+        text: `Your friend ${user.name} has created item named ${createUpdateItemDto.name}`,
         initials: 'IC',
       });
 
       const savedItem = await this.itemRepository.findOne({
         where: { id: newItem.id },
+        relations: ['user', 'friend'],
       });
 
       return toItemDto(savedItem);
     } catch (error) {
-      await queryRunner.rollbackTransaction();
       console.error('Error creating item:', error);
       throw error;
-    } finally {
-      await queryRunner.release();
     }
   }
+
   /**
    * Asynchronously retrieves all items from the 'item' table in the  database.
    *
@@ -169,7 +160,7 @@ export class ItemService {
 
       const items = await this.itemRepository.find({
         where: forgotten
-          ? { friend: { id: 2 }, name: Like(`%${query.search}%`) }
+          ? { friend: { id: userId }, name: Like(`%${query.search}%`) }
           : { user: { id: userId }, name: Like(`%${query.search}%`) },
         relations: ['user', 'friend'],
         skip: page,
