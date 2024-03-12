@@ -101,9 +101,9 @@ export class CenterService implements OnModuleInit {
    * Retrieves a specific center from the database, including its associated front.
    *
    * @param {number} id - The ID of the center to be retrieved.
-   * @returns {Promise<CenterWithFrontDto>} - Returns a promise that resolves to the center with its associated front.
+   * @returns {Promise<CenterDto>} - Returns a promise that resolves to the center with its associated front.
    */
-  async getCenter(id: number): Promise<CenterWithFrontDto> {
+  async getCenter(id: number): Promise<CenterDto> {
     try {
       // Find the center with the specified id and join with the front entity
       const center = await this.centerRepository.findOne({
@@ -116,7 +116,7 @@ export class CenterService implements OnModuleInit {
       }
 
       // Prepare the CenterWithFrontDto
-      const centerWithFrontDto = new CenterWithFrontDto(
+      const centerWithFrontDto = new CenterDto(
         center.latitude,
         center.longitude,
         center.id.toString(),
@@ -134,11 +134,8 @@ export class CenterService implements OnModuleInit {
    * Updates a center record in the database.
    *
    * @param {UpdateCenterDto} updateCenterDto - The data transfer object containing the center's updated information.
-   * @returns {Promise<CenterWithFrontDto>} - Returns a promise that resolves to the updated center, including its associated front.
    */
-  async updateCenter(
-    updateCenterDto: UpdateCenterDto,
-  ): Promise<CenterWithFrontDto> {
+  async updateCenter(updateCenterDto: UpdateCenterDto): Promise<CenterDto> {
     try {
       // First, find the center by ID
       const center = await this.centerRepository.findOne({
@@ -156,11 +153,11 @@ export class CenterService implements OnModuleInit {
       center.longitude = updateCenterDto.longitude;
 
       const updatedCenter = await this.centerRepository.save(center);
-      const centerWithFrontDto = new CenterWithFrontDto(
+      const centerWithFrontDto = new CenterDto(
         updatedCenter.latitude,
         updatedCenter.longitude,
         updatedCenter.id.toString(),
-        updatedCenter.front,
+        new FrontDto(updatedCenter.front),
       );
 
       return centerWithFrontDto;
@@ -365,6 +362,7 @@ export class CenterService implements OnModuleInit {
         savedCenter.latitude,
         savedCenter.longitude,
         savedCenter.id.toString(),
+        new FrontDto(frontResponse),
       );
     } catch (err) {
       console.error('Error in createCenter function:', err);

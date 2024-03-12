@@ -15,6 +15,7 @@ import { Box } from '@app/database/entities/box.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { IsNull, Not, Repository } from 'typeorm';
 import { exchangeQueueManagementCommands } from '@app/tcp/exchnageMessagePatterns/exchnage.queue.message.patterns';
+import { exchnageStatus } from 'libs/dtos/exchange.status.dto';
 @Injectable()
 export class BoxService implements OnModuleInit {
   private readonly exchangeClient;
@@ -89,23 +90,17 @@ export class BoxService implements OnModuleInit {
    */
   async createBoxForExchange() {
     try {
-      // Calculate the time difference to determine when the box can be opened
       const currentDate = new Date();
-      // Add 2 hours (2 * 60 * 60 * 1000 milliseconds) to it
       const timeToPutItemsIntoTheBox = new Date(
         currentDate.getTime() + 2 * 60 * 60 * 1000,
       );
-      // Insert the new box data into the 'box' table
       const box = new Box();
       box.timeToPutInBox = timeToPutItemsIntoTheBox;
 
-      // Save the new box entity to the database
       const insertedBox = await this.boxRepository.save(box);
 
-      // Set a timeout to process the message after a delay based on the time to open the box
       const deleteExchangeFromFront = setTimeout(async () => {
         try {
-          // Check if the box has items in it
           await this.exchangeClient
             .send(
               {
@@ -122,10 +117,8 @@ export class BoxService implements OnModuleInit {
           await this.boxRepository.delete(insertedBox.id);
         } catch (timeoutError) {
           console.error('Error during timeout processing:', timeoutError);
-          // Handle timeout error
         }
       }, 7200000);
-      // Register the timeout in the scheduler
       this.schedulerRegistry.addTimeout(
         `timeout set for box ${insertedBox.id}`,
         deleteExchangeFromFront,
@@ -143,37 +136,43 @@ export class BoxService implements OnModuleInit {
    @param {number} id - The exchange's ID linked to the box.
    @returns {Promise<string>} - Resolves with the generated password.
    */
-
-  async generateCodeForBoxToOpen(id: number): Promise<string> {
+  async generateCodeForBoxToOpen(
+    id: number,
+    exchangeState: string,
+  ): Promise<string> {
     try {
-      // Get the current time and calculate the future time when the box can be opened
-      const currentTime = new Date();
-      const futureTime = new Date(currentTime.getTime() + 60 * 1000); // 60 seconds from now
-
-      // Generate a random password for the box
-      const passwordToOpenBox = generateRandomString(4);
+      const passwordToOpenBox = generateRandomString(8);
       const hashedPassword = await bcrypt.hash(passwordToOpenBox, 10);
 
-      // Find the box by exchange_id
-      const box = await this.boxRepository.findOne({ where: { id: id } });
+      const box = await this.boxRepository.findOne({ where: { id } });
 
       if (!box) {
         throw new NotFoundException(`No box found with exchange id ${id}`);
       }
-
-      if (box.itemsInBox) {
+      if (box.boxOpenCode != null) {
+        throw new ConflictException('Box has code already generated');
+      }
+      if (box.itemsInBox && exchangeState !== exchnageStatus.inBox) {
         throw new ConflictException('Items are already in the box');
       }
 
-      // Update the 'box' entity with the new hashed password and opening time
       box.boxOpenCode = hashedPassword;
-      box.timeToPutInBox = futureTime;
+
       await this.boxRepository.save(box);
 
-      // Return the plain text password for use elsewhere
+      const timeoutId = `clearCode-${box.id}`;
+      const clearCodeTimeout = setTimeout(async () => {
+        const boxToUpdate = await this.boxRepository.findOne({ where: { id } });
+        if (boxToUpdate) {
+          boxToUpdate.boxOpenCode = null;
+          await this.boxRepository.save(boxToUpdate);
+          console.log(`Box open code cleared for box with id ${id}`);
+        }
+      }, 6000);
+
+      this.schedulerRegistry.addTimeout(timeoutId, clearCodeTimeout);
       return passwordToOpenBox;
     } catch (error) {
-      // Log and rethrow the error for further handling
       console.error('Error in generateCodeForBoxToOpen function:', error);
       throw error;
     }
@@ -188,7 +187,7 @@ export class BoxService implements OnModuleInit {
    * @param {number} openBoxDto.id - Unique identifier of the associated exchange.
    * @param {string} openBoxDto.code - Security code for box opening.
    */
-  async openBox(openBoxDto: OpenBoxDto) {
+  async openBox(openBoxDto: OpenBoxDto, isFromCreator: boolean) {
     try {
       const box = await this.boxRepository.findOne({
         where: { id: openBoxDto.id },
@@ -200,29 +199,28 @@ export class BoxService implements OnModuleInit {
 
       const { boxOpenCode, timeToPutInBox } = box;
 
-      // Checking if the current time allows for the box to be opened
       const currentTime = new Date();
-      if (currentTime < new Date(timeToPutInBox)) {
+
+      if (isFromCreator && currentTime > new Date(timeToPutInBox)) {
         throw new UnauthorizedException('Box cannot be opened at this time');
       }
 
-      // Comparing the provided code with the stored box open code
       const codeMatches = await bcrypt.compare(
         openBoxDto.openBoxCode,
         boxOpenCode,
       );
+
       if (!codeMatches) {
         throw new UnauthorizedException('Incorrect code');
       }
 
-      // Updating the box status to open in the database
       box.boxOpenCode = null;
       box.itemsInBox = true;
       box.timeToPutInBox = null;
       box.openOrClosed = true;
+
       await this.boxRepository.save(box);
 
-      // Setting a timeout to automatically close the box after 60 seconds
       const closeBox = setTimeout(async () => {
         try {
           const box = await this.boxRepository.findOne({
@@ -241,24 +239,24 @@ export class BoxService implements OnModuleInit {
           .send(
             { cmd: exchangeQueueManagementCommands.changeExchangeStatus.cmd },
             {
-              exchange_state: 'inBox',
+              exchangeState: isFromCreator
+                ? exchnageStatus.inBox
+                : exchnageStatus.done,
               id: openBoxDto.id,
             },
           )
           .toPromise();
       }, 6000);
 
-      // Registering the timeout in the scheduler
-      this.schedulerRegistry.addTimeout('box is closing', closeBox);
+      this.schedulerRegistry.addTimeout(`box${box.id} is closing`, closeBox);
     } catch (error) {
-      // Handling any errors that occur during the box opening
       console.error('Error in openBox function:', error);
 
       if (
         error instanceof NotFoundException ||
         error instanceof UnauthorizedException
       ) {
-        throw error; // Re-throw specific exceptions with their messages
+        throw error;
       } else {
         throw new InternalServerErrorException(
           'Failed to open the box. Please try again later.',

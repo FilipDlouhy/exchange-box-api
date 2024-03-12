@@ -25,32 +25,30 @@ export class BoxController {
   }
 
   @MessagePattern(boxMessagePatterns.generateCodeForBoxToOpen)
-  @UsePipes(
-    new ValidationPipe({
-      transform: true,
-      whitelist: true,
-      forbidNonWhitelisted: true,
-    }),
-  )
-  async generateCodeForBoxToOpen({ id }: { id: number }) {
+  async generateCodeForBoxToOpen({
+    id,
+    exchangeState,
+  }: {
+    id: number;
+    exchangeState: string;
+  }) {
     try {
-      return this.boxService.generateCodeForBoxToOpen(id);
+      return this.boxService.generateCodeForBoxToOpen(id, exchangeState);
     } catch (error) {
       throw new RpcException(error.message);
     }
   }
 
   @MessagePattern(boxMessagePatterns.openBox)
-  @UsePipes(
-    new ValidationPipe({
-      transform: true,
-      whitelist: true,
-      forbidNonWhitelisted: true,
-    }),
-  )
-  async openBox(openBoxDto: OpenBoxDto) {
+  async openBox({
+    openBoxDto,
+    isFromCreator,
+  }: {
+    openBoxDto: OpenBoxDto;
+    isFromCreator: boolean;
+  }) {
     try {
-      return this.boxService.openBox(openBoxDto);
+      return this.boxService.openBox(openBoxDto, isFromCreator);
     } catch (error) {
       throw new RpcException(error.message);
     }

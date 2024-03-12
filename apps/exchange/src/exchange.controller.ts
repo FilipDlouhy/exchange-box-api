@@ -12,6 +12,7 @@ import { exchangeQueueManagementCommands } from '@app/tcp/exchnageMessagePattern
 import { ExchangeUtilsService } from './exchange.utils.service';
 import { ExchangeSimpleDto } from 'libs/dtos/exchangeDtos/exchange.simple.dto';
 import { FullExchangeDto } from 'libs/dtos/exchangeDtos/full.exchange.dto';
+import { OpenBoxDto } from 'libs/dtos/boxDtos/open.box.dto';
 
 @Controller()
 export class ExchangeController {
@@ -154,13 +155,6 @@ export class ExchangeController {
   }
 
   @MessagePattern(exchangeQueueManagementCommands.changeExchangeStatus)
-  @UsePipes(
-    new ValidationPipe({
-      transform: true,
-      whitelist: true,
-      forbidNonWhitelisted: true,
-    }),
-  )
   async changeExchangeStatus(changeExchangeStatus: ChangeExchangeStatusDto) {
     try {
       return await this.exchangeService.changeExchangeStatus(
@@ -170,10 +164,40 @@ export class ExchangeController {
       throw new RpcException(error.message);
     }
   }
+
   @MessagePattern(exchangeQueueManagementCommands.getBoxSize)
   async getBoxSize({ id }: { id: number }): Promise<string> {
     try {
       return await this.exchangeService.getBoxSize(id);
+    } catch (error) {
+      throw new RpcException(error.message);
+    }
+  }
+
+  @MessagePattern(exchangeQueueManagementCommands.getCodeForExchnageBox)
+  async getCodeForExchnageBox({ id }: { id: number }): Promise<string> {
+    try {
+      return await this.exchangeService.getCodeForExchnageBox(id);
+    } catch (error) {
+      throw new RpcException(error.message);
+    }
+  }
+
+  @MessagePattern(exchangeQueueManagementCommands.openBoxViaExchnageCreator)
+  async openBoxViaExchnageCreator(openBoxDto: OpenBoxDto) {
+    try {
+      await this.exchangeService.openBoxViaExhcnage(openBoxDto, true);
+    } catch (error) {
+      throw new RpcException(error.message);
+    }
+  }
+
+  @MessagePattern(
+    exchangeQueueManagementCommands.openBoxViaExchnagePickUpPerson,
+  )
+  async openBoxViaExchnagePickUpPerson(openBoxDto: OpenBoxDto) {
+    try {
+      await this.exchangeService.openBoxViaExhcnage(openBoxDto, false);
     } catch (error) {
       throw new RpcException(error.message);
     }

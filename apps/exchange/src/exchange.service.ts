@@ -9,6 +9,8 @@ import { exchnageStatus } from 'libs/dtos/exchange.status.dto';
 import {
   BadRequestException,
   ConflictException,
+  HttpException,
+  HttpStatus,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
@@ -24,18 +26,21 @@ import { friendManagementCommands } from '@app/tcp/userMessagePatterns/friend.ma
 import { ExchangeUtilsService } from './exchange.utils.service';
 import { sendNotification } from '@app/tcp/notifications/notification.helper';
 import { ExchangeSimpleDto } from 'libs/dtos/exchangeDtos/exchange.simple.dto';
-import { taskManagementCommands } from '@app/tcp/frontMessagePatterns/front.task.management.message.patterns';
 import { centerMessagePatterns } from '@app/tcp/centerMessagePatterns/center.message.patterns';
 import { FullExchangeDto } from 'libs/dtos/exchangeDtos/full.exchange.dto';
 import { ExchangeUserDto } from 'libs/dtos/exchangeDtos/exchange.user.dto';
 import { ItemSimpleDto } from 'libs/dtos/itemDtos/item.simple.dto';
+import { boxMessagePatterns } from '@app/tcp/boxMessagePatterns/box.message.patterns';
+import { OpenBoxDto } from 'libs/dtos/boxDtos/open.box.dto';
 
 @Injectable()
 export class ExchangeService {
   private readonly userClient;
   private readonly itemClient;
   private readonly notificationClient;
+  private readonly boxClient;
   private readonly centerClient;
+
   constructor(
     @InjectRepository(Exchange)
     private readonly exchangeRepository: Repository<Exchange>,
@@ -72,6 +77,14 @@ export class ExchangeService {
         port: 3011,
       },
     });
+
+    this.boxClient = ClientProxyFactory.create({
+      transport: Transport.TCP,
+      options: {
+        host: 'localhost',
+        port: 3008,
+      },
+    });
   }
 
   /**
@@ -102,7 +115,7 @@ export class ExchangeService {
       }
 
       const exchange = new Exchange();
-      exchange.exchangeState = exchnageStatus.unscheduled;
+      exchange.exchangeState = exchnageStatus.inBox;
 
       const { friend, items, user } = await this.getItemsAndUsers(
         exchange,
@@ -148,6 +161,7 @@ export class ExchangeService {
         updatedExchange.friend.imageUrl,
         updatedExchange.friend.name,
         updatedExchange.name,
+        updatedExchange.exchangeState,
       );
     } catch (error) {
       if (
@@ -292,7 +306,6 @@ export class ExchangeService {
       // Log and handle errors that occur during the retrieval
       console.error('Failed to retrieve exchanges:', error);
 
-      // Check if it's a TypeORM NotFoundException and re-throw with a specific message
       if (error instanceof NotFoundException) {
         throw new NotFoundException('Exchanges not found.');
       }
@@ -393,7 +406,6 @@ export class ExchangeService {
           box: { id: changeExchangeStatus.id },
         },
       });
-
       if (!exchange) {
         throw new NotFoundException(
           `Exchange with Box ID ${changeExchangeStatus.id} not found`,
@@ -432,6 +444,77 @@ export class ExchangeService {
     } catch (err) {
       console.error('An error occurred while fetching box size:', err);
       throw new Error('Error fetching box size');
+    }
+  }
+
+  /**
+   * Retrieves a code for opening a box associated with a given exchange.
+   *
+   * @param id The ID of the exchange.
+   * @returns A promise that resolves to the opening code for the associated box.
+   */
+  async getCodeForExchnageBox(id: number): Promise<string> {
+    try {
+      const exchange = await this.exchangeRepository.findOne({
+        where: { id },
+        relations: ['box', 'friend', 'user'],
+      });
+
+      if (!exchange || !exchange.box) {
+        throw new Error('Exchange or associated box not found');
+      }
+
+      return await this.boxClient
+        .send(
+          { cmd: boxMessagePatterns.generateCodeForBoxToOpen.cmd },
+          {
+            id: exchange.box.id,
+            exchangeState: exchange.exchangeState,
+          },
+        )
+        .toPromise();
+    } catch (error) {
+      console.error(
+        `Error getting code for exchange box with ID ${id}:`,
+        error,
+      );
+      throw error;
+    }
+  }
+  /**
+   * Opens a box associated with an exchange by sending a command to the box client.
+   *
+   * @param openBoxDto DTO containing box information.
+   * @param isFromCreator Boolean indicating if action is initiated by exchange creator.
+   */
+  async openBoxViaExhcnage(openBoxDto: OpenBoxDto, isFromCreator: boolean) {
+    try {
+      const exchange = await this.exchangeRepository.findOne({
+        where: { id: openBoxDto.id },
+        relations: ['box', 'friend', 'user'],
+      });
+
+      if (!exchange) {
+        throw new NotFoundException(
+          `Exchange with ID ${openBoxDto.id} not found.`,
+        );
+      }
+
+      openBoxDto.id = exchange.box.id;
+
+      await this.boxClient
+        .send(
+          { cmd: boxMessagePatterns.openBox.cmd },
+          { openBoxDto, isFromCreator },
+        )
+        .toPromise();
+    } catch (error) {
+      console.error('Error in openBoxViaExchange:', error);
+
+      throw new HttpException(
+        'Failed to open box due to internal error.',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
   }
 
