@@ -184,7 +184,7 @@ export class ItemService {
    * @returns A boolean indicating if the deletion was successful.
    * @throws Error if the item is part of an exchange.
    */
-  async getUserItemSimple(userId: number): Promise<ItemSimpleDto[]> {
+  async getUserItemSimpleForExchange(userId: number): Promise<ItemSimpleDto[]> {
     try {
       const items = await this.itemRepository.find({
         where: {

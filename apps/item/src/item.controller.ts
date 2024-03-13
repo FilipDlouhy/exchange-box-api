@@ -239,8 +239,12 @@ export class ItemController {
     }
   }
 
-  @MessagePattern(itemExchangeManagementCommands.getUserItemSimple)
-  async getUserItemSimple({ id }: { id: number }): Promise<ItemSimpleDto[]> {
+  @MessagePattern(itemExchangeManagementCommands.getUserItemSimpleForExchange)
+  async getUserItemSimpleForExchange({
+    id,
+  }: {
+    id: number;
+  }): Promise<ItemSimpleDto[]> {
     try {
       const cacheKey = `userSimpleItems:${id}`;
 
@@ -251,7 +255,7 @@ export class ItemController {
         return cachedItems;
       }
 
-      const items = await this.itemService.getUserItemSimple(id);
+      const items = await this.itemService.getUserItemSimpleForExchange(id);
 
       await this.cacheManager.set(cacheKey, items, 18000);
       return items;
