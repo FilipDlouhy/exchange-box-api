@@ -43,7 +43,7 @@ export class ExchangeController {
   )
   async deleteExchange({ id }: { id: number }) {
     try {
-      return await this.exchangeService.deleteExchange(id);
+      return await this.exchangeUtilsService.deleteExchangeFromFront(id, true);
     } catch (error) {
       throw new RpcException(error.message);
     }
@@ -139,16 +139,18 @@ export class ExchangeController {
   }
 
   @MessagePattern(exchangeQueueManagementCommands.deleteExchangeFromFront)
-  @UsePipes(
-    new ValidationPipe({
-      transform: true,
-      whitelist: true,
-      forbidNonWhitelisted: true,
-    }),
-  )
-  async deleteExchangeFromFront({ boxId }: { boxId: number }) {
+  async deleteExchangeFromFront({
+    boxId,
+    isExchange,
+  }: {
+    boxId: number;
+    isExchange: boolean;
+  }) {
     try {
-      return await this.exchangeUtilsService.deleteExchangeFromFront(boxId);
+      return await this.exchangeUtilsService.deleteExchangeFromFront(
+        boxId,
+        isExchange,
+      );
     } catch (error) {
       throw new RpcException(error.message);
     }

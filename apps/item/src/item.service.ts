@@ -406,22 +406,26 @@ export class ItemService {
    * @param removeExchangeIdToItemDto - DTO containing item IDs to remove exchange references from.
    * @returns boolean - Returns true if the operation is successful.
    */
-  async deleteExchangeFromItems(itemIds: number[]): Promise<boolean> {
+  async deleteExchangeFromItems(
+    itemIds: number[],
+    isExhcnageDone: boolean,
+  ): Promise<boolean> {
     try {
-      // Find the items by their IDs
       const items = await this.itemRepository.findByIds(itemIds);
 
       if (!items || items.length === 0) {
         throw new Error('No items found.');
       }
 
-      // Set the Exchange entity to null for each item
       for (const item of items) {
         item.exchange = null;
       }
 
-      // Save the updated items with null Exchange
-      await this.itemRepository.save(items);
+      if (isExhcnageDone) {
+        await this.itemRepository.remove(items);
+      } else {
+        await this.itemRepository.save(items);
+      }
 
       return true;
     } catch (err) {

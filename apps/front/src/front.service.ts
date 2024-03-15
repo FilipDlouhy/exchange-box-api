@@ -115,7 +115,7 @@ export class FrontService {
    */
   async deleteTaskFromFront(
     deleteExchnageFromFront: DeleteExchangeFromFrontDto,
-  ): Promise<boolean> {
+  ) {
     const size = deleteExchnageFromFront.boxSize;
     const frontId = deleteExchnageFromFront.frontId;
 
@@ -153,11 +153,8 @@ export class FrontService {
 
       // Update the 'front' entity
       await this.frontRepository.save(front);
-
-      return true;
     } catch (err) {
       console.error('Error in deleteTaskFromFront function:', err);
-      return false;
     }
   }
 

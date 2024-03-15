@@ -32,11 +32,9 @@ export class FrontController {
   @MessagePattern(taskManagementCommands.deleteTaskFromFront)
   async deleteTaskFromFront(
     deleteExchnageFromFront: DeleteExchangeFromFrontDto,
-  ): Promise<boolean> {
+  ) {
     try {
-      return await this.frontService.deleteTaskFromFront(
-        deleteExchnageFromFront,
-      );
+      await this.frontService.deleteTaskFromFront(deleteExchnageFromFront);
     } catch (error) {
       throw new RpcException(error.message);
     }

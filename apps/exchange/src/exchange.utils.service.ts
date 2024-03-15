@@ -13,17 +13,26 @@ import { taskManagementCommands } from '@app/tcp/frontMessagePatterns/front.task
 import { centerMessagePatterns } from '@app/tcp/centerMessagePatterns/center.message.patterns';
 import { Front } from '@app/database';
 import { ExchangeSimpleDto } from 'libs/dtos/exchangeDtos/exchange.simple.dto';
+import { itemExchangeManagementCommands } from '@app/tcp/itemMessagePatterns/item.exchange.management.message.patterns';
 
 @Injectable()
 export class ExchangeUtilsService {
   private readonly frontClient;
   private readonly boxClient;
   private readonly centerCilent;
+  private readonly itemClient;
 
   constructor(
     @InjectRepository(Exchange)
     private readonly exchangeRepository: Repository<Exchange>,
   ) {
+    this.itemClient = ClientProxyFactory.create({
+      transport: Transport.TCP,
+      options: {
+        host: 'localhost',
+        port: 3004,
+      },
+    });
     this.frontClient = ClientProxyFactory.create({
       transport: Transport.TCP,
       options: {
@@ -150,20 +159,28 @@ export class ExchangeUtilsService {
    * @param {number} boxId - Unique identifier of the box associated with the exchange to be deleted.
    * @returns {Promise<boolean>} A promise that resolves to `true` if the exchange is successfully deleted from the front.
    */
-  async deleteExchangeFromFront(boxId: number): Promise<boolean> {
+  async deleteExchangeFromFront(id: number, isExhcnage: boolean) {
     try {
       // Find the exchange by the associated box ID and include the 'front' relation
-      const exchange = await this.exchangeRepository.findOne({
-        where: { box: { id: boxId } },
-        relations: ['front'],
-      });
+      const exchange = isExhcnage
+        ? await this.exchangeRepository.findOne({
+            where: { id: id },
+            relations: ['front', 'items'],
+          })
+        : await this.exchangeRepository.findOne({
+            where: { box: { id: id } },
+            relations: ['front', 'items'],
+          });
 
       if (!exchange) {
-        throw new Error(`Exchange with box ID ${boxId} not found.`);
+        throw new Error(`Exchange with box ID ${id} not found.`);
       }
 
-      // Retrieve the front ID for the task and attempt to delete the task from the front
-      const wasExchangeDeleted: boolean = await this.frontClient
+      const itemIds = exchange.items.map((item) => {
+        return item.id;
+      });
+
+      await this.frontClient
         .send(
           { cmd: taskManagementCommands.deleteTaskFromFront.cmd },
           {
@@ -174,16 +191,22 @@ export class ExchangeUtilsService {
         )
         .toPromise();
 
-      if (!wasExchangeDeleted) {
-        throw new Error('Failed to delete the task from the front.');
-      }
+      await this.itemClient
+        .send(
+          {
+            cmd: itemExchangeManagementCommands.deleteExchangeFromItems.cmd,
+          },
+          {
+            itemIds: itemIds,
+            isExhcnageDone:
+              exchange.exchangeState === exchnageStatus.done ? true : false,
+          },
+        )
+        .toPromise();
 
-      // Clear the 'front' and 'box' associations from the exchange and save it
       exchange.front = null;
       exchange.box = null;
-      await this.exchangeRepository.save(exchange);
-
-      return true;
+      await this.exchangeRepository.remove(exchange);
     } catch (error) {
       console.error('Error deleting exchange from the front:', error);
       throw error;

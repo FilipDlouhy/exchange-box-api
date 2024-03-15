@@ -184,20 +184,18 @@ export class ItemController {
   }
 
   @MessagePattern(itemExchangeManagementCommands.deleteExchangeFromItems)
-  @UsePipes(
-    new ValidationPipe({
-      transform: true,
-      whitelist: true,
-      forbidNonWhitelisted: true,
-    }),
-  )
   async deleteExchangeFromItems({
     itemIds,
+    isExchangeDone,
   }: {
     itemIds: number[];
+    isExchangeDone: boolean;
   }): Promise<boolean> {
     try {
-      return await this.itemService.deleteExchangeFromItems(itemIds);
+      return await this.itemService.deleteExchangeFromItems(
+        itemIds,
+        isExchangeDone,
+      );
     } catch (error) {
       throw new RpcException(error.message);
     }

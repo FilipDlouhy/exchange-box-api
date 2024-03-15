@@ -32,6 +32,7 @@ import { ExchangeUserDto } from 'libs/dtos/exchangeDtos/exchange.user.dto';
 import { ItemSimpleDto } from 'libs/dtos/itemDtos/item.simple.dto';
 import { boxMessagePatterns } from '@app/tcp/boxMessagePatterns/box.message.patterns';
 import { OpenBoxDto } from 'libs/dtos/boxDtos/open.box.dto';
+import { taskManagementCommands } from '@app/tcp/frontMessagePatterns/front.task.management.message.patterns';
 
 @Injectable()
 export class ExchangeService {
@@ -40,6 +41,7 @@ export class ExchangeService {
   private readonly notificationClient;
   private readonly boxClient;
   private readonly centerClient;
+  private readonly frontClient;
 
   constructor(
     @InjectRepository(Exchange)
@@ -53,7 +55,13 @@ export class ExchangeService {
         port: 3006,
       },
     });
-
+    this.frontClient = ClientProxyFactory.create({
+      transport: Transport.TCP,
+      options: {
+        host: 'localhost',
+        port: 3003,
+      },
+    });
     this.centerClient = ClientProxyFactory.create({
       transport: Transport.TCP,
       options: {
@@ -172,40 +180,6 @@ export class ExchangeService {
       }
       console.error('Error creating exchange:', error);
       throw new InternalServerErrorException('Failed to create exchange');
-    }
-  }
-
-  /**
-   * Deletes an exchange and removes its references from items.
-   * @param deleteExchangeDto - DTO containing the ID of the exchange to be deleted and associated item IDs.
-   */
-  async deleteExchange(id: number) {
-    try {
-      // Find the exchange by its ID
-      const exchange = await this.exchangeRepository.findOne({
-        where: { id: id },
-        relations: ['front'],
-      });
-
-      if (!exchange) {
-        throw new NotFoundException('Exchange not found');
-      }
-
-      if (exchange.front !== null) {
-        throw new ConflictException('Exchange is in front');
-      }
-
-      // Delete the exchange from the database
-      await this.exchangeRepository.remove(exchange);
-    } catch (error) {
-      if (
-        error instanceof NotFoundException ||
-        error instanceof ConflictException
-      ) {
-        throw error;
-      }
-      console.error('Error in deleteExchange:', error);
-      throw new InternalServerErrorException('Failed to delete exchange');
     }
   }
 
@@ -412,6 +386,10 @@ export class ExchangeService {
         );
       }
 
+      if (changeExchangeStatus.exchangeState === exchnageStatus.done) {
+        this.removeExhcangeFromFront(exchange);
+      }
+
       exchange.exchangeState = changeExchangeStatus.exchangeState;
 
       await this.exchangeRepository.save(exchange);
@@ -565,31 +543,67 @@ export class ExchangeService {
     }
   }
 
+  /**
+   * Retrieves user and friend information along with a list of items involved in an exchange.
+   * @param exchange The exchange context for which items and users are being fetched.
+   * @param friendId The ID of the friend involved in the exchange.
+   * @param userId The ID of the user initiating the request.
+   * @param itemIds An array of item IDs involved in the exchange.
+   * @returns A promise that resolves to an object containing the user, friend, and items involved in the exchange.
+   */
   private async getItemsAndUsers(
     exchange: Exchange,
     friendId: number,
     userId: number,
     itemIds: number[],
   ): Promise<{ user: User; friend: User; items: Item[] }> {
-    // Fetch user and friend details
-    const { user, friend }: { user: User; friend: User } = await this.userClient
-      .send(
-        { cmd: friendManagementCommands.getUserWithFriend.cmd },
-        {
-          userId: userId,
-          friendId: friendId,
-        },
-      )
-      .toPromise();
+    try {
+      const { user, friend }: { user: User; friend: User } =
+        await this.userClient
+          .send(
+            { cmd: friendManagementCommands.getUserWithFriend.cmd },
+            {
+              userId: userId,
+              friendId: friendId,
+            },
+          )
+          .toPromise();
 
-    // Associate items with the exchange
-    const items: Item[] = await this.itemClient
-      .send(
-        { cmd: itemExchangeManagementCommands.addExchangeToItems.cmd },
-        { itemIds: itemIds, exchange: exchange },
-      )
-      .toPromise();
+      const items: Item[] = await this.itemClient
+        .send(
+          { cmd: itemExchangeManagementCommands.addExchangeToItems.cmd },
+          { itemIds: itemIds, exchange: exchange },
+        )
+        .toPromise();
 
-    return { user, friend, items };
+      return { user, friend, items };
+    } catch (error) {
+      console.error('Failed to get items and users', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Attempts to remove an exchange entry from the front.
+   * This involves sending a command to the front client to delete a task associated with a given exchange.
+   * @param exchange The exchange object to be removed. It contains the box size, front id, and exchange id.
+   * @returns A promise that resolves when the exchange is successfully removed, or rejects if an error occurs.
+   */
+  private async removeExhcangeFromFront(exchange: Exchange) {
+    try {
+      await this.frontClient
+        .send(
+          { cmd: taskManagementCommands.deleteTaskFromFront.cmd },
+          {
+            boxSize: exchange.boxSize,
+            front: exchange.front.id,
+            id: exchange.id,
+          },
+        )
+        .toPromise();
+    } catch (error) {
+      console.error('Failed to remove exchange from front', error);
+      throw error;
+    }
   }
 }

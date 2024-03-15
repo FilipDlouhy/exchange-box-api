@@ -56,24 +56,7 @@ export class BoxService implements OnModuleInit {
       await this.boxRepository.save(box);
 
       const deleteExchangeFromFront = setTimeout(async () => {
-        try {
-          await this.exchangeClient
-            .send(
-              {
-                cmd: exchangeQueueManagementCommands.deleteExchangeFromFront
-                  .cmd,
-              },
-              {
-                boxId: box.id,
-              },
-            )
-            .toPromise();
-          this.boxRepository.delete(box.id);
-          console.log('Box deleted successfully');
-        } catch (timeoutError) {
-          // Handle any errors during the timeout processing
-          console.error('Error during timeout processing:', timeoutError);
-        }
+        this.deleteExchnageViaBox(box.id);
       }, 7200000); // 2 hours in milliseconds
       // Register the timeout in the scheduler
       this.schedulerRegistry.addTimeout(
@@ -100,24 +83,7 @@ export class BoxService implements OnModuleInit {
       const insertedBox = await this.boxRepository.save(box);
 
       const deleteExchangeFromFront = setTimeout(async () => {
-        try {
-          await this.exchangeClient
-            .send(
-              {
-                cmd: exchangeQueueManagementCommands.deleteExchangeFromFront
-                  .cmd,
-              },
-              {
-                boxId: insertedBox.id,
-              },
-            )
-            .toPromise();
-          console.log('Box deleted successfully');
-
-          await this.boxRepository.delete(insertedBox.id);
-        } catch (timeoutError) {
-          console.error('Error during timeout processing:', timeoutError);
-        }
+        this.deleteExchnageViaBox(box.id);
       }, 7200000);
       this.schedulerRegistry.addTimeout(
         `timeout set for box ${insertedBox.id}`,
@@ -262,6 +228,35 @@ export class BoxService implements OnModuleInit {
           'Failed to open the box. Please try again later.',
         );
       }
+    }
+  }
+
+  /**
+   * Deletes an exchange associated with a specific box ID.
+   * This method performs two main actions:
+   * 1. It sends a command to the exchange client to delete the exchange from the front based on the given box ID.
+   *    The operation assumes the exchange is not directly associated with the action by setting `isExchange` to false.
+   * 2. If the first operation is successful, it proceeds to delete the box from the box repository.
+   * @param boxId The ID of the box associated with the exchange to be deleted.
+   */
+  async deleteExchnageViaBox(boxId: number) {
+    try {
+      await this.exchangeClient
+        .send(
+          {
+            cmd: exchangeQueueManagementCommands.deleteExchangeFromFront.cmd,
+          },
+          {
+            boxId: boxId,
+            isExchange: false,
+          },
+        )
+        .toPromise();
+
+      this.boxRepository.delete(boxId);
+      console.log('Box deleted successfully');
+    } catch (timeoutError) {
+      console.error('Error during timeout processing:', timeoutError);
     }
   }
 }
