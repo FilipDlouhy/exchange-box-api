@@ -7,7 +7,7 @@ import {
   IsDate,
 } from 'class-validator';
 
-export class CreateExchangeDto {
+export class CreateUpdateExchangeDto {
   @IsNotEmpty()
   @IsInt()
   public creatorId: number;
