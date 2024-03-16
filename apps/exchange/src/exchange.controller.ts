@@ -1,7 +1,7 @@
 import { Controller, Inject, UsePipes, ValidationPipe } from '@nestjs/common';
 import { ExchangeService } from './exchange.service';
 import { MessagePattern, RpcException } from '@nestjs/microservices';
-import { CreateExchangeDto } from 'libs/dtos/exchangeDtos/create.exchange.dto';
+import { CreateUpdateExchangeDto } from 'libs/dtos/exchangeDtos/create-update.exchange.dto';
 import { ExchangeDto } from 'libs/dtos/exchangeDtos/exchange.dto';
 import { UpdateExchangeDto } from 'libs/dtos/exchangeDtos/update.exchange.dto';
 import { ExchangeWithUserDto } from 'libs/dtos/exchangeDtos/exchange.with.users.dto';
@@ -24,7 +24,7 @@ export class ExchangeController {
 
   @MessagePattern(exchangeManagementCommands.createExchange)
   async createExchange(
-    createExchangeDto: CreateExchangeDto,
+    createExchangeDto: CreateUpdateExchangeDto,
   ): Promise<ExchangeSimpleDto> {
     try {
       return await this.exchangeService.createExchange(createExchangeDto);
@@ -50,18 +50,18 @@ export class ExchangeController {
   }
 
   @MessagePattern(exchangeManagementCommands.updateExchange)
-  @UsePipes(
-    new ValidationPipe({
-      transform: true,
-      whitelist: true,
-      forbidNonWhitelisted: true,
-    }),
-  )
-  async updateExchange(
-    updateExchangeDto: UpdateExchangeDto,
-  ): Promise<ExchangeDto> {
+  async updateExchange({
+    exchangeId,
+    updateExchangeDto,
+  }: {
+    updateExchangeDto: CreateUpdateExchangeDto;
+    exchangeId: number;
+  }): Promise<ExchangeSimpleDto> {
     try {
-      return await this.exchangeService.updateExchange(updateExchangeDto);
+      return await this.exchangeService.updateExchange(
+        updateExchangeDto,
+        exchangeId,
+      );
     } catch (error) {
       throw new RpcException(error.message);
     }

@@ -1,5 +1,5 @@
 import { ChangeExchangeStatusDto } from 'libs/dtos/exchangeDtos/change.exchange.status.dto';
-import { CreateExchangeDto } from 'libs/dtos/exchangeDtos/create.exchange.dto';
+import { CreateUpdateExchangeDto } from 'libs/dtos/exchangeDtos/create-update.exchange.dto';
 import { ExchangeDto } from 'libs/dtos/exchangeDtos/exchange.dto';
 import { ExchangeWithUserDto } from 'libs/dtos/exchangeDtos/exchange.with.users.dto';
 import { UpdateExchangeDto } from 'libs/dtos/exchangeDtos/update.exchange.dto';
@@ -101,7 +101,7 @@ export class ExchangeService {
    * @returns A promise that resolves to an ExchangeDto containing details of the created exchange.
    */
   async createExchange(
-    createExchangeDto: CreateExchangeDto,
+    createExchangeDto: CreateUpdateExchangeDto,
   ): Promise<ExchangeSimpleDto> {
     try {
       if (createExchangeDto.creatorId === createExchangeDto.pickUpPersonId) {
@@ -189,63 +189,94 @@ export class ExchangeService {
    * @returns ExchangeDto - The updated exchange data.
    */
   async updateExchange(
-    updateExchangeDto: UpdateExchangeDto,
-  ): Promise<ExchangeDto> {
+    updateExchangeDto: CreateUpdateExchangeDto,
+    exchangeId: number,
+  ): Promise<ExchangeSimpleDto> {
     try {
-      // Check if the items fit in the specified box size
-      const itemsFitInBox = await this.checkItemsFitInBox(
-        updateExchangeDto.itemIds,
-        updateExchangeDto.boxSize,
-        true,
-      );
+      const existingExchange = await this.exchangeRepository.findOne({
+        where: { id: exchangeId },
+      });
 
-      if (!itemsFitInBox) {
+      if (!existingExchange) {
+        throw new NotFoundException('Exchange not found');
+      }
+
+      if (updateExchangeDto.creatorId === updateExchangeDto.pickUpPersonId) {
+        throw new ConflictException(
+          'Creator and pick-up person cannot be the same.',
+        );
+      }
+
+      if (
+        !this.checkItemsFitInBox(
+          updateExchangeDto.itemIds,
+          updateExchangeDto.boxSize,
+          false,
+        )
+      ) {
         throw new BadRequestException(
           'Items do not fit in the specified box size.',
         );
       }
 
-      // Find the exchange to update
-      const exchange = await this.exchangeRepository.findOne({
-        where: { id: updateExchangeDto.id },
-        relations: ['user'],
-      });
-
-      if (!exchange) {
-        throw new NotFoundException('Exchange not found.');
-      }
-
-      const { friend, items } = await this.getItemsAndUsers(
-        exchange,
+      const { friend, items, user } = await this.getItemsAndUsers(
+        existingExchange,
         updateExchangeDto.pickUpPersonId,
-        exchange.user.id,
+        updateExchangeDto.creatorId,
         updateExchangeDto.itemIds,
       );
 
-      exchange.boxSize = updateExchangeDto.boxSize;
-      exchange.friend = friend;
-      exchange.items = items;
+      if (
+        existingExchange.pickUpDate !== new Date(updateExchangeDto.pickUpDate)
+      ) {
+        sendNotification(this.notificationClient, {
+          userId: user.id.toString(),
+          nameOfTheService: 'item-service',
+          text: `The exchange with ${friend.name} has been updated. Please review the new pick-up date and ensure your items are ready.`,
+          initials: 'IC',
+        });
 
-      const updatedExchange = await this.exchangeRepository.save(exchange);
+        sendNotification(this.notificationClient, {
+          userId: friend.id.toString(),
+          nameOfTheService: 'item-service',
+          text: `Your friend ${
+            user.name
+          } has updated the exchange details. The new pick-up date is ${existingExchange.pickUpDate.toLocaleString()}. Please check the updated details.`,
+          initials: 'IC',
+        });
+      }
 
-      return new ExchangeDto(
+      existingExchange.boxSize = updateExchangeDto.boxSize;
+      existingExchange.items = items;
+      existingExchange.user = user;
+      existingExchange.friend = friend;
+      existingExchange.name = updateExchangeDto.name;
+      existingExchange.pickUpDate = new Date(updateExchangeDto.pickUpDate);
+
+      const updatedExchange =
+        await this.exchangeRepository.save(existingExchange);
+
+      return new ExchangeSimpleDto(
         updatedExchange.user.id,
         updatedExchange.friend.id,
-        updatedExchange.boxSize,
-        updatedExchange.items,
+        updatedExchange.items.length,
         updatedExchange.id,
+        updatedExchange.pickUpDate,
+        updatedExchange.friend.imageUrl,
+        updatedExchange.friend.name,
+        updatedExchange.name,
+        updatedExchange.exchangeState,
       );
     } catch (error) {
-      console.error('Error updating exchange:', error);
-
       if (
+        error instanceof ConflictException ||
         error instanceof BadRequestException ||
         error instanceof NotFoundException
       ) {
         throw error;
       }
-
-      throw new BadRequestException('Failed to update exchange.');
+      console.error('Error updating exchange:', error);
+      throw new InternalServerErrorException('Failed to update exchange');
     }
   }
 
