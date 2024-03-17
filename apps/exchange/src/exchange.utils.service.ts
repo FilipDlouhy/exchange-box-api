@@ -212,30 +212,4 @@ export class ExchangeUtilsService {
       throw error;
     }
   }
-
-  /**
-   * Retrieves the box size from the "exchange" table based on the provided ID.
-   *
-   * @param id The ID of the exchange record to retrieve the box size for.
-   * @returns A Promise that resolves to the box size as a string.
-   * @throws An error if there's an issue with the  query or if the box size is not found.
-   */
-  async getBoxSize(id: number): Promise<string> {
-    try {
-      const exchange = await this.exchangeRepository.findOne({
-        where: { id },
-        select: ['boxSize'],
-      });
-
-      if (!exchange) {
-        console.error(`No exchange found with id ${id}`);
-        throw new NotFoundException(`Exchange with ID ${id} not found`);
-      }
-
-      return exchange.boxSize;
-    } catch (err) {
-      console.error('An error occurred while fetching box size:', err);
-      throw new Error('Error fetching box size');
-    }
-  }
 }
