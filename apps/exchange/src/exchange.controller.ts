@@ -2,9 +2,6 @@ import { Controller, Inject, UsePipes, ValidationPipe } from '@nestjs/common';
 import { ExchangeService } from './exchange.service';
 import { MessagePattern, RpcException } from '@nestjs/microservices';
 import { CreateUpdateExchangeDto } from 'libs/dtos/exchangeDtos/create-update.exchange.dto';
-import { ExchangeDto } from 'libs/dtos/exchangeDtos/exchange.dto';
-import { UpdateExchangeDto } from 'libs/dtos/exchangeDtos/update.exchange.dto';
-import { ExchangeWithUserDto } from 'libs/dtos/exchangeDtos/exchange.with.users.dto';
 import { ChangeExchangeStatusDto } from 'libs/dtos/exchangeDtos/change.exchange.status.dto';
 import { CACHE_MANAGER, Cache } from '@nestjs/cache-manager';
 import { exchangeManagementCommands } from '@app/tcp/exchnageMessagePatterns/exchange.management.message.patterns';
@@ -113,26 +110,6 @@ export class ExchangeController {
       await this.cacheManager.set(cacheKey, fullExchange, 18000);
 
       return fullExchange;
-    } catch (error) {
-      throw new RpcException(error.message);
-    }
-  }
-
-  @MessagePattern(exchangeManagementCommands.getAllExchanges)
-  async getAllExchanges(): Promise<ExchangeWithUserDto[]> {
-    try {
-      const cacheKey = 'allExchanges';
-      const cachedExchanges: ExchangeWithUserDto[] =
-        await this.cacheManager.get(cacheKey);
-
-      if (cachedExchanges) {
-        return cachedExchanges;
-      }
-
-      const allExchanges = await this.exchangeService.getAllExchanges();
-      await this.cacheManager.set(cacheKey, allExchanges, 18000);
-
-      return allExchanges;
     } catch (error) {
       throw new RpcException(error.message);
     }

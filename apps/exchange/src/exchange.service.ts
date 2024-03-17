@@ -1,8 +1,5 @@
 import { ChangeExchangeStatusDto } from 'libs/dtos/exchangeDtos/change.exchange.status.dto';
 import { CreateUpdateExchangeDto } from 'libs/dtos/exchangeDtos/create-update.exchange.dto';
-import { ExchangeDto } from 'libs/dtos/exchangeDtos/exchange.dto';
-import { ExchangeWithUserDto } from 'libs/dtos/exchangeDtos/exchange.with.users.dto';
-import { UpdateExchangeDto } from 'libs/dtos/exchangeDtos/update.exchange.dto';
 import { ItemSizeDto } from 'libs/dtos/itemDtos/item.size.dto';
 import { boxSizes } from '@app/database/box.sizes';
 import { exchnageStatus } from 'libs/dtos/exchange.status.dto';
@@ -277,45 +274,6 @@ export class ExchangeService {
       }
       console.error('Error updating exchange:', error);
       throw new InternalServerErrorException('Failed to update exchange');
-    }
-  }
-
-  /**
-   * Retrieves all exchanges from the database.
-   * Each exchange includes details about the creator and the person picking up the exchange.
-   *
-   * @returns Promise<ExchangeWithUserDto[]>
-   */
-  async getAllExchanges(): Promise<ExchangeWithUserDto[]> {
-    try {
-      const exchanges = await this.exchangeRepository.find({
-        relations: ['user', 'friend', 'items'],
-      });
-
-      const usersExchanges: ExchangeWithUserDto[] = [];
-
-      // Loop through each exchange and load related user data
-      for (const exchange of exchanges) {
-        const userExchange = new ExchangeWithUserDto(
-          exchange.user,
-          exchange.friend,
-          exchange.boxSize,
-          exchange.id,
-          exchange.items,
-        );
-        usersExchanges.push(userExchange);
-      }
-
-      return usersExchanges;
-    } catch (error) {
-      // Log and handle errors that occur during the retrieval
-      console.error('Failed to retrieve exchanges:', error);
-
-      if (error instanceof NotFoundException) {
-        throw new NotFoundException('Exchanges not found.');
-      }
-
-      throw error;
     }
   }
 
