@@ -521,7 +521,7 @@ export class UserFriendService {
     limit: number,
   ): UserDto[] {
     const totalFriends = user.friends.length;
-    const startIndex = (page - 1) * limit;
+    const startIndex = page;
     if (startIndex >= totalFriends) {
       return [];
     }
