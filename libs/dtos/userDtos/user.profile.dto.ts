@@ -9,6 +9,7 @@ import {
 import { Type } from 'class-transformer';
 import { UserProfileFriendDto } from './user.profile.friend.dto';
 import { UserProfileItemDto } from './user.profile.item.dto';
+import { UserProfileExhnageDto } from './user.profile.exhcange.dto';
 
 export class UserProfileDto {
   @IsString()
@@ -53,12 +54,19 @@ export class UserProfileDto {
   @IsNotEmpty()
   friendStatus: number;
 
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => UserProfileExhnageDto)
+  userExchanges: UserProfileExhnageDto[];
+
+  UserProfileExhnageDto;
   constructor(
     name: string,
     email: string,
     id: number,
     userItems: UserProfileItemDto[],
     userFriends: UserProfileFriendDto[],
+    userExchanges: UserProfileExhnageDto[],
     imageURL?: string,
     backgroundImageUrl?: string,
     address?: string,
@@ -75,5 +83,6 @@ export class UserProfileDto {
     this.userItems = userItems;
     this.userFriends = userFriends;
     this.friendStatus = friendStatus;
+    this.userExchanges = userExchanges;
   }
 }

@@ -315,7 +315,7 @@ export class ItemService {
    * Additionally, retrieves the associated user and friend information.
    *
    * @param item_id - The unique identifier of the item to retrieve.
-   * @returns A promise resolving to an ItemWithUsersDto object, which includes the item data
+   * @returns A promise resolving to an ItemDto object, which includes the item data
    * along with associated user and friend information.
    */
   async getItem(itemId: number): Promise<ItemDto> {

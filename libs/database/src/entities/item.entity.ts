@@ -4,7 +4,6 @@ import {
   Column,
   ManyToOne,
   JoinColumn,
-  OneToOne,
 } from 'typeorm';
 import { User } from './user.entity';
 import { Exchange } from './exchange.entity'; // Import your Exchange entity

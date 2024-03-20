@@ -6,6 +6,8 @@ import {
   IsArray,
 } from 'class-validator';
 import { UserDto } from './user.dto';
+import { UserProfileExhnageDto } from './user.profile.exhcange.dto';
+import { UserProfileItemDto } from './user.profile.item.dto';
 
 export class CurrentUserDto {
   @IsNumber()
@@ -47,11 +49,11 @@ export class CurrentUserDto {
 
   @IsOptional()
   @IsArray()
-  items: any[];
+  items: UserProfileItemDto[];
 
   @IsOptional()
   @IsArray()
-  exchanges: any[];
+  exchanges: UserProfileExhnageDto[];
 
   constructor(user: Partial<UserDto>) {
     Object.assign(this, user);

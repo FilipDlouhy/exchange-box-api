@@ -6,8 +6,8 @@ import {
   JoinTable,
   ManyToMany,
 } from 'typeorm';
-import { Item } from './item.entity'; // Corrected the import statement
-import { Exchange } from './exchange.entity'; // Corrected the import statement
+import { Item } from './item.entity';
+import { Exchange } from './exchange.entity';
 import { Notification } from './notification.entity';
 
 @Entity()
