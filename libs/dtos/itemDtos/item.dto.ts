@@ -37,6 +37,9 @@ export class ItemDto {
   @IsOptional()
   imageURL?: string;
 
+  @IsInt()
+  exchangeId: number | undefined;
+
   constructor(
     name: string,
     ownerName: string,
@@ -44,10 +47,11 @@ export class ItemDto {
     friendId: number,
     weightInGrams: number,
     id: number,
-    length?: number,
-    width?: number,
-    height?: number,
-    imageURL?: string,
+    length: number,
+    width: number,
+    height: number,
+    imageURL: string,
+    exchangeId: number | undefined,
   ) {
     this.name = name;
     this.ownerName = ownerName;
@@ -59,5 +63,6 @@ export class ItemDto {
     this.width = width;
     this.height = height;
     this.imageURL = imageURL;
+    this.exchangeId = exchangeId;
   }
 }

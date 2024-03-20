@@ -87,6 +87,9 @@ describe('toItemDto', () => {
     user1.friends = [user2];
     user2.friends = [user1];
 
+    const exchange = new Exchange();
+    exchange.id = 3;
+
     const item: Item = {
       id: 1,
       name: 'Test Item',
@@ -97,13 +100,12 @@ describe('toItemDto', () => {
       width: 20,
       height: 15,
       imageUrl: 'itemImage.jpg',
-      exchange: new Exchange(),
+      exchange: exchange,
     };
 
     const expected: ItemDto = new ItemDto(
       'Test Item',
       'User 2',
-      1,
       2,
       5,
       1,
@@ -111,56 +113,57 @@ describe('toItemDto', () => {
       20,
       15,
       'itemImage.jpg',
+      3,
     );
 
     const result = toItemDto(item);
     expect(result).toEqual(expected);
   });
+});
 
-  describe('toItemSimpleDto', () => {
-    it('should correctly transform an Item entity to ItemSimpleDto', () => {
-      const user = new User({
-        id: 1,
-        name: 'User 1',
-        email: 'user1@example.com',
-        password: 'password1',
-      });
-
-      const friend = new User({
-        id: 2,
-        name: 'User 2',
-        email: 'user2@example.com',
-        password: 'password2',
-      });
-
-      user.friends = [friend];
-      friend.friends = [user];
-
-      const item: Item = {
-        id: 1,
-        name: 'Test Item',
-        user: user,
-        friend: friend,
-        weight: 5,
-        length: 10,
-        width: 20,
-        height: 15,
-        imageUrl: 'itemImage.jpg',
-        exchange: new Exchange(),
-      };
-
-      const expected = new ItemSimpleDto(
-        item.name,
-        item.weight,
-        item.id,
-        item.length,
-        item.width,
-        item.height,
-      );
-
-      const result = toItemSimpleDto(item);
-
-      expect(result).toEqual(expected);
+describe('toItemSimpleDto', () => {
+  it('should correctly transform an Item entity to ItemSimpleDto', () => {
+    const user = new User({
+      id: 1,
+      name: 'User 1',
+      email: 'user1@example.com',
+      password: 'password1',
     });
+
+    const friend = new User({
+      id: 2,
+      name: 'User 2',
+      email: 'user2@example.com',
+      password: 'password2',
+    });
+
+    user.friends = [friend];
+    friend.friends = [user];
+
+    const item: Item = {
+      id: 1,
+      name: 'Test Item',
+      user: user,
+      friend: friend,
+      weight: 5,
+      length: 10,
+      width: 20,
+      height: 15,
+      imageUrl: 'itemImage.jpg',
+      exchange: new Exchange(),
+    };
+
+    const expected = new ItemSimpleDto(
+      item.name,
+      item.weight,
+      item.id,
+      item.length,
+      item.width,
+      item.height,
+    );
+
+    const result = toItemSimpleDto(item);
+
+    expect(result).toEqual(expected);
   });
 });

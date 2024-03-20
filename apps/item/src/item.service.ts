@@ -162,7 +162,7 @@ export class ItemService {
         where: forgotten
           ? { friend: { id: userId }, name: Like(`%${query.search}%`) }
           : { user: { id: userId }, name: Like(`%${query.search}%`) },
-        relations: ['user', 'friend'],
+        relations: ['user', 'friend', 'exchange'],
         skip: page,
         take: limit,
       });
@@ -170,6 +170,7 @@ export class ItemService {
       const itemDtos = items.map((item) => {
         return toItemDto(item);
       });
+
       return itemDtos;
     } catch (error) {
       console.error('Error fetching user items:', error);

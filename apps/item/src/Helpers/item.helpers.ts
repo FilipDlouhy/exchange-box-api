@@ -37,6 +37,7 @@ export function toItemDto(item: Item): ItemDto {
     item.width,
     item.height,
     item.imageUrl,
+    item.exchange ? item.exchange.id : undefined,
   );
 }
 
