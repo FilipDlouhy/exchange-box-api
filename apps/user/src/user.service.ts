@@ -32,6 +32,7 @@ import { ClientProxyFactory, Transport } from '@nestjs/microservices';
 import { sendNotification } from '../../../libs/tcp/src/notifications/notification.helper';
 import { CreateItemUserDto } from 'libs/dtos/userDtos/create.item.user.dto';
 import { FriendSimpleDto } from 'libs/dtos/userDtos/friend.simple.dto';
+import { UserProfileExhnageDto } from 'libs/dtos/userDtos/user.profile.exhcange.dto';
 
 @Injectable()
 export class UserService {
@@ -81,24 +82,39 @@ export class UserService {
    */
   async getCurrentUserProfile(id: number): Promise<CurrentUserDto> {
     try {
-      // Attempt to find the user by ID including related entities
       const user = await this.userRepository.findOne({
         where: { id },
-        relations: ['friends', 'items', 'exchanges'],
+        relations: [
+          'friends',
+          'items',
+          'exchanges',
+          'exchanges.friend',
+          'exchanges.items',
+          'exchanges.user',
+        ],
       });
 
       if (!user) {
         throw new NotFoundException(`User not found`);
       }
 
-      const friends = user.friends.map((friend) => {
-        return this.toUserDto(friend);
+      delete user.password;
+
+      const exchanges = user.exchanges.map((exchange) => {
+        return new UserProfileExhnageDto(
+          exchange.user.id,
+          exchange.friend.id,
+          exchange.items.length,
+          exchange.id,
+          exchange.pickUpDate,
+          exchange.friend.name,
+          exchange.name,
+          exchange.exchangeState,
+        );
       });
 
-      delete user.password;
       const currentUser = new CurrentUserDto(user);
-
-      currentUser.friends = friends;
+      currentUser.exchanges = exchanges;
 
       return currentUser;
     } catch (err) {
@@ -136,7 +152,6 @@ export class UserService {
   async updateCurentUser(
     updateCurrentUserDto: UpdateCurrentUserDto,
   ): Promise<void> {
-    // Retrieve the user from the repository
     const user = await this.userRepository.findOne({
       where: { id: updateCurrentUserDto.id },
     });
@@ -437,7 +452,14 @@ export class UserService {
 
       const profileUserPromise = this.userRepository.findOne({
         where: { id: friendId },
-        relations: ['friends', 'items'],
+        relations: [
+          'friends',
+          'items',
+          'exchanges',
+          'exchanges.friend',
+          'exchanges.items',
+          'exchanges.user',
+        ],
       });
 
       const [user, friendRequests, profileUser] = await Promise.all([
@@ -492,14 +514,27 @@ export class UserService {
           ),
       );
 
-      const friendStatus = getFriendStatus(profileUser.id);
+      const profileUserExchanges = profileUser.exchanges.map((exchange) => {
+        return new UserProfileExhnageDto(
+          exchange.user.id,
+          exchange.friend.id,
+          exchange.items.length,
+          exchange.id,
+          exchange.pickUpDate,
+          exchange.friend.name,
+          exchange.name,
+          exchange.exchangeState,
+        );
+      });
 
+      const friendStatus = getFriendStatus(profileUser.id);
       return new UserProfileDto(
         profileUser.name,
         profileUser.email,
         profileUser.id,
         profileUserItems,
         profileUserFriends,
+        profileUserExchanges,
         profileUser.imageUrl,
         profileUser.backgroundImageUrl,
         profileUser.address,
