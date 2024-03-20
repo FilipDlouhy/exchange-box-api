@@ -108,7 +108,7 @@ export class NotificationsService implements OnModuleInit {
    */
   async getNotifications(id: number, query: any = {}) {
     try {
-      const page = parseInt(query.page, 10) || 1;
+      const page = parseInt(query.page, 10) || 0;
       const limit = parseInt(query.limit, 10) || 10;
 
       const notifications = await this.notificationRepository.find({

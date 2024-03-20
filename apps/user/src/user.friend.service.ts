@@ -48,7 +48,7 @@ export class UserFriendService {
   ): Promise<UserDto[]> {
     try {
       const user = await this.fetchUserAndValidate(id);
-      const page = parseInt(query.page, 10) || 1;
+      const page = parseInt(query.page, 10) || 0;
       const limit = parseInt(query.limit, 10) || 10;
 
       if (!isFriends) {
@@ -268,7 +268,7 @@ export class UserFriendService {
     query: any = {},
   ): Promise<FriendRequestDto[]> {
     try {
-      const page = parseInt(query.page, 10) || 1;
+      const page = parseInt(query.page, 10) || 0;
       const limit = parseInt(query.limit, 10) || 10;
 
       const friendRequests = await this.friendRequestRepository.find({

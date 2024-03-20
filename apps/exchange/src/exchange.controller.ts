@@ -65,7 +65,13 @@ export class ExchangeController {
   }
 
   @MessagePattern(exchangeManagementCommands.getUserExchanges)
-  async getUserExchanges({ id }: { id: number }): Promise<ExchangeSimpleDto[]> {
+  async getUserExchanges({
+    id,
+    query,
+  }: {
+    id: number;
+    query: any;
+  }): Promise<ExchangeSimpleDto[]> {
     try {
       const cacheKey = `userExchanges:${id}`;
       const cachedUserExchanges: ExchangeSimpleDto[] =
@@ -75,8 +81,10 @@ export class ExchangeController {
         return cachedUserExchanges;
       }
 
-      const userExchanges =
-        await this.exchangeUtilsService.getExchangesByUser(id);
+      const userExchanges = await this.exchangeUtilsService.getExchangesByUser(
+        id,
+        query,
+      );
       await this.cacheManager.set(cacheKey, userExchanges, 18000);
 
       return userExchanges;

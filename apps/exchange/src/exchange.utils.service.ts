@@ -8,7 +8,7 @@ import {
 import { ClientProxyFactory, Transport } from '@nestjs/microservices';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Exchange } from '@app/database/entities/exchange.entity';
-import { Repository } from 'typeorm';
+import { Like, Repository } from 'typeorm';
 import { taskManagementCommands } from '@app/tcp/frontMessagePatterns/front.task.management.message.patterns';
 import { centerMessagePatterns } from '@app/tcp/centerMessagePatterns/center.message.patterns';
 import { Front } from '@app/database';
@@ -64,30 +64,41 @@ export class ExchangeUtilsService {
    * @param isNotFriend - A boolean flag to determine the role of the user in the exchange (creator or pick-up person).
    * @returns An array of ExchangeWithUserDto objects associated with the user.
    */
-
-  async getExchangesByUser(userId: number): Promise<ExchangeSimpleDto[]> {
+  async getExchangesByUser(
+    userId: number,
+    query: any = {},
+  ): Promise<ExchangeSimpleDto[]> {
     try {
+      const page = parseInt(query.page, 10) || 0;
+      const limit = parseInt(query.limit, 10) || 10;
+      const search = query.search || '';
+
+      const whereConditions = [
+        { user: { id: userId }, name: Like(`%${search}%`) },
+        { friend: { id: userId }, name: Like(`%${search}%`) },
+      ];
+
       const exchanges = await this.exchangeRepository.find({
-        where: [{ user: { id: userId } }, { friend: { id: userId } }],
+        where: whereConditions,
         relations: ['user', 'friend', 'items'],
+        skip: page,
+        take: limit,
       });
-
-      const usersExchanges: ExchangeSimpleDto[] = [];
-
-      for (const exchange of exchanges) {
-        const userExchange = new ExchangeSimpleDto(
-          exchange.user.id,
-          exchange.friend.id,
-          exchange.items.length,
-          exchange.id,
-          exchange.pickUpDate,
-          exchange.friend.imageUrl,
-          exchange.friend.name,
-          exchange.name,
-          exchange.exchangeState,
-        );
-        usersExchanges.push(userExchange);
-      }
+      console.log(exchanges);
+      const usersExchanges: ExchangeSimpleDto[] = exchanges.map(
+        (exchange) =>
+          new ExchangeSimpleDto(
+            exchange.user.id,
+            exchange.friend.id,
+            exchange.items.length,
+            exchange.id,
+            exchange.pickUpDate,
+            exchange.friend.imageUrl,
+            exchange.friend.name,
+            exchange.name,
+            exchange.exchangeState,
+          ),
+      );
 
       return usersExchanges;
     } catch (error) {
@@ -95,14 +106,6 @@ export class ExchangeUtilsService {
         `Failed to retrieve exchanges for user with ID: ${userId}`,
         error,
       );
-
-      if (
-        error instanceof NotFoundException ||
-        error instanceof BadRequestException
-      ) {
-        throw error;
-      }
-
       throw new BadRequestException('Failed to retrieve exchanges.');
     }
   }

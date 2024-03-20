@@ -61,7 +61,7 @@ export class ExchangeSimpleDto {
     this.friendImgUrl = friendImgUrl;
     this.friendName = friendName;
     this.exchangeNBame = exchangeNBame;
-    this.pickUpDate = pickUpDate;
+    this.pickUpDate = new Date(pickUpDate);
     this.exchangeState = exchangeState;
   }
 }
