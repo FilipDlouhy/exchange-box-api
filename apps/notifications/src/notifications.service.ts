@@ -114,7 +114,7 @@ export class NotificationsService implements OnModuleInit {
       const notifications = await this.notificationRepository.find({
         where: { user: { id: id } },
         relations: ['user'],
-        skip: (page - 1) * limit,
+        skip: page,
         take: limit,
       });
 

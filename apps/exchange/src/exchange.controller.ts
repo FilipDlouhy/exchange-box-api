@@ -73,7 +73,7 @@ export class ExchangeController {
     query: any;
   }): Promise<ExchangeSimpleDto[]> {
     try {
-      const cacheKey = `userExchanges:${id}`;
+      const cacheKey = `userExchanges:${id}${query.page}`;
       const cachedUserExchanges: ExchangeSimpleDto[] =
         await this.cacheManager.get(cacheKey);
 

@@ -84,7 +84,7 @@ export class ExchangeUtilsService {
         skip: page,
         take: limit,
       });
-      console.log(exchanges);
+
       const usersExchanges: ExchangeSimpleDto[] = exchanges.map(
         (exchange) =>
           new ExchangeSimpleDto(
