@@ -33,6 +33,7 @@ import { sendNotification } from '../../../libs/tcp/src/notifications/notificati
 import { CreateItemUserDto } from 'libs/dtos/userDtos/create.item.user.dto';
 import { FriendSimpleDto } from 'libs/dtos/userDtos/friend.simple.dto';
 import { UserProfileExhnageDto } from 'libs/dtos/userDtos/user.profile.exhcange.dto';
+import { Exchange } from '@app/database';
 
 @Injectable()
 export class UserService {
@@ -100,18 +101,7 @@ export class UserService {
 
       delete user.password;
 
-      const exchanges = user.exchanges.map((exchange) => {
-        return new UserProfileExhnageDto(
-          exchange.user.id,
-          exchange.friend.id,
-          exchange.items.length,
-          exchange.id,
-          exchange.pickUpDate,
-          exchange.friend.name,
-          exchange.name,
-          exchange.exchangeState,
-        );
-      });
+      const exchanges = this.toUserProfileExhnageDto(user.exchanges);
 
       const currentUser = new CurrentUserDto(user);
       currentUser.exchanges = exchanges;
@@ -514,18 +504,9 @@ export class UserService {
           ),
       );
 
-      const profileUserExchanges = profileUser.exchanges.map((exchange) => {
-        return new UserProfileExhnageDto(
-          exchange.user.id,
-          exchange.friend.id,
-          exchange.items.length,
-          exchange.id,
-          exchange.pickUpDate,
-          exchange.friend.name,
-          exchange.name,
-          exchange.exchangeState,
-        );
-      });
+      const profileUserExchanges = this.toUserProfileExhnageDto(
+        profileUser.exchanges,
+      );
 
       const friendStatus = getFriendStatus(profileUser.id);
       return new UserProfileDto(
@@ -645,6 +626,11 @@ export class UserService {
     }
   }
 
+  /**
+   * Converts a User entity to a UserDto object.
+   * @param user - The User entity to be converted.
+   * @returns A UserDto object containing the user's details.
+   */
   private toUserDto(user: User): UserDto {
     return new UserDto(
       user.name,
@@ -654,5 +640,27 @@ export class UserService {
       user.address,
       user.imageUrl,
     );
+  }
+
+  /**
+   * Maps an array of Exchange entities to an array of UserProfileExchangeDto objects.
+   * @param exchanges - An array of Exchange entities to be mapped.
+   * @returns An array of UserProfileExchangeDto objects containing the exchange details.
+   */
+  private toUserProfileExhnageDto(
+    exchanges: Exchange[],
+  ): UserProfileExhnageDto[] {
+    return exchanges.map((exchange) => {
+      return new UserProfileExhnageDto(
+        exchange.user.id,
+        exchange.friend.id,
+        exchange.items.length,
+        exchange.id,
+        exchange.pickUpDate,
+        exchange.friend.name,
+        exchange.name,
+        exchange.exchangeState,
+      );
+    });
   }
 }
