@@ -185,17 +185,21 @@ export class ItemService {
    * @returns A boolean indicating if the deletion was successful.
    * @throws Error if the item is part of an exchange.
    */
-  async getUserItemSimpleForExchange(userId: number): Promise<ItemSimpleDto[]> {
+  async getUserItemSimpleForExchange(
+    userId: number,
+    isForForgotten: boolean,
+  ): Promise<ItemSimpleDto[]> {
     try {
+      const condition = isForForgotten
+        ? { user: { id: userId } }
+        : { friend: { id: userId } };
+
       const items = await this.itemRepository.find({
         where: {
-          friend: {
-            id: userId,
-          },
+          ...condition,
           exchange: null,
         },
       });
-
       const itemSimpleDtos = items.map((item) => toItemSimpleDto(item));
 
       return itemSimpleDtos;

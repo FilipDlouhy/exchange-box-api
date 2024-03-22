@@ -253,7 +253,40 @@ export class ItemController {
         return cachedItems;
       }
 
-      const items = await this.itemService.getUserItemSimpleForExchange(id);
+      const items = await this.itemService.getUserItemSimpleForExchange(
+        id,
+        false,
+      );
+
+      await this.cacheManager.set(cacheKey, items, 18000);
+      return items;
+    } catch (error) {
+      throw new RpcException(error.message);
+    }
+  }
+
+  @MessagePattern(
+    itemExchangeManagementCommands.getUserForgotenItemSimpleForExchange,
+  )
+  async getUserForgotenItemSimpleForExchange({
+    id,
+  }: {
+    id: number;
+  }): Promise<ItemSimpleDto[]> {
+    try {
+      const cacheKey = `userSimpleForgotenItems:${id}`;
+
+      const cachedItems: ItemSimpleDto[] =
+        await this.cacheManager.get(cacheKey);
+
+      if (cachedItems) {
+        return cachedItems;
+      }
+
+      const items = await this.itemService.getUserItemSimpleForExchange(
+        id,
+        true,
+      );
 
       await this.cacheManager.set(cacheKey, items, 18000);
       return items;

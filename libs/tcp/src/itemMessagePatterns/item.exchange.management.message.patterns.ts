@@ -6,4 +6,7 @@ export const itemExchangeManagementCommands = {
   deleteExchangeFromItems: { cmd: 'deleteExchangeFromItems' },
   getItemsForIdsExchange: { cmd: 'getItemsForIdsExchange' },
   getUserItemSimpleForExchange: { cmd: 'getUserItemSimpleForExchange' },
+  getUserForgotenItemSimpleForExchange: {
+    cmd: 'getUserForgotenItemSimpleForExchange',
+  },
 };
