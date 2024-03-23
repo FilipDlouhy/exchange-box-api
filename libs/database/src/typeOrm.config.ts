@@ -7,6 +7,7 @@ import { Box } from './entities/box.entity';
 import { Item } from './entities/item.entity';
 import { FriendRequest } from './entities/friend.request.entity';
 import { Notification } from './entities/notification.entity';
+import { Event } from './entities/event.entity';
 
 export const databaseConfig: TypeOrmModuleOptions = {
   type: 'mysql',
@@ -24,6 +25,7 @@ export const databaseConfig: TypeOrmModuleOptions = {
     Item,
     FriendRequest,
     Notification,
+    Event,
   ],
   autoLoadEntities: true,
   synchronize: true,

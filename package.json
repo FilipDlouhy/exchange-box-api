@@ -18,7 +18,7 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./apps/exchange-box-api/test/jest-e2e.json",
-    "start:dev:all": "concurrently \"npm run start:dev center\" \"npm run start:dev front\" \"npm run start:dev item\" \"npm run start:dev user\" \"npm run start:dev api-gateway\" \"npm run start:dev auth\" \"npm run start:dev payment\" \"npm run start:dev exchange\"  \"npm run start:dev box\"  \"npm run start:dev notifications\""
+    "start:dev:all": "concurrently \"npm run start:dev center\" \"npm run start:dev front\" \"npm run start:dev item\" \"npm run start:dev user\" \"npm run start:dev api-gateway\" \"npm run start:dev auth\" \"npm run start:dev payment\" \"npm run start:dev exchange\"  \"npm run start:dev box\"  \"npm run start:dev notifications\" \"npm run start:dev events\""
   },
   "dependencies": {
     "@nestjs/axios": "^3.0.1",

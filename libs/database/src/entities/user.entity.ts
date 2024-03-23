@@ -9,6 +9,7 @@ import {
 import { Item } from './item.entity';
 import { Exchange } from './exchange.entity';
 import { Notification } from './notification.entity';
+import { Event } from './event.entity';
 
 @Entity()
 export class User {
@@ -54,6 +55,9 @@ export class User {
 
   @OneToMany(() => Notification, (notification) => notification.user)
   notifications: Notification[];
+
+  @OneToMany(() => Event, (event) => event.user)
+  events: Event[];
 
   constructor(user: Partial<User>) {
     Object.assign(this, user);
