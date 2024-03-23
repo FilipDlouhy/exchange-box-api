@@ -30,6 +30,9 @@ import { ItemSimpleDto } from 'libs/dtos/itemDtos/item.simple.dto';
 import { boxMessagePatterns } from '@app/tcp/boxMessagePatterns/box.message.patterns';
 import { OpenBoxDto } from 'libs/dtos/boxDtos/open.box.dto';
 import { taskManagementCommands } from '@app/tcp/frontMessagePatterns/front.task.management.message.patterns';
+import { eventMessagePatterns } from '@app/tcp/eventMessagePatterns/event.message.patterns';
+import { CreateEventDto } from 'libs/dtos/eventDtos/create.event.dto';
+import { EventType } from '@app/database/event.type.enum';
 
 @Injectable()
 export class ExchangeService {
@@ -39,6 +42,7 @@ export class ExchangeService {
   private readonly boxClient;
   private readonly centerClient;
   private readonly frontClient;
+  private readonly eventClient;
 
   constructor(
     @InjectRepository(Exchange)
@@ -88,6 +92,14 @@ export class ExchangeService {
       options: {
         host: 'localhost',
         port: 3008,
+      },
+    });
+
+    this.eventClient = ClientProxyFactory.create({
+      transport: Transport.TCP,
+      options: {
+        host: 'localhost',
+        port: 3012,
       },
     });
   }
@@ -156,6 +168,24 @@ export class ExchangeService {
         } has created exchnage with pick up date ${exchange.pickUpDate.toLocaleString()}`,
         initials: 'IC',
       });
+
+      const pickUpDate = new Date(createExchangeDto.pickUpDate);
+
+      const twoHoursLater = new Date(pickUpDate.getTime());
+      twoHoursLater.setHours(pickUpDate.getHours() + 2);
+      const createEventDto = new CreateEventDto(
+        new Date(pickUpDate),
+        twoHoursLater,
+        `Exchange ${exchange.name} pick up`,
+        exchange.friend.id,
+        EventType.Exchange,
+      );
+      await this.eventClient
+        .send(
+          { cmd: eventMessagePatterns.createEvent.cmd },
+          { createEvent: createEventDto },
+        )
+        .toPromise();
 
       return new ExchangeSimpleDto(
         updatedExchange.user.id,

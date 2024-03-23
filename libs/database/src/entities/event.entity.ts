@@ -18,6 +18,12 @@ export class Event {
   @Column({ type: 'datetime' })
   toTime: Date;
 
+  @Column()
+  eventName: string;
+
+  @Column()
+  eventDescription: string;
+
   @CreateDateColumn()
   createdAt: Date;
 

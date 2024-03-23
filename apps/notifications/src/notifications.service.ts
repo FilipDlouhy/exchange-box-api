@@ -1,7 +1,7 @@
 import { Notification } from '../../../libs/database/src/entities/notification.entity';
 import { User } from '../../../libs/database/src/entities/user.entity';
 import { userManagementCommands } from '../../../libs/tcp/src/userMessagePatterns/user.management.message.patterns';
-import { notificationEventsPatterns } from '../../../libs/tcp/src/eventMessagePatterns/notification.events.message.patterns';
+import { notificationEventsPatterns } from '../../../libs/tcp/src/notificationMessagePatterns/notification.events.message.patterns';
 import {
   BadRequestException,
   Injectable,
