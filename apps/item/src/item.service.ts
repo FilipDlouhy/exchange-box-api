@@ -20,6 +20,7 @@ import { sendNotification } from '../../../libs/tcp/src/notifications/notificati
 import { CreateUpdateItemIntDto } from 'libs/dtos/itemDtos/create.udpate.item.int.dto';
 import { toItemDto, toItemSimpleDto } from './Helpers/item.helpers';
 import { ItemSimpleDto } from 'libs/dtos/itemDtos/item.simple.dto';
+import { ItemRepository } from './item.repository';
 
 @Injectable()
 export class ItemService {
@@ -29,6 +30,7 @@ export class ItemService {
   constructor(
     @InjectRepository(Item)
     private readonly itemRepository: Repository<Item>,
+    private readonly itemRepository2: ItemRepository,
   ) {
     this.userClient = ClientProxyFactory.create({
       transport: Transport.TCP,
@@ -70,17 +72,11 @@ export class ItemService {
           )
           .toPromise();
 
-      const newItem = this.itemRepository.create({
-        user: user,
-        friend: friend,
-        height: createUpdateItemDto.height,
-        length: createUpdateItemDto.length,
-        name: createUpdateItemDto.name,
-        weight: createUpdateItemDto.weight,
-        width: createUpdateItemDto.width,
-      });
-
-      await this.itemRepository.save(newItem);
+      const newItem = await this.itemRepository2.createItem(
+        user,
+        friend,
+        createUpdateItemDto,
+      );
 
       if (createUpdateItemDto.images) {
         const uploadImageDto = new UploadItemImageDto();
@@ -123,14 +119,7 @@ export class ItemService {
    */
   async getAllItems(): Promise<ItemDto[]> {
     try {
-      // Fetch all items from the database using TypeORM
-      const items = await this.itemRepository
-        .createQueryBuilder('item')
-        .leftJoinAndSelect('item.user', 'user')
-        .leftJoinAndSelect('item.friend', 'friend')
-        .select(['item.id', 'user.id', 'friend.id'])
-        .getMany();
-      // Convert each Item entity to ItemDto
+      const items = await this.itemRepository2.getAllItems();
       const itemDtos = items.map((item) => {
         return toItemDto(item);
       });
@@ -157,15 +146,15 @@ export class ItemService {
     try {
       const page = parseInt(query.page, 10) || 0;
       const limit = parseInt(query.limit, 10) || 10;
+      const searchTerm = query.search || '';
 
-      const items = await this.itemRepository.find({
-        where: forgotten
-          ? { friend: { id: userId }, name: Like(`%${query.search}%`) }
-          : { user: { id: userId }, name: Like(`%${query.search}%`) },
-        relations: ['user', 'friend', 'exchange'],
-        skip: page,
-        take: limit,
-      });
+      const items = await this.itemRepository2.getUserItems(
+        userId,
+        forgotten,
+        page,
+        limit,
+        searchTerm,
+      );
 
       const itemDtos = items.map((item) => {
         return toItemDto(item);
@@ -190,16 +179,10 @@ export class ItemService {
     isForForgotten: boolean,
   ): Promise<ItemSimpleDto[]> {
     try {
-      const condition = isForForgotten
-        ? { user: { id: userId } }
-        : { friend: { id: userId } };
-
-      const items = await this.itemRepository.find({
-        where: {
-          ...condition,
-          exchange: null,
-        },
-      });
+      const items = await this.itemRepository2.getUserItemSimpleForExchange(
+        userId,
+        isForForgotten,
+      );
       const itemSimpleDtos = items.map((item) => toItemSimpleDto(item));
 
       return itemSimpleDtos;
@@ -211,44 +194,18 @@ export class ItemService {
   }
 
   /**
-   * Deletes an item from the database.
-   * It first checks if the item is part of an exchange. If it is, the deletion is not allowed.
+   * Service method to delete an item. It defers the operation to the repository,
+   * including the checks if the item is part of an exchange.
    *
-   * @param item_id - The ID of the item to delete.
-   * @returns A boolean indicating if the deletion was successful.
-   * @throws Error if the item is part of an exchange.
+   * @param itemId - The ID of the item to delete.
+   * @returns A promise that resolves with a boolean indicating if the deletion was successful.
    */
-  async deleteItem(itemId: number) {
+  async deleteItem(itemId: number): Promise<boolean> {
     try {
-      // Find the item by itemId
-      const item = await this.itemRepository.findOne({
-        where: { id: itemId },
-        relations: { exchange: true, user: true },
-      });
-
-      // Check if the item exists and if it is part of an exchange
-      if (!item) {
-        throw new Error('Item not found.');
-      }
-      if (item.exchange) {
-        throw new Error('Item is part of an exchange and cannot be deleted.');
-      }
-
-      sendNotification(this.notificationClient, {
-        userId: item.user.id.toString(),
-        nameOfTheService: 'item-service',
-        text: `Item named ${item.name} has been deleted from your repository`,
-        initials: 'IC',
-      });
-      const deleteResult = await this.itemRepository.delete(itemId);
-
-      // Check if the item was successfully deleted
-      if (deleteResult.affected === 0) {
-        throw new Error('Item could not be deleted.');
-      }
-    } catch (e) {
-      console.error('Error in deleteItem:', e);
-      return false;
+      return await this.itemRepository2.deleteItem(itemId);
+    } catch (error) {
+      console.error('Service error in deleteItem:', error.message);
+      throw error;
     }
   }
 
@@ -261,56 +218,11 @@ export class ItemService {
    * @returns Updated item details as ItemDto.
    */
   async updateItem(updateItemDto: CreateUpdateItemIntDto): Promise<ItemDto> {
-    const queryRunner =
-      this.itemRepository.manager.connection.createQueryRunner();
-    await queryRunner.connect();
-    await queryRunner.startTransaction();
-
     try {
-      const item = await queryRunner.manager.findOne(Item, {
-        where: { id: updateItemDto.id },
-        relations: ['friend', 'user'],
-      });
-
-      if (!item) {
-        throw new Error('Item not found.');
-      }
-
-      if (item.friend.id !== updateItemDto.friendId) {
-        const newFriend = await this.userClient
-          .send(
-            { cmd: profileManagementCommands.getUserForItemUpdate.cmd },
-            { friendId: updateItemDto.friendId },
-          )
-          .toPromise();
-        item.friend = newFriend;
-      }
-
-      if (updateItemDto.images) {
-        const uploadImageDto = new UploadItemImageDto();
-        uploadImageDto.file = updateItemDto.images[0];
-        uploadImageDto.itemId = item.id.toString();
-        await this.uploadItemImage(uploadImageDto, true);
-      }
-
-      item.height = updateItemDto.height;
-      item.length = updateItemDto.length;
-      item.name = updateItemDto.name;
-      item.weight = updateItemDto.weight;
-      item.width = updateItemDto.width;
-
-      await queryRunner.manager.save(item);
-      await queryRunner.commitTransaction();
-
-      const updatedItemDto = toItemDto(item);
-
-      return updatedItemDto;
+      return await this.itemRepository2.updateItem(updateItemDto);
     } catch (error) {
-      await queryRunner.rollbackTransaction();
-      console.error('Error updating item:', error);
+      console.error('Error occurred while updating item:', error);
       throw error;
-    } finally {
-      await queryRunner.release();
     }
   }
 
@@ -324,10 +236,7 @@ export class ItemService {
    */
   async getItem(itemId: number): Promise<ItemDto> {
     try {
-      const item = await this.itemRepository.findOne({
-        where: { id: itemId },
-        relations: ['user', 'friend'],
-      });
+      const item = await this.itemRepository2.getItem(itemId);
 
       if (!item) {
         throw new Error(`Item not found.`);
@@ -354,21 +263,19 @@ export class ItemService {
     update: boolean,
   ): Promise<ItemSizeDto[]> {
     try {
-      // Fetch items by their IDs
-      const items = await this.itemRepository.find({
-        where: { id: In(ids) },
-        select: ['length', 'width', 'height', 'id', 'exchange'],
-      });
+      const items =
+        await this.itemRepository2.retrieveItemSizesAndCheckExchange(
+          ids,
+          update,
+        );
 
       if (!update) {
-        // Check if any item is already in an exchange
         const itemsInExchange = items.some((item) => item.exchange != null);
         if (itemsInExchange) {
           throw new Error('One or more items are already in an exchange');
         }
       }
 
-      // Map the items to ItemSizeDto
       const itemSizes = items.map(
         (item) =>
           new ItemSizeDto(item.length, item.width, item.height, item.id),
@@ -388,22 +295,7 @@ export class ItemService {
    * @returns {Promise<ItemDto[]>} - Resolves with an array of ItemDto objects on success.
    */
   async addExchangeToItems(addExchangeToItemDto: ToggleExchangeToItemDto) {
-    try {
-      // Find the items by their IDs
-
-      const items = await this.itemRepository.findByIds(
-        addExchangeToItemDto.itemIds,
-      );
-
-      if (!items || items.length === 0) {
-        throw new Error('No items found.');
-      }
-
-      return items;
-    } catch (err) {
-      console.error('Error updating Exchange for items:', err);
-      throw err;
-    }
+    await this.itemRepository2.addExchangeToItems(addExchangeToItemDto);
   }
 
   /**
@@ -413,29 +305,19 @@ export class ItemService {
    */
   async deleteExchangeFromItems(
     itemIds: number[],
-    isExhcnageDone: boolean,
+    isExchangeDone: boolean,
   ): Promise<boolean> {
     try {
-      const items = await this.itemRepository.findByIds(itemIds);
-
-      if (!items || items.length === 0) {
-        throw new Error('No items found.');
-      }
-
-      for (const item of items) {
-        item.exchange = null;
-      }
-
-      if (isExhcnageDone) {
-        await this.itemRepository.remove(items);
-      } else {
-        await this.itemRepository.save(items);
-      }
-
-      return true;
-    } catch (err) {
-      console.error('Error deleting Exchange from items:', err);
-      throw err;
+      return await this.itemRepository2.deleteExchangeFromItems(
+        itemIds,
+        isExchangeDone,
+      );
+    } catch (error) {
+      console.error(
+        'Error occurred while deleting exchange from items:',
+        error,
+      );
+      return false;
     }
   }
 
@@ -450,30 +332,9 @@ export class ItemService {
     update: boolean,
   ) {
     try {
-      const item = await this.itemRepository.findOneBy({
-        id: parseInt(uploadItemImageDto.itemId),
-      });
-
-      if (!item) {
-        throw new Error('Item not found.');
-      }
-
-      item.imageUrl = update
-        ? await updateFileInFirebase(
-            uploadItemImageDto.file,
-            uploadItemImageDto.itemId,
-            'Items',
-          )
-        : await uploadFileToFirebase(
-            uploadItemImageDto.file,
-            uploadItemImageDto.itemId,
-            'Items',
-          );
-
-      await this.itemRepository.save(item);
+      await this.itemRepository2.uploadItemImage(uploadItemImageDto, update);
     } catch (error) {
-      // Handle or rethrow the error appropriately
-      console.error('Error uploading item image:', error);
+      console.error('Error occurred while uploading item image:', error);
       throw error;
     }
   }

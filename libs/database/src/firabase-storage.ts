@@ -1,5 +1,4 @@
 import * as admin from 'firebase-admin';
-import { Express } from 'express';
 
 // Initialize Firebase
 const serviceAccount = require('../../../firebase.json');
