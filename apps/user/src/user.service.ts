@@ -34,15 +34,15 @@ import { CreateItemUserDto } from 'libs/dtos/userDtos/create.item.user.dto';
 import { FriendSimpleDto } from 'libs/dtos/userDtos/friend.simple.dto';
 import { UserProfileExhnageDto } from 'libs/dtos/userDtos/user.profile.exhcange.dto';
 import { Exchange } from '@app/database';
+import { UserRepository } from './user.repository';
 
 @Injectable()
 export class UserService {
   private readonly notificationClient;
   constructor(
     @InjectRepository(User)
-    private readonly userRepository: Repository<User>,
     @InjectRepository(FriendRequest)
-    private readonly friendRequestRepository: Repository<FriendRequest>,
+    private readonly userRepository: UserRepository,
   ) {
     this.notificationClient = ClientProxyFactory.create({
       transport: Transport.TCP,
@@ -54,52 +54,28 @@ export class UserService {
   }
 
   /**
-   * Creates a new user in the 'user' table using the provided CreateUserDto.
-   * It hashes the password before storing it in the database.
-   * After insertion, it retrieves and returns the newly created user details, except for the password.
-   * @param {CreateUserDto} createUserDto - The DTO containing the new user data.
+   * Creates a new user in the database based on the provided data.
+   * @param createUserDto The data necessary to create the user.
+   * @throws Error if there's an issue creating the user.
    */
   async createUser(createUserDto: CreateUserDto) {
     try {
-      createUserDto.password = await bcrypt.hash(createUserDto.password, 10);
-
-      await this.userRepository.save(createUserDto);
-    } catch (err) {
-      if (err.code === 'ER_DUP_ENTRY') {
-        throw new ConflictException('Email already exists');
-      }
-      console.error('Error creating user:', err);
-      throw new BadRequestException('Error creating user');
+      await this.userRepository.createUser(createUserDto);
+    } catch (error) {
+      console.error('Error creating user:', error);
+      throw error;
     }
   }
 
   /**
-   * Retrieves a single user profile based on the provided ID.
-   * Returns user details including friends, items, and exchanges.
-   * @param {number} id - The unique identifier of the user to retrieve.
-   * @returns {Promise<CurrentUserDto>} - The DTO representing the user profile.
-   * @throws {NotFoundException} If the user with the provided ID is not found.
-   * @throws {Error} If there is an error retrieving the user profile.
+   * Retrieves the profile of the current user based on the provided ID.
+   * @param id The ID of the current user.
+   * @returns A Promise that resolves to a CurrentUserDto object containing the user's profile data.
+   * @throws An error if there's an issue retrieving the user profile.
    */
   async getCurrentUserProfile(id: number): Promise<CurrentUserDto> {
     try {
-      const user = await this.userRepository.findOne({
-        where: { id },
-        relations: [
-          'friends',
-          'items',
-          'exchanges',
-          'exchanges.friend',
-          'exchanges.items',
-          'exchanges.user',
-        ],
-      });
-
-      if (!user) {
-        throw new NotFoundException(`User not found`);
-      }
-
-      delete user.password;
+      const user = await this.userRepository.getCurrentUserProfile(id);
 
       const exchanges = this.toUserProfileExhnageDto(user.exchanges);
 
@@ -114,38 +90,29 @@ export class UserService {
   }
 
   /**
-   * Retrieve a user for updating an item based on their ID.
-   *
-   * @param {number} id - The ID of the user to retrieve.
-   * @returns {Promise<User>} A Promise that resolves to the retrieved user.
-   * @throws {Error} If there's an error while retrieving the user.
+   * Retrieves a user for updating an item based on the provided ID.
+   * @param id The ID of the user to retrieve.
+   * @returns A Promise that resolves to the user object for updating an item.
+   * @throws Error if there's an issue retrieving the user for updating an item.
    */
   async getUserForItemUpdate(id: number): Promise<User> {
     try {
-      const user = await this.userRepository.findOne({
-        where: { id },
-      });
-
-      return user;
-    } catch (err) {
-      console.error('Error retrieving user:', err);
-      throw new Error('Error retrieving user');
+      return await this.userRepository.getUserForItemUpdate(id);
+    } catch (error) {
+      console.error('Error retrieving user for updating item:', error);
+      throw error;
     }
   }
 
   /**
-   * Updates user details and handles image uploads inline, without separate DTO preparation.
-   * No explicit return, focuses on updating user and handling image uploads by type (background or profile).
-   *
-   * @param {UpdateCurrentUserDto} updateCurrentUserDto - The DTO containing the updated user data, including any new images.
+   * Updates the current user's information based on the provided data.
+   * @param updateCurrentUserDto The data necessary to update the current user.
+   * @returns A Promise that resolves when the current user is successfully updated.
    */
   async updateCurentUser(
     updateCurrentUserDto: UpdateCurrentUserDto,
   ): Promise<void> {
-    const user = await this.userRepository.findOne({
-      where: { id: updateCurrentUserDto.id },
-    });
-
+    const user = await this.userRepository.findUser(updateCurrentUserDto.id);
     updateCurrentUserDto.images.forEach((image) => {
       const isBackgroundImage = image.originalname
         .toLocaleLowerCase()
@@ -167,40 +134,18 @@ export class UserService {
       );
     });
 
-    Object.assign(user, {
-      name: updateCurrentUserDto.name,
-      telephone: updateCurrentUserDto.telephone,
-      address: updateCurrentUserDto.address,
-      email: updateCurrentUserDto.email,
-      longitude: updateCurrentUserDto.longitude,
-      latitude: updateCurrentUserDto.latitude,
-    });
-
-    await this.userRepository.save(user);
+    await this.userRepository.updateCurentUser(updateCurrentUserDto, user);
   }
 
   /**
-   * Retrieves all users from the 'user' table.
-   * Returns a list of user details except for their passwords.
-   * @returns {Promise<UserDto[]>} - An array of UserDto representing all users.
+   * Retrieves a list of users from the database.
+   * @returns A Promise that resolves to an array of UserDto objects containing user data.
+   * @throws NotFoundException if no users are found.
+   * @throws InternalServerErrorException if there's an error retrieving users.
    */
   async getUsers(): Promise<UserDto[]> {
     try {
-      const users = await this.userRepository.find({
-        select: [
-          'id',
-          'name',
-          'email',
-          'imageUrl',
-          'email',
-          'address',
-          'telephone',
-        ],
-      });
-
-      if (!users || users.length === 0) {
-        throw new NotFoundException('No users found');
-      }
+      const users = await this.userRepository.getUsers();
 
       const userDtos: UserDto[] = users.map((user) => {
         return this.toUserDto(user);
@@ -218,21 +163,14 @@ export class UserService {
   }
 
   /**
-   * Retrieves a simplified list of friends for a given user by their ID.
-   * @param {Object} param - An object parameter.
-   * @param {number} param.id - The ID of the user whose friends are to be retrieved.
-   * @returns {Promise<FriendSimpleDto[]>} A promise that resolves to an array of FriendSimpleDto.
+   * Retrieves the friends of a user based on the provided user ID.
+   * @param id The ID of the user whose friends are to be retrieved.
+   * @returns A Promise that resolves to an array of FriendSimpleDto objects containing basic information about the user's friends.
+   * @throws An error if there's an issue retrieving the user's friends.
    */
   async getUsersFriendsSimple(id: number): Promise<FriendSimpleDto[]> {
     try {
-      const user = await this.userRepository.findOne({
-        where: { id: id },
-        relations: ['friends'],
-      });
-
-      if (!user) {
-        throw new Error(`User with id ${id} not found.`);
-      }
+      const user = await this.userRepository.getUserWithFriends(id);
 
       const simpleFriendsDtos = user.friends.map((friend) => {
         return new FriendSimpleDto(friend.id, friend.name);
@@ -246,96 +184,20 @@ export class UserService {
   }
 
   /**
-   * Attempts to delete a user from the 'user' table by the given ID.
-   * It uses the 'match' method to target the specific user row for deletion.
-   * If the operation is successful, it returns true.
-   * If the operation fails, it logs the error and throws an exception.
-   * @param {number} id - The unique identifier of the user to be deleted.
-   * @returns {Promise<boolean>} - A promise that resolves to true if the deletion is successful.
+   * Deletes a user from the database based on the provided ID.
+   * @param id The ID of the user to delete.
+   * @returns A Promise that resolves when the user is successfully deleted.
+   * @throws Error if there's an issue deleting the user.
    */
   async deleteUser(id: number) {
     try {
-      const result = await this.userRepository.delete(id);
-
-      if (result.affected === 0) {
-        throw new NotFoundException(`User with ID ${id} not found`);
-      }
-    } catch (err) {
-      console.error(`Error deleting user with ID ${id}:`, err);
-      if (err instanceof NotFoundException) {
-        throw err;
-      } else {
-        throw new InternalServerErrorException(
-          `An error occurred during the deleteUser operation: ${err.message}`,
-        );
-      }
-    }
-  }
-
-  /**
-   * Uploads or updates a user image in Firebase Storage based on the 'update' flag.
-   * If 'update' is true, it updates the existing image, otherwise, it uploads a new one.
-   *
-   * @param uploadUserImageDto - Data transfer object containing the file to upload and the user ID.
-   * @param update - A boolean flag that determines whether to update an existing image (true) or upload a new image (false).
-   * @throws - Propagates any errors that occur during file upload or update.
-   *Errors may occur due to file upload issues, Firebase Storage operations, or database update operations.
-   */
-  private async uploadUserImage(
-    uploadUserImageDto: UploadUserImageDto,
-    update: boolean,
-    folderName: string,
-    isBackground: boolean,
-  ) {
-    try {
-      const imageUrl = update
-        ? await updateFileInFirebase(
-            uploadUserImageDto.file,
-            uploadUserImageDto.userId,
-            folderName,
-          )
-        : await uploadFileToFirebase(
-            uploadUserImageDto.file,
-            uploadUserImageDto.userId,
-            folderName,
-          );
-
-      const user = await this.userRepository.findOne({
-        where: { id: parseInt(uploadUserImageDto.userId) },
-      });
-
-      if (!user) {
-        throw new NotFoundException(
-          `User with ID ${uploadUserImageDto.userId} not found`,
-        );
-      }
-
-      if (isBackground) {
-        user.backgroundImageUrl = imageUrl;
-      } else {
-        user.imageUrl = imageUrl;
-      }
-
-      await this.userRepository.save(user);
+      await this.userRepository.deleteUser(id);
     } catch (error) {
-      console.error(`Error uploading user image: ${error.message}`);
-      if (error instanceof NotFoundException) {
-        throw error;
-      } else {
-        throw new InternalServerErrorException(
-          'Failed to upload user image. Please try again.',
-        );
-      }
+      console.error('Error deleting user:', error);
+      throw error;
     }
   }
 
-  /**
-   * Retrieves the URL of a user's image from Firebase Storage.
-   *
-   * @param id - The ID of the user whose image URL is to be retrieved.
-   * @returns - The URL of the user's image.
-   * @throws - Propagates any errors that occur during URL retrieval.
-   */
   async getUserImage(id: number): Promise<string> {
     try {
       const imageUrl = await getImageUrlFromFirebase(id.toString(), 'Users');
@@ -358,105 +220,49 @@ export class UserService {
   }
 
   /**
-   * Deletes a user's image from Firebase Storage and updates the user's imageUrl to null in the database.
-   *
-   * @param id - The ID of the user whose image is to be deleted.
-   * @throws - Propagates any errors that occur during image deletion or database update.
+   * Deletes a user's image from Firebase storage and removes the image URL from the user record in the database.
+   * @param id The ID of the user whose image is to be deleted.
+   * @throws Error if there's an issue deleting the image or updating the user record.
    */
   async deleteUserImage(id: number) {
     try {
       await deleteFileFromFirebase(id.toString(), 'Users');
-
-      const updateResult = await this.userRepository.update(id, {
-        imageUrl: null,
-      });
-
-      if (updateResult.affected === 0) {
-        throw new NotFoundException(`User with ID ${id} not found`);
-      }
+      await this.userRepository.deleteUserImage(id);
     } catch (error) {
-      console.error(`Error deleting user image: ${error.message}`);
-      if (error instanceof NotFoundException) {
-        throw error;
-      } else {
-        throw new InternalServerErrorException(
-          'Failed to delete user image. Please try again.',
-        );
-      }
+      console.error('Error deleting user image:', error);
+      throw error;
     }
   }
 
   /**
-   * Retrieves a user from the database based on their email.
-   *
-   * @param userEmail - The email of the user to retrieve.
-   * @returns A Promise that resolves to the user if found, or rejects with an error.
+   * Retrieves a user from the database based on the provided email address.
+   * @param userEmail The email address of the user to retrieve.
+   * @returns A Promise that resolves to the user object.
+   * @throws Error if there's an issue retrieving the user.
    */
   async getUserByEmail(userEmail: string): Promise<User> {
     try {
-      const user = await this.userRepository.findOne({
-        where: { email: userEmail },
-      });
-
-      if (!user) {
-        throw new NotFoundException(`User with email ${userEmail} not found`);
-      }
-
-      return user;
+      return await this.userRepository.getUserByEmail(userEmail);
     } catch (error) {
-      console.error(`Error retrieving user by email: ${error.message}`);
-      if (error instanceof NotFoundException) {
-        throw error;
-      } else {
-        throw new InternalServerErrorException(
-          'Failed to retrieve user by email. Please try again.',
-        );
-      }
+      console.error('Error retrieving user by email:', error);
+      throw error;
     }
   }
 
   /**
-   * Retrieves and enriches the profile data of a specified user.
-   * This method fetches a user and their friend's profile, including pending friend requests,
-   * and enriches the profile with items and friends' details.
-   *
-   * @param toggleFriendDto - DTO containing userId and friendId for which profile data is to be retrieved.
-   * @returns A promise of UserProfileDto containing detailed profile info, items, and friends.
+   * Retrieves the profile of a user for display on the user's profile page.
+   * @param toggleFriendDto The data necessary to retrieve the user profile.
+   * @returns A Promise that resolves to a UserProfileDto object containing the user's profile information.
+   * @throws An error if there's an issue retrieving the user profile.
    */
   async getUserForProfile(
     toggleFriendDto: ToggleFriendDto,
   ): Promise<UserProfileDto> {
     try {
-      const { userId, friendId } = toggleFriendDto;
-      const userPromise = this.userRepository.findOne({
-        where: { id: userId },
-        relations: ['friends'],
-      });
+      const { userId } = toggleFriendDto;
 
-      const friendRequestsPromise = this.friendRequestRepository.find({
-        where: [
-          { friendId: userId, accepted: null },
-          { userId, accepted: null },
-        ],
-      });
-
-      const profileUserPromise = this.userRepository.findOne({
-        where: { id: friendId },
-        relations: [
-          'friends',
-          'items',
-          'exchanges',
-          'exchanges.friend',
-          'exchanges.items',
-          'exchanges.user',
-        ],
-      });
-
-      const [user, friendRequests, profileUser] = await Promise.all([
-        userPromise,
-        friendRequestsPromise,
-        profileUserPromise,
-      ]);
+      const [user, friendRequests, profileUser] =
+        await this.userRepository.getUserForProfile(toggleFriendDto);
 
       if (!user) throw new Error('User not found.');
       if (!profileUser) throw new Error('Profile user not found.');
@@ -529,88 +335,50 @@ export class UserService {
   }
 
   /**
-    Changes the user's password after validating the current password and ensuring it's different from the new one.
-    @param changePasswordDto - DTO containing email, current password, and new password.
-    @throws Error if user not found, current password invalid, or new password same as current.
-    @returns Promise resolved with no value upon successful password change.
-  */
+   * Changes the password of a user based on the provided data.
+   * @param changePasswordDto The data necessary to change the user's password.
+   * @throws Error if there's an issue changing the password or sending the notification.
+   */
   async changePasswordDto(changePasswordDto: ChangePasswordDto) {
-    const user = await this.userRepository.findOne({
-      where: { email: changePasswordDto.email },
-    });
+    try {
+      const userId =
+        await this.userRepository.changePasswordDto(changePasswordDto);
 
-    if (!user) {
-      throw new Error('User not found.');
+      sendNotification(this.notificationClient, {
+        userId: userId.toString(),
+        nameOfTheService: 'user-service',
+        text: 'You have changed password',
+        initials: 'CHP',
+      });
+    } catch (error) {
+      console.error('Error changing password:', error);
+      throw error;
     }
-
-    const isPasswordValid = await bcrypt.compare(
-      changePasswordDto.password,
-      user.password,
-    );
-
-    if (!isPasswordValid) {
-      throw new Error('Invalid password.');
-    }
-
-    const isNewPasswordSameAsOld = await bcrypt.compare(
-      changePasswordDto.newPassword,
-      user.password,
-    );
-
-    if (isNewPasswordSameAsOld) {
-      throw new Error(
-        'New password must be different from the current password.',
-      );
-    }
-
-    const hashedPassword = await bcrypt.hash(changePasswordDto.newPassword, 10);
-    user.password = hashedPassword;
-
-    await this.userRepository.save(user);
-
-    sendNotification(this.notificationClient, {
-      userId: user.id.toString(),
-      nameOfTheService: 'user-service',
-      text: 'You have changed password',
-      initials: 'CHP',
-    });
   }
 
   /**
-   * Fetches a user by their ID from the database.
-   * @param id - The ID of the user to fetch.
-   * @throws NotFoundException if the user is not found.
-   * @returns Promise<User> resolved with the User entity upon successful retrieval.
+   * Retrieves a user from the database based on the provided ID.
+   * @param id The ID of the user to retrieve.
+   * @returns A Promise that resolves to the user object.
+   * @throws An error if there's an issue retrieving the user.
    */
   async getUserById(id: number): Promise<User> {
     try {
-      const user = await this.userRepository.findOne({
-        where: { id: id },
-      });
-
-      if (!user) {
-        throw new NotFoundException(`User with ID ${id} not found`);
-      }
-
-      return user;
+      return await this.userRepository.findUser(id);
     } catch (error) {
       throw error;
     }
   }
 
   /**
-   * Fetches friends of a specific user by the user's ID, transforming each friend into a CreateItemUserDto.
-   * @param id - The unique identifier of the user whose friends are to be fetched.
-   * @throws Error - Throws an error if the user is not found or if there's a failure in retrieving data.
-   * @returns A Promise resolved with an array of CreateItemUserDto, each representing a friend of the user.
+   * Retrieves friends of a user for item creation based on the provided user ID.
+   * @param id The ID of the user whose friends are to be retrieved.
+   * @returns A Promise that resolves to an array of CreateItemUserDto objects containing information about the user's friends.
+   * @throws An error if there's an issue retrieving the user's friends or if the user is not found.
    */
   async getFriendsForItemCreation(id: number): Promise<CreateItemUserDto[]> {
     try {
-      const user = await this.userRepository.findOne({
-        where: { id },
-        relations: ['friends'],
-      });
-
+      const user = await this.userRepository.getUserWithFriends(id);
       if (!user) {
         throw new Error('User not found');
       }
@@ -662,5 +430,50 @@ export class UserService {
         exchange.exchangeState,
       );
     });
+  }
+
+  /**
+   * Uploads a user image to Firebase storage.
+   * @param uploadUserImageDto The data necessary to upload the user image.
+   * @param update Indicates whether to update an existing image.
+   * @param folderName The name of the folder in Firebase storage to upload the image to.
+   * @param isBackground Indicates whether the image is a background image.
+   * @throws NotFoundException if the user or image is not found.
+   * @throws InternalServerErrorException if there's an error during the image upload process.
+   */
+  private async uploadUserImage(
+    uploadUserImageDto: UploadUserImageDto,
+    update: boolean,
+    folderName: string,
+    isBackground: boolean,
+  ) {
+    try {
+      const imageUrl = update
+        ? await updateFileInFirebase(
+            uploadUserImageDto.file,
+            uploadUserImageDto.userId,
+            folderName,
+          )
+        : await uploadFileToFirebase(
+            uploadUserImageDto.file,
+            uploadUserImageDto.userId,
+            folderName,
+          );
+
+      await this.userRepository.uploadUserImage(
+        parseInt(uploadUserImageDto.userId),
+        imageUrl,
+        isBackground,
+      );
+    } catch (error) {
+      console.error(`Error uploading user image: ${error.message}`);
+      if (error instanceof NotFoundException) {
+        throw error;
+      } else {
+        throw new InternalServerErrorException(
+          'Failed to upload user image. Please try again.',
+        );
+      }
+    }
   }
 }
