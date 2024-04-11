@@ -1,21 +1,14 @@
 import { ToggleExchangeToItemDto } from 'libs/dtos/itemDtos/toggle.exchange.id.dto';
 import { ItemDto } from 'libs/dtos/itemDtos/item.dto';
 import { ItemSizeDto } from 'libs/dtos/itemDtos/item.size.dto';
-import {
-  deleteFileFromFirebase,
-  getImageUrlFromFirebase,
-  updateFileInFirebase,
-  uploadFileToFirebase,
-} from '../../../libs/database/src/firabase-storage';
+import { getImageUrlFromFirebase } from '../../../libs/database/src/firabase-storage';
 import { Injectable } from '@nestjs/common';
 import { ClientProxyFactory, Transport } from '@nestjs/microservices';
 import { UploadItemImageDto } from 'libs/dtos/itemDtos/upload.item.image.dto';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Like, Repository } from 'typeorm';
 import { Item } from '../../../libs/database/src/entities/item.entity';
 import { User } from '../../../libs/database/src/entities/user.entity';
 import { friendManagementCommands } from '../../../libs/tcp/src/userMessagePatterns/friend.management.nessage.patterns';
-import { profileManagementCommands } from '../../../libs/tcp/src/userMessagePatterns/user.profile.message.patterns';
 import { sendNotification } from '../../../libs/tcp/src/notifications/notification.helper';
 import { CreateUpdateItemIntDto } from 'libs/dtos/itemDtos/create.udpate.item.int.dto';
 import { toItemDto, toItemSimpleDto } from './Helpers/item.helpers';
@@ -29,8 +22,7 @@ export class ItemService {
 
   constructor(
     @InjectRepository(Item)
-    private readonly itemRepository: Repository<Item>,
-    private readonly itemRepository2: ItemRepository,
+    private readonly itemRepository: ItemRepository,
   ) {
     this.userClient = ClientProxyFactory.create({
       transport: Transport.TCP,
@@ -72,7 +64,7 @@ export class ItemService {
           )
           .toPromise();
 
-      const newItem = await this.itemRepository2.createItem(
+      const newItem = await this.itemRepository.createItem(
         user,
         friend,
         createUpdateItemDto,
@@ -100,10 +92,7 @@ export class ItemService {
         initials: 'IC',
       });
 
-      const savedItem = await this.itemRepository.findOne({
-        where: { id: newItem.id },
-        relations: ['user', 'friend'],
-      });
+      const savedItem = await this.itemRepository.getSavedItemd(newItem.id);
 
       return toItemDto(savedItem);
     } catch (error) {
@@ -119,7 +108,7 @@ export class ItemService {
    */
   async getAllItems(): Promise<ItemDto[]> {
     try {
-      const items = await this.itemRepository2.getAllItems();
+      const items = await this.itemRepository.getAllItems();
       const itemDtos = items.map((item) => {
         return toItemDto(item);
       });
@@ -148,7 +137,7 @@ export class ItemService {
       const limit = parseInt(query.limit, 10) || 10;
       const searchTerm = query.search || '';
 
-      const items = await this.itemRepository2.getUserItems(
+      const items = await this.itemRepository.getUserItems(
         userId,
         forgotten,
         page,
@@ -179,7 +168,7 @@ export class ItemService {
     isForForgotten: boolean,
   ): Promise<ItemSimpleDto[]> {
     try {
-      const items = await this.itemRepository2.getUserItemSimpleForExchange(
+      const items = await this.itemRepository.getUserItemSimpleForExchange(
         userId,
         isForForgotten,
       );
@@ -202,7 +191,7 @@ export class ItemService {
    */
   async deleteItem(itemId: number): Promise<boolean> {
     try {
-      return await this.itemRepository2.deleteItem(itemId);
+      return await this.itemRepository.deleteItem(itemId);
     } catch (error) {
       console.error('Service error in deleteItem:', error.message);
       throw error;
@@ -219,7 +208,7 @@ export class ItemService {
    */
   async updateItem(updateItemDto: CreateUpdateItemIntDto): Promise<ItemDto> {
     try {
-      return await this.itemRepository2.updateItem(updateItemDto);
+      return await this.itemRepository.updateItem(updateItemDto);
     } catch (error) {
       console.error('Error occurred while updating item:', error);
       throw error;
@@ -236,7 +225,7 @@ export class ItemService {
    */
   async getItem(itemId: number): Promise<ItemDto> {
     try {
-      const item = await this.itemRepository2.getItem(itemId);
+      const item = await this.itemRepository.getItem(itemId);
 
       if (!item) {
         throw new Error(`Item not found.`);
@@ -263,11 +252,10 @@ export class ItemService {
     update: boolean,
   ): Promise<ItemSizeDto[]> {
     try {
-      const items =
-        await this.itemRepository2.retrieveItemSizesAndCheckExchange(
-          ids,
-          update,
-        );
+      const items = await this.itemRepository.retrieveItemSizesAndCheckExchange(
+        ids,
+        update,
+      );
 
       if (!update) {
         const itemsInExchange = items.some((item) => item.exchange != null);
@@ -295,7 +283,7 @@ export class ItemService {
    * @returns {Promise<ItemDto[]>} - Resolves with an array of ItemDto objects on success.
    */
   async addExchangeToItems(addExchangeToItemDto: ToggleExchangeToItemDto) {
-    await this.itemRepository2.addExchangeToItems(addExchangeToItemDto);
+    await this.itemRepository.addExchangeToItems(addExchangeToItemDto);
   }
 
   /**
@@ -308,7 +296,7 @@ export class ItemService {
     isExchangeDone: boolean,
   ): Promise<boolean> {
     try {
-      return await this.itemRepository2.deleteExchangeFromItems(
+      return await this.itemRepository.deleteExchangeFromItems(
         itemIds,
         isExchangeDone,
       );
@@ -332,7 +320,7 @@ export class ItemService {
     update: boolean,
   ) {
     try {
-      await this.itemRepository2.uploadItemImage(uploadItemImageDto, update);
+      await this.itemRepository.uploadItemImage(uploadItemImageDto, update);
     } catch (error) {
       console.error('Error occurred while uploading item image:', error);
       throw error;
@@ -362,13 +350,6 @@ export class ItemService {
    * @throws - Propagates any errors that occur during image deletion.
    */
   async deleteItemImage(id: number) {
-    try {
-      await deleteFileFromFirebase(id.toString(), 'Items');
-
-      await this.itemRepository.update(id, { imageUrl: null });
-    } catch (error) {
-      console.error('Error deleting item image:', error);
-      throw error;
-    }
+    await this.itemRepository.deleteItemImage(id);
   }
 }

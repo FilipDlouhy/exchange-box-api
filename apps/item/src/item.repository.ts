@@ -1,4 +1,3 @@
-// item.repository.ts
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Like, Repository } from 'typeorm';
@@ -10,7 +9,11 @@ import { profileManagementCommands } from '@app/tcp/userMessagePatterns/user.pro
 import { ItemDto } from 'libs/dtos/itemDtos/item.dto';
 import { toItemDto } from './Helpers/item.helpers';
 import { UploadItemImageDto } from 'libs/dtos/itemDtos/upload.item.image.dto';
-import { updateFileInFirebase, uploadFileToFirebase } from '@app/database';
+import {
+  deleteFileFromFirebase,
+  updateFileInFirebase,
+  uploadFileToFirebase,
+} from '@app/database';
 import { ToggleExchangeToItemDto } from 'libs/dtos/itemDtos/toggle.exchange.id.dto';
 
 @Injectable()
@@ -356,5 +359,34 @@ export class ItemRepository {
       console.error('Error deleting Exchange from items:', err);
       throw err;
     }
+  }
+
+  /**
+   * Deletes an item's image from Firebase Storage.
+   *
+   * @param id - The ID of the item whose image is to be deleted.
+   * @throws - Propagates any errors that occur during image deletion.
+   */
+  async deleteItemImage(id: number) {
+    try {
+      await deleteFileFromFirebase(id.toString(), 'Items');
+
+      await this.itemRepository.update(id, { imageUrl: null });
+    } catch (error) {
+      console.error('Error deleting item image:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Retrieves a saved item from the database based on the provided ID.
+   * @param id The ID of the item to retrieve.
+   * @returns A Promise that resolves to the saved item object with user and friend relations loaded.
+   */
+  async getSavedItemd(id: number) {
+    return await this.itemRepository.findOne({
+      where: { id: id },
+      relations: ['user', 'friend'],
+    });
   }
 }
