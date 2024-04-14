@@ -11,7 +11,6 @@ import { User } from '../../../libs/database/src/entities/user.entity';
 import { CreateUserDto } from 'libs/dtos/userDtos/create.user.dto';
 import * as bcrypt from 'bcrypt';
 import { UpdateCurrentUserDto } from 'libs/dtos/userDtos/update.current.user.dto';
-import { UserProfileDto } from 'libs/dtos/userDtos/user.profile.dto';
 import { ToggleFriendDto } from 'libs/dtos/userDtos/toggle.friend.dto';
 import { FriendRequest } from '@app/database';
 import { ChangePasswordDto } from 'libs/dtos/userDtos/change.password.dto';
