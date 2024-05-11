@@ -8,14 +8,20 @@ import { CacheModule } from '@nestjs/cache-manager';
 import { FriendRequest } from '../../../libs/database/src/entities/friend.request.entity';
 import { UserFriendService } from './user.friend.service';
 import { UserRepository } from './user.repository';
+import { UserFriendRepository } from './user.friend.repository';
+
 @Module({
   imports: [
     DatabaseModule,
     TypeOrmModule.forFeature([User, FriendRequest]),
     CacheModule.register(),
-    UserRepository,
   ],
   controllers: [UserController],
-  providers: [UserService, UserFriendService],
+  providers: [
+    UserService,
+    UserFriendService,
+    UserRepository,
+    UserFriendRepository,
+  ],
 })
 export class UserModule {}

@@ -18,24 +18,12 @@
     "forceConsistentCasingInFileNames": false,
     "noFallthroughCasesInSwitch": false,
     "paths": {
-      "@app/database": [
-        "libs/database/src"
-      ],
-      "@app/database/*": [
-        "libs/database/src/*"
-      ],
-      "@app/tcp": [
-        "libs/tcp/src"
-      ],
-      "@app/tcp/*": [
-        "libs/tcp/src/*"
-      ],
-      "@app/dtos": [
-        "libs/dtos/src"
-      ],
-      "@app/dtos/*": [
-        "libs/dtos/src/*"
-      ]
+      "@app/database": ["libs/database/src"],
+      "@app/database/*": ["libs/database/src/*"],
+      "@app/tcp": ["libs/tcp/src"],
+      "@app/tcp/*": ["libs/tcp/src/*"],
+      "@app/dtos": ["libs/dtos/src"],
+      "@app/dtos/*": ["libs/dtos/src/*"]
     }
   }
 }

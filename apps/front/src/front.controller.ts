@@ -10,7 +10,6 @@ import { taskManagementCommands } from '@app/tcp/frontMessagePatterns/front.task
 export class FrontController {
   constructor(private readonly frontService: FrontService) {}
 
-  // Create a front entity associated with the specified center
   @MessagePattern(frontManagementCommands.createFront)
   async createFront(): Promise<Front> {
     try {

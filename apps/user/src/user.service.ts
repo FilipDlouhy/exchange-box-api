@@ -11,16 +11,12 @@ import {
   uploadFileToFirebase,
 } from '../../../libs/database/src/firabase-storage';
 import {
-  BadRequestException,
-  ConflictException,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
-import * as bcrypt from 'bcrypt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from '../../../libs/database/src/entities/user.entity';
-import { Repository } from 'typeorm';
 import { FriendRequest } from '../../../libs/database/src/entities/friend.request.entity';
 import { UserProfileFriendDto } from 'libs/dtos/userDtos/user.profile.friend.dto';
 import { UserProfileItemDto } from 'libs/dtos/userDtos/user.profile.item.dto';
@@ -39,11 +35,7 @@ import { UserRepository } from './user.repository';
 @Injectable()
 export class UserService {
   private readonly notificationClient;
-  constructor(
-    @InjectRepository(User)
-    @InjectRepository(FriendRequest)
-    private readonly userRepository: UserRepository,
-  ) {
+  constructor(private readonly userRepository: UserRepository) {
     this.notificationClient = ClientProxyFactory.create({
       transport: Transport.TCP,
       options: {

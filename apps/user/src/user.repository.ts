@@ -33,7 +33,6 @@ export class UserRepository {
   async createUser(createUserDto: CreateUserDto) {
     try {
       createUserDto.password = await bcrypt.hash(createUserDto.password, 10);
-
       await this.userRepository.save(createUserDto);
     } catch (err) {
       if (err.code === 'ER_DUP_ENTRY') {
