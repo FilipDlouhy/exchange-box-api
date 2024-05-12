@@ -1,6 +1,5 @@
 import { CreateUserDto } from 'libs/dtos/userDtos/create.user.dto';
 import { ToggleFriendDto } from 'libs/dtos/userDtos/toggle.friend.dto';
-
 import { UploadUserImageDto } from 'libs/dtos/userDtos/upload.user.image.dto';
 import { UserDto } from 'libs/dtos/userDtos/user.dto';
 import { friendStatusEnum } from 'libs/dtos/userEnums/friend.enum';
@@ -15,9 +14,7 @@ import {
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
 import { User } from '../../../libs/database/src/entities/user.entity';
-import { FriendRequest } from '../../../libs/database/src/entities/friend.request.entity';
 import { UserProfileFriendDto } from 'libs/dtos/userDtos/user.profile.friend.dto';
 import { UserProfileItemDto } from 'libs/dtos/userDtos/user.profile.item.dto';
 import { UserProfileDto } from 'libs/dtos/userDtos/user.profile.dto';
@@ -105,7 +102,9 @@ export class UserService {
     updateCurrentUserDto: UpdateCurrentUserDto,
   ): Promise<void> {
     const user = await this.userRepository.findUser(updateCurrentUserDto.id);
-    updateCurrentUserDto.images.forEach((image) => {
+    const images = updateCurrentUserDto.images || [];
+
+    images.forEach((image) => {
       const isBackgroundImage = image.originalname
         .toLocaleLowerCase()
         .includes('background');

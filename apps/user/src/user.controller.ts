@@ -312,7 +312,7 @@ export class UserController {
   )
   async acceptFriendRequest(toggleFriendDto: ToggleFriendDto) {
     try {
-      return this.userFriendService.accepOrDenytFriendRequest(
+      return this.userFriendService.acceptOrDenyFriendRequest(
         toggleFriendDto,
         true,
       );
@@ -331,7 +331,7 @@ export class UserController {
   )
   async denyFriendRequest(toggleFriendDto: ToggleFriendDto) {
     try {
-      return this.userFriendService.accepOrDenytFriendRequest(
+      return this.userFriendService.acceptOrDenyFriendRequest(
         toggleFriendDto,
         false,
       );
