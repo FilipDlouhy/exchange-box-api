@@ -13,9 +13,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ClientProxyFactory, Transport } from '@nestjs/microservices';
-import { InjectRepository } from '@nestjs/typeorm';
 import { Exchange } from '@app/database/entities/exchange.entity';
-import { Repository } from 'typeorm';
 import { User } from '@app/database/entities/user.entity';
 import { Item } from '@app/database/entities/item.entity';
 import { itemExchangeManagementCommands } from '@app/tcp/itemMessagePatterns/item.exchange.management.message.patterns';
@@ -33,6 +31,7 @@ import { taskManagementCommands } from '@app/tcp/frontMessagePatterns/front.task
 import { eventMessagePatterns } from '@app/tcp/eventMessagePatterns/event.message.patterns';
 import { CreateEventDto } from 'libs/dtos/eventDtos/create.event.dto';
 import { EventType } from '@app/database/event.type.enum';
+import { ExchangeRepository } from './exhcnage.repository';
 
 @Injectable()
 export class ExchangeService {
@@ -45,8 +44,7 @@ export class ExchangeService {
   private readonly eventClient;
 
   constructor(
-    @InjectRepository(Exchange)
-    private readonly exchangeRepository: Repository<Exchange>,
+    private readonly exchangeRepository: ExchangeRepository,
     private readonly exchangeUtilsService: ExchangeUtilsService,
   ) {
     this.userClient = ClientProxyFactory.create({
@@ -220,9 +218,8 @@ export class ExchangeService {
     exchangeId: number,
   ): Promise<ExchangeSimpleDto> {
     try {
-      const existingExchange = await this.exchangeRepository.findOne({
-        where: { id: exchangeId },
-      });
+      const existingExchange =
+        await this.exchangeRepository.findById(exchangeId);
 
       if (!existingExchange) {
         throw new NotFoundException('Exchange not found');
@@ -281,7 +278,7 @@ export class ExchangeService {
       existingExchange.pickUpDate = new Date(updateExchangeDto.pickUpDate);
 
       const updatedExchange =
-        await this.exchangeRepository.save(existingExchange);
+        await this.exchangeRepository.saveExchange(existingExchange);
 
       return new ExchangeSimpleDto(
         updatedExchange.user.id,
@@ -316,10 +313,12 @@ export class ExchangeService {
   async getFullExchange(id: number, userId: number): Promise<FullExchangeDto> {
     let exchange;
     try {
-      exchange = await this.exchangeRepository.findOne({
-        where: { id },
-        relations: ['user', 'friend', 'items', 'front'],
-      });
+      exchange = await this.exchangeRepository.findOneByIdAndRelations(id, [
+        'user',
+        'friend',
+        'items',
+        'front',
+      ]);
       if (!exchange) {
         throw new NotFoundException(`Exchange with ID ${id} not found`);
       }
@@ -393,12 +392,10 @@ export class ExchangeService {
   ): Promise<void> {
     try {
       // Find the exchange by the associated Box ID and include the 'box' relation
-      const exchange = await this.exchangeRepository.findOne({
-        relations: ['box'],
-        where: {
-          box: { id: changeExchangeStatus.id },
-        },
-      });
+      const exchange = await this.exchangeRepository.findOneByBoxId(
+        changeExchangeStatus.id,
+        ['box'],
+      );
       if (!exchange) {
         throw new NotFoundException(
           `Exchange with Box ID ${changeExchangeStatus.id} not found`,
@@ -411,7 +408,7 @@ export class ExchangeService {
 
       exchange.exchangeState = changeExchangeStatus.exchangeState;
 
-      await this.exchangeRepository.save(exchange);
+      await this.exchangeRepository.saveExchange(exchange);
     } catch (error) {
       console.error('Error updating exchange:', error);
       throw new Error('Failed to update exchange');
@@ -427,10 +424,10 @@ export class ExchangeService {
    */
   async getBoxSize(id: number): Promise<string> {
     try {
-      const exchange = await this.exchangeRepository.findOne({
-        where: { id },
-        select: ['boxSize'],
-      });
+      const exchange = await this.exchangeRepository.findOneByIdAndRelations(
+        id,
+        ['boxSize'],
+      );
 
       if (!exchange) {
         console.error(`No exchange found with id ${id}`);
@@ -452,10 +449,10 @@ export class ExchangeService {
    */
   async getCodeForExchnageBox(id: number): Promise<string> {
     try {
-      const exchange = await this.exchangeRepository.findOne({
-        where: { id },
-        relations: ['box', 'friend', 'user'],
-      });
+      const exchange = await this.exchangeRepository.findOneByIdAndRelations(
+        id,
+        ['box', 'friend', 'user'],
+      );
 
       if (!exchange || !exchange.box) {
         throw new Error('Exchange or associated box not found');
@@ -486,10 +483,10 @@ export class ExchangeService {
    */
   async openBoxViaExhcnage(openBoxDto: OpenBoxDto, isFromCreator: boolean) {
     try {
-      const exchange = await this.exchangeRepository.findOne({
-        where: { id: openBoxDto.id },
-        relations: ['box', 'friend', 'user'],
-      });
+      const exchange = await this.exchangeRepository.findOneByIdAndRelations(
+        openBoxDto.id,
+        ['box', 'friend', 'user'],
+      );
 
       if (!exchange) {
         throw new NotFoundException(

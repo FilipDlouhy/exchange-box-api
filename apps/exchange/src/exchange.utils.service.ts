@@ -6,14 +6,13 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ClientProxyFactory, Transport } from '@nestjs/microservices';
-import { InjectRepository } from '@nestjs/typeorm';
 import { Exchange } from '@app/database/entities/exchange.entity';
-import { Like, Repository } from 'typeorm';
 import { taskManagementCommands } from '@app/tcp/frontMessagePatterns/front.task.management.message.patterns';
 import { centerMessagePatterns } from '@app/tcp/centerMessagePatterns/center.message.patterns';
 import { Front } from '@app/database';
 import { ExchangeSimpleDto } from 'libs/dtos/exchangeDtos/exchange.simple.dto';
 import { itemExchangeManagementCommands } from '@app/tcp/itemMessagePatterns/item.exchange.management.message.patterns';
+import { ExchangeRepository } from './exhcnage.repository';
 
 @Injectable()
 export class ExchangeUtilsService {
@@ -22,10 +21,7 @@ export class ExchangeUtilsService {
   private readonly centerCilent;
   private readonly itemClient;
 
-  constructor(
-    @InjectRepository(Exchange)
-    private readonly exchangeRepository: Repository<Exchange>,
-  ) {
+  constructor(private readonly exchangeRepository: ExchangeRepository) {
     this.itemClient = ClientProxyFactory.create({
       transport: Transport.TCP,
       options: {
@@ -69,21 +65,10 @@ export class ExchangeUtilsService {
     query: any = {},
   ): Promise<ExchangeSimpleDto[]> {
     try {
-      const page = parseInt(query.page, 10) || 0;
-      const limit = parseInt(query.limit, 10) || 10;
-      const search = query.search || '';
-
-      const whereConditions = [
-        { user: { id: userId }, name: Like(`%${search}%`) },
-        { friend: { id: userId }, name: Like(`%${search}%`) },
-      ];
-
-      const exchanges = await this.exchangeRepository.find({
-        where: whereConditions,
-        relations: ['user', 'friend', 'items'],
-        skip: page,
-        take: limit,
-      });
+      const exchanges = await this.exchangeRepository.getExchangesByUser(
+        userId,
+        query,
+      );
 
       const usersExchanges: ExchangeSimpleDto[] = exchanges.map(
         (exchange) =>
@@ -151,7 +136,8 @@ export class ExchangeUtilsService {
     exchange.front = front;
     exchange.box = box;
 
-    const updatedExchange = await this.exchangeRepository.save(exchange);
+    const updatedExchange =
+      await this.exchangeRepository.saveExchange(exchange);
 
     return updatedExchange;
   }
@@ -166,14 +152,11 @@ export class ExchangeUtilsService {
     try {
       // Find the exchange by the associated box ID and include the 'front' relation
       const exchange = isExhcnage
-        ? await this.exchangeRepository.findOne({
-            where: { id: id },
-            relations: ['front', 'items'],
-          })
-        : await this.exchangeRepository.findOne({
-            where: { box: { id: id } },
-            relations: ['front', 'items'],
-          });
+        ? await this.exchangeRepository.findOneByIdAndRelations(id, [
+            'front',
+            'items',
+          ])
+        : await this.exchangeRepository.findOneByBoxId(id, ['front', 'items']);
 
       if (!exchange) {
         throw new Error(`Exchange with box ID ${id} not found.`);
@@ -209,7 +192,7 @@ export class ExchangeUtilsService {
 
       exchange.front = null;
       exchange.box = null;
-      await this.exchangeRepository.remove(exchange);
+      await this.exchangeRepository.removeExchange(exchange);
     } catch (error) {
       console.error('Error deleting exchange from the front:', error);
       throw error;

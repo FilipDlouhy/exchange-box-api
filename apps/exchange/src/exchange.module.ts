@@ -6,6 +6,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Exchange } from '@app/database/entities/exchange.entity';
 import { CacheModule } from '@nestjs/cache-manager';
 import { ExchangeUtilsService } from './exchange.utils.service';
+import { ExchangeRepository } from './exhcnage.repository';
 
 @Module({
   imports: [
@@ -14,6 +15,6 @@ import { ExchangeUtilsService } from './exchange.utils.service';
     CacheModule.register(),
   ],
   controllers: [ExchangeController],
-  providers: [ExchangeService, ExchangeUtilsService],
+  providers: [ExchangeService, ExchangeUtilsService, ExchangeRepository],
 })
 export class ExchangeModule {}
