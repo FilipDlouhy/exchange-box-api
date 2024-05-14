@@ -1,26 +1,21 @@
-import { Front } from '@app/database/entities/front.entity';
-import { DeleteExchangeFromFrontDto } from 'libs/dtos/exchangeDtos/delete.exchange.from.front.dto';
 import {
   ConflictException,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { FrontRepository } from './front.repository';
+import { DeleteExchangeFromFrontDto } from 'libs/dtos/exchangeDtos/delete.exchange.from.front.dto';
+import { Front } from '@app/database/entities/front.entity';
 
 @Injectable()
 export class FrontService {
-  constructor(
-    @InjectRepository(Front)
-    private readonly frontRepository: Repository<Front>,
-  ) {}
+  constructor(private readonly frontRepository: FrontRepository) {}
 
   /**
    * Creates a new front associated with a given center in the database.
    *
-   * @param {number} center_id - The ID of the center to which the front is associated.
-   * @returns {Promise<boolean>} - Returns a promise that resolves to `true` if the front is successfully created.
+   * @returns {Promise<Front>} - Returns a promise that resolves to the created Front entity.
    */
   async createFront(): Promise<Front> {
     try {
@@ -30,19 +25,19 @@ export class FrontService {
         throw new InternalServerErrorException('Failed to generate box totals');
       }
 
-      const newFront = this.frontRepository.create({
+      const newFrontData = {
         totalNumberOfTasks: boxTotals.total,
         numberOfTasksInFront: 0,
         numberOfLargeBoxesTotal: boxTotals.largeBoxes,
         numberOfMediumBoxesTotal: boxTotals.mediumBoxes,
         numberOfSmallBoxesTotal: boxTotals.smallBoxes,
-      });
+      };
+
+      const newFront = await this.frontRepository.createFront(newFrontData);
 
       if (!newFront) {
         throw new InternalServerErrorException('Failed to create front');
       }
-
-      await this.frontRepository.save(newFront);
 
       return newFront;
     } catch (error) {
@@ -56,16 +51,15 @@ export class FrontService {
    * It checks if the center has available capacity for the specified size of boxes.
    *
    * @param size - The size of the box.
-   * @param center_id - The ID of the center.
-   * @returns The ID of the front.
-   * @throws Error if the data fetch fails or if the center is full for the specified size.
+   * @param frontId - The ID of the front.
+   * @returns {Promise<void>} - Resolves when the task is successfully added to the front.
+   * @throws {NotFoundException} - If the front is not found.
+   * @throws {ConflictException} - If the front is full for the specified size.
+   * @throws {InternalServerErrorException} - If there is an issue with the front data.
    */
-  async addTaskToFront(size: string, frontId: number) {
+  async addTaskToFront(size: string, frontId: number): Promise<void> {
     try {
-      // Using the repository to find the front with the given center ID
-      const front = await this.frontRepository.findOne({
-        where: { id: frontId },
-      });
+      const front = await this.frontRepository.findFrontById(frontId);
 
       if (!front) {
         throw new NotFoundException(`Front with ID ${frontId} not found`);
@@ -100,7 +94,7 @@ export class FrontService {
 
       front[`numberOf${size}Boxes`] += 1;
 
-      await this.frontRepository.save(front);
+      await this.frontRepository.saveFront(front);
     } catch (error) {
       console.error('Error in addTaskToFront function:', error);
       throw error;
@@ -110,20 +104,19 @@ export class FrontService {
   /**
    * Deletes a task from the front by updating the corresponding front's data.
    *
-   * @param deleteExchnageFromFront - DTO with details to identify the task and front.
-   * @returns True if the task is successfully deleted from the front, false otherwise.
+   * @param deleteExchangeFromFront - DTO with details to identify the task and front.
+   * @returns {Promise<void>} - Resolves when the task is successfully deleted from the front.
+   * @throws {NotFoundException} - If the front is not found.
+   * @throws {InternalServerErrorException} - If there is an issue with the front data.
    */
   async deleteTaskFromFront(
-    deleteExchnageFromFront: DeleteExchangeFromFrontDto,
-  ) {
-    const size = deleteExchnageFromFront.boxSize;
-    const frontId = deleteExchnageFromFront.frontId;
+    deleteExchangeFromFront: DeleteExchangeFromFrontDto,
+  ): Promise<void> {
+    const size = deleteExchangeFromFront.boxSize;
+    const frontId = deleteExchangeFromFront.frontId;
 
     try {
-      // Fetch the current data
-      const front = await this.frontRepository.findOne({
-        where: { id: frontId },
-      });
+      const front = await this.frontRepository.findFrontById(frontId);
 
       if (!front) {
         throw new NotFoundException(`Front with ID ${frontId} not found`);
@@ -151,10 +144,10 @@ export class FrontService {
       );
       front.numberOfTasksInFront = Math.max(front.numberOfTasksInFront - 1, 0);
 
-      // Update the 'front' entity
-      await this.frontRepository.save(front);
-    } catch (err) {
-      console.error('Error in deleteTaskFromFront function:', err);
+      await this.frontRepository.saveFront(front);
+    } catch (error) {
+      console.error('Error in deleteTaskFromFront function:', error);
+      throw error;
     }
   }
 
@@ -170,7 +163,6 @@ export class FrontService {
     const mediumBoxes = Math.floor(Math.random() * 12) + 1;
     const largeBoxes = Math.floor(Math.random() * 12) + 1;
 
-    // Calculate the total count of boxes.
     const total = smallBoxes + mediumBoxes + largeBoxes;
 
     return {

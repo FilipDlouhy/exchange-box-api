@@ -8,6 +8,6 @@ import { DatabaseModule } from '@app/database';
 @Module({
   imports: [DatabaseModule, TypeOrmModule.forFeature([Front])],
   controllers: [FrontController],
-  providers: [FrontService],
+  providers: [FrontService, FrontRepository],
 })
 export class FrontModule {}
