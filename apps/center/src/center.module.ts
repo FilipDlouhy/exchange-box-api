@@ -5,6 +5,7 @@ import { DatabaseModule } from '@app/database';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Center } from '@app/database/entities/center.entity';
 import { CacheModule } from '@nestjs/cache-manager';
+import { CenterRepository } from './center.repository';
 
 @Module({
   imports: [
@@ -13,6 +14,6 @@ import { CacheModule } from '@nestjs/cache-manager';
     CacheModule.register(),
   ],
   controllers: [CenterController],
-  providers: [CenterService],
+  providers: [CenterService, CenterRepository],
 })
 export class CenterModule {}

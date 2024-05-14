@@ -12,17 +12,17 @@ import { SchedulerRegistry } from '@nestjs/schedule';
 import { ClientProxyFactory, Transport } from '@nestjs/microservices';
 import { OpenBoxDto } from 'libs/dtos/boxDtos/open.box.dto';
 import { Box } from '@app/database/entities/box.entity';
-import { InjectRepository } from '@nestjs/typeorm';
-import { IsNull, Not, Repository } from 'typeorm';
 import { exchangeQueueManagementCommands } from '@app/tcp/exchnageMessagePatterns/exchnage.queue.message.patterns';
 import { exchnageStatus } from 'libs/dtos/exchange.status.dto';
+import { BoxRepository } from './box.repository';
+
 @Injectable()
 export class BoxService implements OnModuleInit {
   private readonly exchangeClient;
+
   constructor(
     private schedulerRegistry: SchedulerRegistry,
-    @InjectRepository(Box)
-    private readonly boxRepository: Repository<Box>,
+    private readonly boxRepository: BoxRepository, // Use the new repository
   ) {
     this.exchangeClient = ClientProxyFactory.create({
       transport: Transport.TCP,
@@ -34,16 +34,13 @@ export class BoxService implements OnModuleInit {
   }
 
   /**
-   * Asynchronously initializes the module to handle box creation and scheduling.
-   * It fetches existing boxes from the database and updates their status based on specific criteria.
-   * Additionally, it sets a timeout to handle box deletion or further processing.
+   * Handles the initialization logic for the BoxService.
+   * This method is executed when the module is initialized.
+   * It retrieves boxes from the database that have a defined 'timeToPutInBox' and sets
+   * a timeout to handle box deletion after a specified period.
    */
   async onModuleInit() {
-    const boxes = await this.boxRepository.find({
-      where: {
-        timeToPutInBox: Not(IsNull()),
-      },
-    });
+    const boxes = await this.boxRepository.findBoxesWithTimeToPutInBoxNotNull();
     boxes.map(async (box) => {
       const currentDate = new Date();
       const timeToPutItemsIntoTheBox = new Date(
@@ -52,13 +49,12 @@ export class BoxService implements OnModuleInit {
 
       box.timeToPutInBox = timeToPutItemsIntoTheBox;
 
-      // Save the new box entity to the database
-      await this.boxRepository.save(box);
+      await this.boxRepository.saveBox(box);
 
       const deleteExchangeFromFront = setTimeout(async () => {
         this.deleteExchnageViaBox(box.id);
       }, 7200000); // 2 hours in milliseconds
-      // Register the timeout in the scheduler
+
       this.schedulerRegistry.addTimeout(
         `timeout set for box ${box.id}`,
         deleteExchangeFromFront,
@@ -67,11 +63,12 @@ export class BoxService implements OnModuleInit {
   }
 
   /**
-   * Asynchronously creates a box for an exchange and schedules its availability based on provided criteria.
-   * This function also generates a random password for the box, hashes it, and inserts the box data into the database.
-   * Additionally, it sets a timeout to process the box after a delay, based on the time calculated for the box to be opened.
+   * Creates a new box for an exchange.
+   * This method sets a time for putting items into the box, saves the box to the database,
+   * and schedules a timeout for deleting the box after a specified period.
+   * @returns {Promise<Box>} - The created Box object.
    */
-  async createBoxForExchange() {
+  async createBoxForExchange(): Promise<Box> {
     try {
       const currentDate = new Date();
       const timeToPutItemsIntoTheBox = new Date(
@@ -80,7 +77,7 @@ export class BoxService implements OnModuleInit {
       const box = new Box();
       box.timeToPutInBox = timeToPutItemsIntoTheBox;
 
-      const insertedBox = await this.boxRepository.save(box);
+      const insertedBox = await this.boxRepository.saveBox(box);
 
       const deleteExchangeFromFront = setTimeout(async () => {
         this.deleteExchnageViaBox(box.id);
@@ -93,14 +90,16 @@ export class BoxService implements OnModuleInit {
       return insertedBox;
     } catch (error) {
       console.error('Error in createBoxForExchange function:', error);
-      // Handle general errors
     }
   }
 
   /**
-   Generates a secure random password for a box associated with the given ID.
-   @param {number} id - The exchange's ID linked to the box.
-   @returns {Promise<string>} - Resolves with the generated password.
+   * Generates a random code for opening a box and hashes the code.
+   * This method also verifies the state of the box and ensures it meets
+   * the criteria for code generation before saving the hashed code to the database.
+   * @param {number} id - The ID of the box.
+   * @param {string} exchangeState - The state of the exchange.
+   * @returns {Promise<string>} - The generated code to open the box.
    */
   async generateCodeForBoxToOpen(
     id: number,
@@ -110,7 +109,7 @@ export class BoxService implements OnModuleInit {
       const passwordToOpenBox = generateRandomString(8);
       const hashedPassword = await bcrypt.hash(passwordToOpenBox, 10);
 
-      const box = await this.boxRepository.findOne({ where: { id } });
+      const box = await this.boxRepository.findBoxById(id);
 
       if (!box) {
         throw new NotFoundException(`No box found with exchange id ${id}`);
@@ -124,14 +123,14 @@ export class BoxService implements OnModuleInit {
 
       box.boxOpenCode = hashedPassword;
 
-      await this.boxRepository.save(box);
+      await this.boxRepository.saveBox(box);
 
       const timeoutId = `clearCode-${box.id}`;
       const clearCodeTimeout = setTimeout(async () => {
-        const boxToUpdate = await this.boxRepository.findOne({ where: { id } });
+        const boxToUpdate = await this.boxRepository.findBoxById(id);
         if (boxToUpdate) {
           boxToUpdate.boxOpenCode = null;
-          await this.boxRepository.save(boxToUpdate);
+          await this.boxRepository.saveBox(boxToUpdate);
           console.log(`Box open code cleared for box with id ${id}`);
         }
       }, 6000);
@@ -145,19 +144,15 @@ export class BoxService implements OnModuleInit {
   }
 
   /**
-   * Asynchronously opens a box, performing checks and updates based on the provided DTO.
-   * Retrieves box data, verifies the code, checks timing constraints, and updates the box's status.
-   * Sets a timeout for auto-closing the box after a specified duration.
-   *
-   * @param {object} openBoxDto - DTO with info for opening the box.
-   * @param {number} openBoxDto.id - Unique identifier of the associated exchange.
-   * @param {string} openBoxDto.code - Security code for box opening.
+   * Opens a box using the provided DTO.
+   * This method checks the validity of the provided code, updates the box status,
+   * and schedules a timeout to close the box automatically after a specified period.
+   * @param {OpenBoxDto} openBoxDto - Data Transfer Object containing the box ID and the code to open the box.
+   * @param {boolean} isFromCreator - Flag indicating whether the request is from the creator.
    */
   async openBox(openBoxDto: OpenBoxDto, isFromCreator: boolean) {
     try {
-      const box = await this.boxRepository.findOne({
-        where: { id: openBoxDto.id },
-      });
+      const box = await this.boxRepository.findBoxById(openBoxDto.id);
 
       if (!box) {
         throw new NotFoundException('Box not found');
@@ -185,17 +180,15 @@ export class BoxService implements OnModuleInit {
       box.timeToPutInBox = null;
       box.openOrClosed = true;
 
-      await this.boxRepository.save(box);
+      await this.boxRepository.saveBox(box);
 
       const closeBox = setTimeout(async () => {
         try {
-          const box = await this.boxRepository.findOne({
-            where: { id: openBoxDto.id },
-          });
+          const box = await this.boxRepository.findBoxById(openBoxDto.id);
 
           if (box) {
             box.openOrClosed = false;
-            await this.boxRepository.save(box);
+            await this.boxRepository.saveBox(box);
           }
         } catch (timeoutError) {
           console.error('Error during timeout processing:', timeoutError);
@@ -233,11 +226,9 @@ export class BoxService implements OnModuleInit {
 
   /**
    * Deletes an exchange associated with a specific box ID.
-   * This method performs two main actions:
-   * 1. It sends a command to the exchange client to delete the exchange from the front based on the given box ID.
-   *    The operation assumes the exchange is not directly associated with the action by setting `isExchange` to false.
-   * 2. If the first operation is successful, it proceeds to delete the box from the box repository.
-   * @param boxId The ID of the box associated with the exchange to be deleted.
+   * This method sends a command to the exchange client to delete the exchange,
+   * and if successful, it deletes the corresponding box from the repository.
+   * @param {number} boxId - The ID of the box to be deleted.
    */
   async deleteExchnageViaBox(boxId: number) {
     try {
@@ -253,7 +244,7 @@ export class BoxService implements OnModuleInit {
         )
         .toPromise();
 
-      this.boxRepository.delete(boxId);
+      this.boxRepository.deleteBoxById(boxId);
       console.log('Box deleted successfully');
     } catch (timeoutError) {
       console.error('Error during timeout processing:', timeoutError);
