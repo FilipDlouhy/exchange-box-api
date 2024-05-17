@@ -6,6 +6,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { CacheModule } from '@nestjs/cache-manager';
 import { Notification } from '@app/database/entities/notification.entity';
 import { ScheduleModule } from '@nestjs/schedule';
+import { NotificationRepository } from './notification.repository';
 
 @Module({
   imports: [
@@ -15,6 +16,6 @@ import { ScheduleModule } from '@nestjs/schedule';
     CacheModule.register(),
   ],
   controllers: [NotificationsController],
-  providers: [NotificationsService],
+  providers: [NotificationsService, NotificationRepository],
 })
 export class NotificationsModule {}

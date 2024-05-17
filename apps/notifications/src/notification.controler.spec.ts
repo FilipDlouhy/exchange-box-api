@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { NotificationsController } from './notifications.controller';
 import { NotificationsService } from './notifications.service';
 import { CreateNotificationDto } from 'libs/dtos/notificationDtos/create.notification.dto';
+import { NotificationDto } from 'libs/dtos/notificationDtos/notification.dto';
 import { RpcException } from '@nestjs/microservices';
 
 describe('NotificationsController', () => {
@@ -38,12 +39,20 @@ describe('NotificationsController', () => {
     it('should call service.createNotification and return result', async () => {
       const createNotificationDto: CreateNotificationDto = {
         userId: 1,
+        nameOfTheService: 'Test Service',
         text: 'New notification',
         initials: 'NN',
       };
-      const result = { id: 1 };
+      const result: NotificationDto = {
+        id: 1,
+        initials: 'NN',
+        userId: 1,
+        text: 'New notification',
+        createdAt: new Date(),
+        seen: false,
+      };
 
-      jest.spyOn(service, 'createNotification').mockResolvedValue(result);
+      jest.spyOn(service, 'createNotification').mockResolvedValue();
 
       expect(await controller.createNotification(createNotificationDto)).toBe(
         result,
@@ -56,6 +65,7 @@ describe('NotificationsController', () => {
     it('should throw RpcException on error', async () => {
       const createNotificationDto: CreateNotificationDto = {
         userId: 1,
+        nameOfTheService: 'Test Service',
         text: 'New notification',
         initials: 'NN',
       };
@@ -72,7 +82,14 @@ describe('NotificationsController', () => {
 
   describe('getNotification', () => {
     it('should call service.getNotification and return result', async () => {
-      const result = { id: 1, text: 'Test notification' };
+      const result: NotificationDto = {
+        id: 1,
+        initials: 'TN',
+        userId: 1,
+        text: 'Test notification',
+        createdAt: new Date(),
+        seen: false,
+      };
 
       jest.spyOn(service, 'getNotification').mockResolvedValue(result);
 
@@ -93,7 +110,16 @@ describe('NotificationsController', () => {
 
   describe('getNotifications', () => {
     it('should call service.getNotifications and return result', async () => {
-      const result = [{ id: 1, text: 'Test notification' }];
+      const result: NotificationDto[] = [
+        {
+          id: 1,
+          initials: 'TN',
+          userId: 1,
+          text: 'Test notification',
+          createdAt: new Date(),
+          seen: false,
+        },
+      ];
 
       jest.spyOn(service, 'getNotifications').mockResolvedValue(result);
 
@@ -115,12 +141,14 @@ describe('NotificationsController', () => {
   });
 
   describe('deleteNotification', () => {
-    it('should call service.deleteNotification and return result', async () => {
+    it('should call service.deleteNotification and return void', async () => {
       const result = { affected: 1 };
 
-      jest.spyOn(service, 'deleteNotification').mockResolvedValue(result);
+      jest.spyOn(service, 'deleteNotification').mockResolvedValue();
 
-      expect(await controller.deleteNotification({ id: 1 })).toBe(result);
+      await expect(
+        controller.deleteNotification({ id: 1 }),
+      ).resolves.toBeUndefined();
       expect(service.deleteNotification).toHaveBeenCalledWith(1);
     });
 
@@ -136,16 +164,14 @@ describe('NotificationsController', () => {
   });
 
   describe('changeNotificationSeenState', () => {
-    it('should call service.changeNotificationSeenState and return result', async () => {
-      const result = { id: 1, seen: true };
-
+    it('should call service.changeNotificationSeenState and return void', async () => {
       jest
         .spyOn(service, 'changeNotificationSeenState')
-        .mockResolvedValue(result);
+        .mockResolvedValue(undefined);
 
-      expect(await controller.changeNotificationSeenState({ id: 1 })).toBe(
-        result,
-      );
+      await expect(
+        controller.changeNotificationSeenState({ id: 1 }),
+      ).resolves.toBeUndefined();
       expect(service.changeNotificationSeenState).toHaveBeenCalledWith(1);
     });
 

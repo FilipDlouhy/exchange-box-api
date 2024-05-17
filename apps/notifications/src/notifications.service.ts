@@ -1,7 +1,3 @@
-import { Notification } from '../../../libs/database/src/entities/notification.entity';
-import { User } from '../../../libs/database/src/entities/user.entity';
-import { userManagementCommands } from '../../../libs/tcp/src/userMessagePatterns/user.management.message.patterns';
-import { notificationEventsPatterns } from '../../../libs/tcp/src/notificationMessagePatterns/notification.events.message.patterns';
 import {
   BadRequestException,
   Injectable,
@@ -16,18 +12,21 @@ import {
   Transport,
 } from '@nestjs/microservices';
 import { SchedulerRegistry } from '@nestjs/schedule';
-import { InjectRepository } from '@nestjs/typeorm';
+import { Notification } from '../../../libs/database/src/entities/notification.entity';
+import { User } from '../../../libs/database/src/entities/user.entity';
+import { userManagementCommands } from '../../../libs/tcp/src/userMessagePatterns/user.management.message.patterns';
+import { notificationEventsPatterns } from '../../../libs/tcp/src/notificationMessagePatterns/notification.events.message.patterns';
 import { CreateNotificationDto } from 'libs/dtos/notificationDtos/create.notification.dto';
 import { NotificationDto } from 'libs/dtos/notificationDtos/notification.dto';
-import { Repository } from 'typeorm';
+import { NotificationRepository } from './notification.repository';
 
 @Injectable()
 export class NotificationsService implements OnModuleInit {
   private readonly userClient;
   private client: ClientProxy;
+
   constructor(
-    @InjectRepository(Notification)
-    private readonly notificationRepository: Repository<Notification>,
+    private readonly notificationRepository: NotificationRepository, // Inject the repository
     private schedulerRegistry: SchedulerRegistry,
   ) {
     this.userClient = ClientProxyFactory.create({
@@ -49,25 +48,14 @@ export class NotificationsService implements OnModuleInit {
     this.client = ClientProxyFactory.create(microserviceOptions);
   }
 
-  /**
-   * Initializes the module and schedules deletion of seen notifications.
-   */
   async onModuleInit() {
-    const notifications = await this.notificationRepository.find({
-      where: { seen: true },
-    });
+    const notifications =
+      await this.notificationRepository.findAllSeenNotifications();
     notifications.forEach((notification) =>
       this.scheduleNotificationDeletion(notification.id),
     );
   }
 
-  /**
-   * Creates a new notification in the database based on the provided data.
-   *
-   * @param {CreateNotificationDto} createNotificationDto - The data to create the notification.
-   * @throws {BadRequestException} - If an error occurs during the creation process.
-   * @returns {Promise<void>} - A promise that resolves once the notification is created successfully.
-   */
   async createNotification(createNotificationDto: CreateNotificationDto) {
     try {
       const user: User = await this.userClient
@@ -82,11 +70,10 @@ export class NotificationsService implements OnModuleInit {
       const notification = new Notification(createNotificationDto);
       notification.user = user;
 
-      await this.notificationRepository.save(notification);
+      await this.notificationRepository.createNotification(notification);
 
-      const notificationCount = await this.notificationRepository.count({
-        where: { user: { id: user.id }, seen: false },
-      });
+      const notificationCount =
+        await this.notificationRepository.countUnseenNotifications(user.id);
 
       this.client.emit<any>(notificationEventsPatterns.newNotification, {
         notificationCount,
@@ -99,37 +86,29 @@ export class NotificationsService implements OnModuleInit {
     }
   }
 
-  /**
-   * Retrieves notifications associated with a user by the user's ID from the database and returns them as DTOs.
-   *
-   * @param {number} id - The ID of the user whose notifications to retrieve.
-   * @throws {Error} - If an error occurs during the retrieval.
-   * @returns {Promise<NotificationDto[]>} - A promise that resolves to an array of DTO representations of the retrieved notifications.
-   */
   async getNotifications(id: number, query: any = {}) {
     try {
       const page = parseInt(query.page, 10) || 0;
       const limit = parseInt(query.limit, 10) || 10;
 
-      const notifications = await this.notificationRepository.find({
-        where: { user: { id: id } },
-        relations: ['user'],
-        skip: page,
-        take: limit,
-      });
-
-      const notificationDtos = notifications.map((notification) => {
-        return new NotificationDto(
-          notification.id,
-          notification.createdAt,
-          notification.user.id,
-          notification.text,
-          notification.initials,
-          notification.seen,
+      const notifications =
+        await this.notificationRepository.findUserNotifications(
+          id,
+          page,
+          limit,
         );
-      });
 
-      return notificationDtos;
+      return notifications.map(
+        (notification) =>
+          new NotificationDto(
+            notification.id,
+            notification.createdAt,
+            notification.user.id,
+            notification.text,
+            notification.initials,
+            notification.seen,
+          ),
+      );
     } catch (error) {
       console.error(
         'An error occurred while fetching the notification:',
@@ -139,18 +118,10 @@ export class NotificationsService implements OnModuleInit {
     }
   }
 
-  /**
-   * Retrieves a notification by its ID from the database and returns it as a DTO.
-   *
-   * @param {number} id - The ID of the notification to retrieve.
-   * @throws {Error} - If the notification with the given ID is not found or if an error occurs during the retrieval.
-   * @returns {Promise<NotificationDto>} - A promise that resolves to the DTO representation of the retrieved notification.
-   */
   async getNotification(id: number) {
     try {
-      const notification = await this.notificationRepository.findOne({
-        where: { id: id },
-      });
+      const notification =
+        await this.notificationRepository.findOneNotification(id);
 
       if (!notification) {
         throw new Error('Notification not found');
@@ -173,51 +144,39 @@ export class NotificationsService implements OnModuleInit {
     }
   }
 
-  /**
-   * Deletes a notification from the database by the provided ID.
-   *
-   * @param {number} id - The ID of the notification to delete.
-   * @throws {NotFoundException} - If the notification with the given ID is not found.
-   * @throws {InternalServerErrorException} - If an error occurs during the deletion operation.
-   * @returns {Promise<void>} - A promise that resolves once the deletion is successful.
-   */
   async deleteNotification(id: number) {
     try {
-      const result = await this.notificationRepository.delete(id);
+      const notification =
+        await this.notificationRepository.findOneNotification(id);
 
-      if (result.affected === 0) {
-        throw new NotFoundException(`notification with ID ${id} not found`);
+      if (!notification) {
+        throw new NotFoundException(`Notification with ID ${id} not found`);
       }
+
+      await this.notificationRepository.deleteNotification(id);
     } catch (err) {
       console.error(`Error deleting notification with ID ${id}:`, err);
       if (err instanceof NotFoundException) {
         throw err;
       } else {
         throw new InternalServerErrorException(
-          `An error occurred during the deletenotification operation: ${err.message}`,
+          `An error occurred during the delete notification operation: ${err.message}`,
         );
       }
     }
   }
 
-  /**
-   * Marks a notification as seen and schedules its deletion.
-   *
-   * @param {number} id - ID of the notification to update.
-   * @throws {NotFoundException} If no notification is found.
-   * @throws {InternalServerErrorException} On update or deletion error.
-   */
   async changeNotificationSeenState(id: number) {
     try {
-      const notification = await this.notificationRepository.findOne({
-        where: { id },
-      });
+      const notification =
+        await this.notificationRepository.findOneNotification(id);
 
       if (!notification) {
         throw new NotFoundException(`Notification with ID ${id} not found`);
       }
+
       notification.seen = true;
-      await this.notificationRepository.save(notification);
+      await this.notificationRepository.saveNotification(notification);
       this.scheduleNotificationDeletion(id);
     } catch (err) {
       console.error(
@@ -234,28 +193,15 @@ export class NotificationsService implements OnModuleInit {
     }
   }
 
-  /**
-   * Gets the number of unseen notifications for a specific user.
-   * @param id The ID of the user for whom to count the unseen notifications.
-   * @returns The count of unseen notifications.
-   */
   async getNumberOfNotifications(id: number): Promise<number> {
     try {
-      const notificationCount = await this.notificationRepository.count({
-        where: { user: { id }, seen: false },
-      });
-
-      return notificationCount;
+      return await this.notificationRepository.countUnseenNotifications(id);
     } catch (error) {
       console.error('Failed to get notification count:', error);
       throw error;
     }
   }
 
-  /**
-   * Schedules the deletion of a notification after a specified delay.
-   * @param notificationId The ID of the notification to delete.
-   */
   private scheduleNotificationDeletion(notificationId: number) {
     const deleteNotification = setTimeout(async () => {
       try {
