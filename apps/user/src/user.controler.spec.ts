@@ -211,6 +211,7 @@ describe('UserController', () => {
       friends: undefined,
       items: undefined,
       notifications: undefined,
+      events: [],
     };
 
     it('should return the user from cache if available', async () => {

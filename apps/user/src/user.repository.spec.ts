@@ -5,6 +5,7 @@ import { User } from '../../../libs/database/src/entities/user.entity';
 import { UserRepository } from './user.repository';
 import { FriendRequest } from '@app/database';
 import * as bcrypt from 'bcrypt';
+import { UpdateCurrentUserDto } from 'libs/dtos/userDtos/update.current.user.dto';
 
 jest.mock('bcrypt', () => ({
   hash: jest.fn().mockResolvedValue('hashedPassword'),
@@ -53,6 +54,7 @@ describe('UserRepository', () => {
       const createUserDto = {
         email: 'test@example.com',
         password: 'password123',
+        name: 'test',
       };
       await userRepository.createUser(createUserDto);
       expect(userRepoMock.save).toHaveBeenCalledWith(
@@ -69,6 +71,7 @@ describe('UserRepository', () => {
         userRepository.createUser({
           email: 'test@example.com',
           password: 'password123',
+          name: 'test',
         }),
       ).rejects.toThrow('Email already exists');
     });
@@ -148,8 +151,26 @@ describe('UserRepository', () => {
 
   describe('updateCurrentUser', () => {
     it('should update user data and save', async () => {
-      const mockUser = { id: 1, name: 'Old Name' };
-      const updateData = {
+      const mockUser: User = {
+        id: 1,
+        name: 'Old Name',
+        telephone: '0987654321',
+        address: '123 Old Address',
+        email: 'old@example.com',
+        longitude: 40,
+        latitude: 30,
+        password: 'password',
+        imageUrl: 'image_url',
+        backgroundImageUrl: 'background_image_url',
+        events: [],
+        exchanges: [],
+        friends: [],
+        items: [],
+        notifications: [],
+      };
+
+      const updateData: UpdateCurrentUserDto = {
+        id: 1,
         name: 'New Name',
         telephone: '1234567890',
         address: '123 New Address',
@@ -157,6 +178,7 @@ describe('UserRepository', () => {
         longitude: 50,
         latitude: 40,
       };
+
       userRepoMock.save.mockResolvedValue(mockUser);
       await userRepository.updateCurentUser(updateData, mockUser);
       expect(userRepoMock.save).toHaveBeenCalledWith({
